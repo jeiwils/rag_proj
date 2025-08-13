@@ -32,10 +32,10 @@ Outputs
 
 ### data/graphs/{model}/{dataset}/{split}/{variant}/traversal/
 
-- `per_query_traversal_results.jsonl`  
+- `per_query_traversal_results.jsonl.gz'
     One entry per query with hop trace, visited nodes, and precision/recall/F1.
 
-- `final_selected_passages.json`  
+- `final_selected_passages.json.gz`  
     Deduplicated set of all passages visited during traversal (used for answering).
 
 - `final_traversal_stats.json`  
@@ -46,7 +46,7 @@ Outputs
 File Schema
 -----------
 
-### per_query_traversal_results.jsonl
+### per_query_traversal_results.jsonl.gz
 
 {
   "query_id": "{question_id}",
@@ -63,7 +63,7 @@ File Schema
 }
 
 
-### final_selected_passages.json
+### final_selected_passages.json.gz
 
 [
   "{passage_id_1}",
@@ -120,6 +120,7 @@ from collections import defaultdict
 import json
 from src.c_graphing import basic_graph_eval
 from pathlib import Path
+import gzip
 
 traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
 
@@ -136,9 +137,9 @@ def traversal_output_paths(model, dataset, split, variant):
 
     return {
         "dir": base_dir,
-        "results": base_dir / "per_query_traversal_results.jsonl",
+        "results": base_dir / "per_query_traversal_results.jsonl.gz",
         "stats": base_dir / "final_traversal_stats.json",  # <-- updated here
-        "final_selected_passages": base_dir / "final_selected_passages.json"
+        "final_selected_passages": base_dir / "final_selected_passages.json.gz"
     }
 
 
@@ -462,7 +463,7 @@ def save_per_query_result( # helper for run_dev_set()
     }
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "a") as f:
+    with gzip.open(output_path, "at", encoding="utf-8") as f:
         f.write(json.dumps(result_entry) + "\n")
 
 
@@ -489,8 +490,8 @@ def run_traversal(
     Run LLM-guided multi-hop traversal over a QA query set (e.g., train, dev).
 
     Outputs:
-    - final_selected_passages.json: ✅ Used downstream (answer generation, reranking)
-    - per_query_traversal_results.jsonl: 🔍 Full per-query trace and metrics
+    - final_selected_passages.json.gz: ✅ Used downstream (answer generation, reranking)
+    - per_query_traversal_results.jsonl.gz: 🔍 Full per-query trace and metrics
     - traversal_stats.json: 📈 Aggregate traversal metrics across the query set
     """
         
@@ -549,7 +550,7 @@ def run_traversal(
         all_selected_passages.update(visited_passages)
 
     # --- Save selected_passages.json ---
-    with open(output_paths["final_selected_passages"], "w") as f:
+    with gzip.open(output_paths["final_selected_passages"], "wt", encoding="utf-8") as f:
         json.dump(sorted(all_selected_passages), f, indent=2)
 
 
@@ -580,7 +581,7 @@ def compute_traversal_summary(
     passage_coverage_all_gold_found = 0
     initial_retrieval_coverage = 0
 
-    with open(results_path, "r") as f:
+    with gzip.open(results_path, "rt", encoding="utf-8") as f:
         for line in f:
             entry = json.loads(line)
             if include_ids is not None and entry["query_id"] not in include_ids:
@@ -644,7 +645,7 @@ if __name__ == "__main__":
         # Load dataset-wide resources once per dataset
         paths = dataset_rep_paths(dataset, SPLIT)
         passage_metadata = load_jsonl(paths["passages_jsonl"])
-        passage_emb = np.load(paths["passages_emb"])
+        passage_emb = np.load(paths["passages_emb"])["embs_all"]
         passage_index = faiss.read_index(paths["passages_index"])
         query_data_full = [json.loads(line) for line in open(f"{dataset}_{SPLIT}.jsonl")]
 

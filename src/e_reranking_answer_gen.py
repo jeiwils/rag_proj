@@ -479,7 +479,7 @@ if __name__ == "__main__":
     # --- Load representations ---
     rep_paths = dataset_rep_paths(dataset, split)
     passage_metadata = load_jsonl(rep_paths["passages_jsonl"])
-    passage_emb = np.load(rep_paths["passages_emb"])
+    passage_emb = np.load(rep_paths["passages_emb"])["embs_all"]
     passage_index = load_faiss_index(rep_paths["passages_index"])
 
     # --- Load queries and graph ---

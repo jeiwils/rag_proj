@@ -86,8 +86,8 @@ project-root/
 │   │                   ├── {dataset}_{split}_graph_log.jsonl
 │   │                   ├── {dataset}_{split}_graph_results.jsonl
 │   │                   └── traversal/
-│   │                       ├── per_query_traversal_results.jsonl
-│   │                       ├── final_selected_passages.json
+│   │                       ├── per_query_traversal_results.jsonl.gz
+│   │                       ├── final_selected_passages.json.gz
 │   │                       └── final_traversal_stats.json
 │
 ├── results/

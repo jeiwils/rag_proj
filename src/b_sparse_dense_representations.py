@@ -242,7 +242,7 @@ def embed_and_save(
 
     if not data:
         if os.path.exists(output_npy):
-            embs_all = np.load(output_npy).astype("float32")
+            embs_all = np.load(output_npy)["embs_all"].astype("float32")
         else:
             embs_all = np.empty((0, model.get_sentence_embedding_dimension()), dtype="float32")
         print(f"[Embeddings] No new items for {input_jsonl}; skipping.")
@@ -261,12 +261,12 @@ def embed_and_save(
         entry["vec_id"] = i + vec_offset
 
     os.makedirs(os.path.dirname(output_npy), exist_ok=True)
-    if done_ids and os.path.exists(output_npy):
-        existing = np.load(output_npy).astype("float32")
+    if  done_ids and os.path.exists(output_npy):
+        existing = np.load(output_npy)["embs_all"].astype("float32")
         embs_all = np.vstack([existing, new_embs])
     else:
         embs_all = new_embs
-    np.save(output_npy, embs_all)
+    np.savez_compressed(output_npy, embs_all=embs_all)
 
     mode = "a" if done_ids else "w"
     with open(output_jsonl, mode, encoding="utf-8") as f_out:
@@ -517,7 +517,7 @@ if __name__ == "__main__":
 
             # === PASSAGE EMBEDDINGS ===
             if os.path.exists(passages_npy) and not RESUME:
-                passages_emb = np.load(passages_npy).astype("float32")
+                passages_emb = np.load(passages_npy)["embs_all"].astype("float32")
                 print(f"[skip] {passages_npy} exists; loaded.")
                 if not os.path.exists(pass_paths["passages_index"]):
                     build_and_save_faiss_index(
@@ -608,7 +608,7 @@ if __name__ == "__main__":
                 continue
 
             if os.path.exists(iqoq_npy) and not RESUME:
-                iqoq_emb = np.load(iqoq_npy).astype("float32")
+                iqoq_emb = np.load(iqoq_npy)["embs_all"].astype("float32")
                 print(f"[skip] {iqoq_npy} exists; loaded.")
                 if not os.path.exists(os.path.join(repr_root, f"{dataset}_faiss_iqoq.faiss")):
                     build_and_save_faiss_index(

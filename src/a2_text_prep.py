@@ -122,9 +122,9 @@ from multiprocessing import Process
 from src.utils import load_jsonl, save_jsonl, append_jsonl
 from tqdm import tqdm
 from typing import Callable, List, Dict
-import time 
+import time
 import json
-
+import gzip
 
 
 
@@ -623,7 +623,8 @@ def existing_ids(path, id_field="passage_id"):
     if not Path(path).exists():
         return set()
     done = set()
-    with open(path, "r", encoding="utf-8") as f:
+    open_fn = gzip.open if str(path).endswith(".gz") else open
+    with open_fn(path, "rt", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line: 
