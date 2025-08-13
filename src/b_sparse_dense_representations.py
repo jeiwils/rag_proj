@@ -1,106 +1,106 @@
-
 """
 
 Module Overview
 ---------------
+Build sparse and dense vector representations for passages and IQ/OQ (incoming/outgoing questions),
+and index them for efficient retrieval using FAISS. Also extracts sparse keyword features using spaCy NER.
 
-Build sparse and dense representations for passages and IQ/OQ items.
 
 
 Inputs
 ------
-JSONL files from earlier processing steps are expected from two locations:
 
-1. **Passage entries** come from:
-   data/processed_datasets/{dataset}/{split}_passages.jsonl
+### data/processed_datasets/{dataset}/
 
-   Each line is a JSON object describing a passage:
+- {split}_passages.jsonl  
+    → Raw passage entries with passage ID and text.
 
-       {
-         "dataset": "hotpotqa",
-         "split": "train",
-         "passage_id": "5a7a0693__arthur_s_magazine_sent0",
-         "text": "Arthur's Magazine (1844–1846)..."
-       }
 
-2. **IQ/OQ (incoming/outgoing questions)** come from:
-   data/models/{model}/{dataset}/{split}/{variant}/{dataset}_iqoq.jsonl
+### data/models/{model}/{dataset}/{split}/{variant}/
 
-   Each line is a JSON object describing an IQ or OQ item:
+- exploded/iqoq.exploded.jsonl  
+    → Incoming/outgoing questions (one per row), used for embedding questions.
 
-       {
-         "dataset": "hotpotqa",
-         "split": "train",
-         "iqoq_id": "5a7a0693__arthur_s_magazine_sent0_iq0",
-         "text": "Who founded Arthur's Magazine?"
-       }
+- cleaned/iqoq.cleaned.jsonl  
+    → Cleaned IQ/OQ entries, used for indexing and keyword extraction.
+
 
 
 Outputs
 -------
-Vector representations and indexes are saved under the ``data/representations`` directory in two locations:
 
-1. **Passage outputs** are saved to:
-   data/representations/{dataset}/{split}/
+### data/representations/{dataset}/{split}/{hoprag_version}
 
-   Files:
-       - {dataset}_passages.jsonl          # metadata with vec_id
-       - {dataset}_passages_emb.npy        # dense embeddings (NumPy array)
-       - {dataset}_faiss_passages.faiss    # FAISS index for passage retrieval
+- {dataset}_passages.jsonl  
+    → Passage metadata with added vec_id.
 
-2. **IQ/OQ outputs** are saved to:
-   data/representations/{model}/{dataset}/{split}/{variant}/
+- {dataset}_passages_emb.npy  
+    → Dense passage embeddings (NumPy array).
 
-   Files:
-       - {dataset}_iqoq.jsonl              # metadata with vec_id
-       - {dataset}_iqoq_emb.npy            # dense embeddings (NumPy array)
-       - {dataset}_faiss_iqoq.faiss        # FAISS index for IQ/OQ retrieval
-
-Notes:
-- Each JSONL file includes a ``vec_id`` field that corresponds to the index of that item in the ``.npy`` embedding matrix.
-- The FAISS index is built using inner-product similarity over normalized vectors (cosine similarity).
+- {dataset}_faiss_passages.faiss  
+    → FAISS index over passage vectors.
 
 
 
-Example output lines::
+### data/representations/{model}/{dataset}/{split}/{variant}/
 
-    {"passage_id": "p0", 
-    "text": "...", 
-    "vec_id": 0}
+- iqoq.cleaned.jsonl  
+    → Updated input file with vec_id added for each IQ/OQ item.
 
-    passages_emb[0] -> [0.1, 0.2, 0.3]
+- {dataset}_iqoq_emb.npy  
+    → Dense IQ/OQ embeddings (NumPy array).
 
-    {"iqoq_id": "p0_iq0", 
-    "text": "...", 
-    "vec_id": 0}
+- {dataset}_faiss_iqoq.faiss  
+    → FAISS index over IQ/OQ vectors.
 
-    iqoq_emb[0] -> [0.1, 0.2, 0.3]
 
-    
+
+File Schema
+-----------
+
+### {split}_passages.jsonl
+
+{
+  "passage_id": "{passage_id}",
+  "text": "{passage_text}",
+  "vec_id": 0,
+  "keywords_passage": ["{kw1}", "{kw2}", "..."]
+}
+
+Fields:
+- ``passage_id``: unique identifier for the passage.
+- ``text``: raw text of the passage.
+- ``vec_id``: embedding index position.
+- ``keywords_passage``: extracted named entities via spaCy.
+
+
+### iqoq.cleaned.jsonl
+
+{
+  "iqoq_id": "{iqoq_id}",
+  "text": "{question_text}",
+  "vec_id": 0,
+  "keywords": ["{kw1}", "{kw2}", "..."]
+}
+
+Fields:
+- ``iqoq_id``: unique identifier for the question (incoming or outgoing).
+- ``text``: question text.
+- ``vec_id``: embedding index position.
+- ``keywords``: extracted named entities via spaCy.
+
+
+
+Notes
+-----
+
+- All `.jsonl` files are UTF-8 encoded with `ensure_ascii=False`.
+- FAISS indexes are built using inner-product over normalized vectors (cosine similarity).
+- Embeddings are generated using the BAAI bge-base-en-v1.5 SentenceTransformer.
+- Only entities of types like PERSON, ORG, GPE, etc. are retained for keyword features.
+- `vec_id` aligns each row in the `.jsonl` file with the corresponding row in the `.npy` file.
+
 """
-
-
-
-
-
-
-
-
-"""
-
-WRITE UP
-- paddleNLP not used - don't need multilingual testing with CHinese
-
-
-
-
-"""
-
-
-
-
-
-
 
 
 
@@ -352,12 +352,12 @@ def extract_keywords(text: str) -> list[str]:
 
 def extract_all_keywords(entry: dict) -> dict:
     """
-    Adds 'keywords_IQ', 'keywords_OQ', and 'keywords_text' to entry.
+    Adds 'keywords_IQ', 'keywords_OQ', and 'keywords_passage' to entry.
     Assumes 'IQs', 'OQs', and 'text' exist.
     """
     entry["keywords_IQ"] = [extract_keywords(q) for q in entry.get("IQs", [])]
     entry["keywords_OQ"] = [extract_keywords(q) for q in entry.get("OQs", [])]
-    entry["keywords_text"] = extract_keywords(entry.get("text", ""))
+    entry["keywords_passage"] = extract_keywords(entry.get("text", ""))
     return entry
 
 
@@ -374,13 +374,13 @@ def add_keywords_to_passages_jsonl(passages_jsonl: str, merged_with_iqoq: bool =
             for ent in doc.ents
             if ent.label_ in KEEP_ENTS and ent.text.strip()
         }
-        r["keywords_text"] = sorted(kws)
+        r["keywords_passage"] = sorted(kws)
         if merged_with_iqoq:
             kws_iq = [extract_keywords(q) for q in (r.get("IQs") or [])]
             kws_oq = [extract_keywords(q) for q in (r.get("OQs") or [])]
             r["keywords_IQ"] = kws_iq
             r["keywords_OQ"] = kws_oq
-            union = set(r["keywords_text"])
+            union = set(r["keywords_passage"])
             for lst in kws_iq: union.update(lst)
             for lst in kws_oq: union.update(lst)
             r["all_keywords"] = sorted(union)
@@ -408,9 +408,6 @@ def add_keywords_to_iqoq_jsonl(iqoq_jsonl: str, out_field: str = "keywords"):
 
 
 
-
-
-
 if __name__ == "__main__":
     print(f"[spaCy] Using: {SPACY_MODEL}")
 
@@ -419,127 +416,114 @@ if __name__ == "__main__":
     bge_model = SentenceTransformer(BGE_MODEL, device=DEVICE)
     print(f"[BGE] Loaded {BGE_MODEL} on {DEVICE}")
 
-    # knobs
+    # Config
     MODELS   = ["qwen-7b", "deepseek-distill-qwen-7b"]
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-    VARIANTS = ["baseline", "enhanced"]     # folder name
+    VARIANTS = ["baseline", "enhanced"]
     SPLIT    = "train"
 
     CURRENT_VARIANT = "enhanced"
 
-
-
     # -------------------------------
-    # Phase A: dataset-only (passages + questions)
-    # -------------------------------
-    for dataset in DATASETS:
-        print(f"\n=== DATASET: {dataset} ({SPLIT}) ===")
-
-        pass_paths = dataset_rep_paths(dataset, SPLIT)
-        dataset_dir = Path(os.path.dirname(pass_paths["passages_jsonl"]))
-        os.makedirs(dataset_dir, exist_ok=True)
-
-        passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl"
-        questions_jsonl_src = f"data/processed_datasets/{dataset}/{SPLIT}.jsonl"
-
-        passages_jsonl = Path(pass_paths["passages_jsonl"])
-        passages_npy   = Path(pass_paths["passages_emb"])
-
-        questions_jsonl_name = Path(questions_jsonl_src).name
-        questions_jsonl = dataset_dir / questions_jsonl_name
-        questions_npy   = dataset_dir / questions_jsonl_name.replace(".jsonl", ".emb.npy")
-
-
-
-
-
-        # Passages embeddings
-        if os.path.exists(passages_npy):
-            passages_emb = np.load(passages_npy).astype("float32")
-            print(f"[skip] {passages_npy} exists; loaded.")
-        else:
-            passages_emb = embed_and_save(
-                input_jsonl=passages_jsonl_src,
-                output_npy=str(passages_npy),
-                output_jsonl=str(passages_jsonl),
-                model=bge_model,
-                text_key="text",
-            )
-
-        # Questions embeddings
-        if os.path.exists(questions_npy):
-            print(f"[skip] {questions_npy} exists; loaded.")
-        else:
-            _ = embed_and_save(
-                input_jsonl=questions_jsonl_src,
-                output_npy=str(questions_npy),
-                output_jsonl=str(questions_jsonl),
-                model=bge_model,
-                text_key="question",
-            )
-
-
-
-
-
-        # Passage FAISS
-        index_tag_passages = dataset
-        build_and_save_faiss_index(
-            embeddings=passages_emb,
-            dataset_name=index_tag_passages,
-            index_type="passages",
-            output_dir=str(dataset_dir)
-        )
-
-        # Sparse keywords on passages
-        add_keywords_to_passages_jsonl(str(passages_jsonl), merged_with_iqoq=False)
-
-    # -------------------------------
-    # Phase B: model-specific IQ/OQ
+    # Phase A: Passages + Questions (Dataset-only)
     # -------------------------------
     for model in MODELS:
-        print(f"\n=== MODEL: {model} ===")
         for dataset in DATASETS:
-                variant = CURRENT_VARIANT
-                paths = model_rep_paths(model, dataset, SPLIT, variant)
-                iqoq_jsonl = paths["iqoq_jsonl"]
-                iqoq_npy = paths["iqoq_emb"]
-                repr_root = os.path.dirname(iqoq_jsonl)
+            print(f"\n=== DATASET: {dataset} ({SPLIT}) | MODEL: {model} ===")
 
+            # File paths
+            variant = CURRENT_VARIANT
+            hoprag_version = variant  # same thing
+            pass_paths = dataset_rep_paths(dataset, SPLIT)
+            dataset_dir = Path(os.path.dirname(pass_paths["passages_jsonl"]))
+            os.makedirs(dataset_dir, exist_ok=True)
 
-                if not os.path.exists(iqoq_jsonl):
-                    print(f"[warn] missing IQ/OQ file: {iqoq_jsonl}; skipping.")
-                    continue
+            passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl"
+            passages_jsonl      = pass_paths["passages_jsonl"]
+            passages_npy        = pass_paths["passages_emb"]
 
-                if os.path.exists(iqoq_npy):
-                    iqoq_emb = np.load(iqoq_npy).astype("float32")
-                    print(f"[skip] {iqoq_npy} exists; loaded.")
-                else:
-                    iqoq_emb = embed_and_save(
-                        input_jsonl=iqoq_jsonl,
-                        output_npy=iqoq_npy,
-                        output_jsonl=iqoq_jsonl,
-                        model=bge_model,
-                        text_key="text",
-                    )
+            questions_jsonl_src = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/exploded/iqoq.exploded.jsonl"
+            questions_jsonl     = dataset_dir / Path(questions_jsonl_src).name
+            questions_npy       = dataset_dir / Path(questions_jsonl_src).with_suffix(".emb.npy").name
 
-                add_keywords_to_iqoq_jsonl(iqoq_jsonl)
-
-                index_tag_iqoq = dataset
-                build_and_save_faiss_index(
-                    embeddings=iqoq_emb,
-                    dataset_name=index_tag_iqoq,
-                    index_type="iqoq",
-                    output_dir=repr_root,
+            # === PASSAGE EMBEDDINGS ===
+            if os.path.exists(passages_npy):
+                passages_emb = np.load(passages_npy).astype("float32")
+                print(f"[skip] {passages_npy} exists; loaded.")
+            else:
+                passages_emb = embed_and_save(
+                    input_jsonl=passages_jsonl_src,
+                    output_npy=str(passages_npy),
+                    output_jsonl=str(passages_jsonl),
+                    model=bge_model,
+                    text_key="text",
                 )
-                print(f"[done] {model} | {dataset} | {variant}")
 
+            # === QUESTION EMBEDDINGS ===
+            if os.path.exists(questions_npy):
+                print(f"[skip] {questions_npy} exists; loaded.")
+            else:
+                _ = embed_and_save(
+                    input_jsonl=questions_jsonl_src,
+                    output_npy=str(questions_npy),
+                    output_jsonl=str(questions_jsonl),
+                    model=bge_model,
+                    text_key="text",  # was "question", changed to "text" for consistency with exploded
+                )
 
+            # === PASSAGE FAISS INDEX ===
+            build_and_save_faiss_index(
+                embeddings=passages_emb,
+                dataset_name=dataset,
+                index_type="passages",
+                output_dir=str(dataset_dir)
+            )
 
+            # === SPARSE KEYWORDS FOR PASSAGES ===
+            add_keywords_to_passages_jsonl(str(passages_jsonl), merged_with_iqoq=False)
 
+    # -------------------------------
+    # Phase B: IQ/OQ (Model-specific)
+    # -------------------------------
+    for model in MODELS:
+        print(f"\n=== IQ/OQ EMBEDDING + INDEX: {model} ===")
+        for dataset in DATASETS:
+            variant = CURRENT_VARIANT
+            hoprag_version = variant
+            iqoq_jsonl = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/cleaned/iqoq.cleaned.jsonl"
+            repr_root = os.path.join("data", "representations", model, dataset, SPLIT, hoprag_version)
+            os.makedirs(repr_root, exist_ok=True)
+            iqoq_npy = os.path.join(repr_root, f"{dataset}_iqoq_emb.npy")
 
+            # === IQ/OQ EMBEDDINGS ===
+            if not os.path.exists(iqoq_jsonl):
+                print(f"[warn] Missing IQ/OQ input file: {iqoq_jsonl}; skipping.")
+                continue
 
+            if os.path.exists(iqoq_npy):
+                iqoq_emb = np.load(iqoq_npy).astype("float32")
+                print(f"[skip] {iqoq_npy} exists; loaded.")
+            else:
+                iqoq_emb = embed_and_save(
+                    input_jsonl=iqoq_jsonl,
+                    output_npy=iqoq_npy,
+                    output_jsonl=iqoq_jsonl,
+                    model=bge_model,
+                    text_key="text",
+                )
 
+            # === SPARSE KEYWORDS FOR IQ/OQ ===
+            add_keywords_to_iqoq_jsonl(iqoq_jsonl)
+
+            # === IQ/OQ FAISS INDEX ===
+            build_and_save_faiss_index(
+                embeddings=iqoq_emb,
+                dataset_name=dataset,
+                index_type="iqoq",
+                output_dir=repr_root,
+            )
+
+            print(f"[done] {model} | {dataset} | {variant}")
 
 
 

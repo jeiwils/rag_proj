@@ -1,56 +1,131 @@
 """
 Module Overview
 ---------------
-Construct a graph that links original questions (OQ) to inferred questions (IQ).
+Construct a passage-level graph by linking Original Questions (OQs) to Inferred Questions (IQs).
 Each OQ retrieves candidate IQs from a FAISS index, computes hybrid similarity
-(cosine + Jaccard), and retains the highest-scoring IQ edge.
+(cosine + Jaccard), and retains the top-scoring IQ. The resulting OQ→IQ edges
+form a directed graph over passages for downstream reasoning and traversal.
+
+This module builds the graph, saves edge lists and NetworkX files, and computes
+evaluation diagnostics for structure and similarity quality.
+
 
 Inputs
 ------
 
-################# PATHS / DIRECTORIES
+### data/representations/{dataset}/{split}/
 
-- ``passages.jsonl`` – Passage metadata (IDs, text, keywords, etc.)
-- ``iqoq.jsonl`` – IQ/OQ metadata
-- ``passages_emb.npy`` – Passage embeddings
-- ``iqoq_emb.npy`` – IQ/OQ embeddings
-- ``hotpot_faiss_iqoq.faiss`` – FAISS index for IQ/OQ embeddings
+- {dataset}_passages.jsonl  
+    – Passage metadata including passage_id, text, vec_id, and keywords_passage.
+
+- {dataset}_passages_emb.npy  
+    – Dense passage embeddings (NumPy array; aligns with vec_id field).
+
+
+
+### data/representations/{model}/{dataset}/{split}/{variant}/
+
+- iqoq.cleaned.jsonl  
+    – Cleaned IQ/OQ items with vec_id, type (OQ/IQ), parent_passage_id, and keywords.
+
+- {dataset}_iqoq_emb.npy  
+    – Dense IQ/OQ embeddings (NumPy array; aligns with vec_id field).
+
+- {dataset}_faiss_iqoq.faiss  
+    – FAISS index over IQ/OQ embeddings (inner-product over normalized vectors).
+
+
 
 Outputs
 -------
 
-################# WRITTEN FILES
+### data/graphs/{model}/{dataset}/{split}/{variant}/
 
-- ``{dataset}_edges.jsonl`` – JSONL edge list linking each OQ to its top IQ  
-  Each line is a top-ranked edge, including cosine, Jaccard, and hybrid similarity.
+- {dataset}_{split}_edges.jsonl  
+    – List of OQ→IQ edges. Each line includes sim_cos, sim_jaccard, and sim_hybrid scores.
 
-- ``{dataset}_{split}_graph.gpickle`` – NetworkX directed graph (passage-level, with OQ→IQ edges)
+- {dataset}_{split}_graph.gpickle  
+    – NetworkX DiGraph: passages as nodes, OQ→IQ as directed edges.
 
-- ``graph_stats/{dataset}_{split}_graph_eval.jsonl`` – Summary graph statistics  
-  Includes: avg degree, degree variance, Gini coefficient, top-k hubs.
+- {dataset}_{split}_graph_eval.jsonl  
+    – Global summary: average degree, Gini, top-k hubs. One line per run.
 
-- ``graph_stats/{dataset}_{split}_graph_results.jsonl`` – Full graph diagnostics (1 line per run)  
-  Includes: component stats, degree distributions, edge sim stats, top-k hubs, etc.
+- {dataset}_{split}_graph_results.jsonl  
+    – Full diagnostics: edge similarity stats, degree distribution, components, etc.
 
-Example Edge Record (`{dataset}_edges.jsonl`)
----------------------------------------------
+
+
+Example Edge Record (`data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_edges.jsonl`)
+-------------------------------------------------------------------------------------------
 {
-    "oq_id": "hotpot_001_sent1_oq1",
-    "oq_parent": "hotpot_001_sent1",
-    "oq_vec_id": 12,
-    "oq_text": "What year was the Battle of Hastings?",
+  "oq_id": "hotpot_001_sent1_oq1",
+  "oq_parent": "hotpot_001_sent1",
+  "oq_vec_id": 12,
+  "oq_text": "What year was the Battle of Hastings?",
 
-    "iq_id": "hotpot_002_sent4_iq0",
-    "iq_parent": "hotpot_002_sent4",
-    "iq_vec_id": 37,
+  "iq_id": "hotpot_002_sent4_iq0",
+  "iq_parent": "hotpot_002_sent4",
+  "iq_vec_id": 37,
 
-    "sim_cos": 0.72,
-    "sim_jaccard": 0.56,
-    "sim_hybrid": 0.64
+  "sim_cos": 0.7215,
+  "sim_jaccard": 0.5632,
+  "sim_hybrid": 0.6424
 }
 
-Example Full Graph Diagnostics Entry (`graph_results.jsonl`)
-------------------------------------------------------------
+
+
+Example Graph Entry (`data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_graph.gpickle`)
+--------------------------------------------------------------------------------------------
+# Loaded using NetworkX. Nodes are passage IDs. Example:
+
+Node:
+{
+  "passage_id": "hotpot_001_sent1",
+  "text": "The Battle of Hastings took place in 1066...",
+  "vec_id": 12,
+  "keywords": ["battle_of_hastings", "1066"]
+}
+
+Edge:
+{
+  "oq_id": "hotpot_001_sent1_oq1",
+  "iq_id": "hotpot_002_sent4_iq0",
+  "oq_text": "What year was the Battle of Hastings?",
+  "sim_cos": 0.7215,
+  "sim_jaccard": 0.5632,
+  "sim_hybrid": 0.6424
+}
+
+
+
+Example Graph Eval Summary (`data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_graph_eval.jsonl`)
+------------------------------------------------------------------------------------------------------
+{
+  "timestamp": "2025-08-13T14:22:31",
+  "total_queries": 100,
+  "graph_eval": {
+    "avg_node_degree": 1.43,
+    "node_degree_variance": 0.97,
+    "gini_degree": 0.27,
+    "top_k_hub_nodes": [
+      {"node": "hotpot_002_sent4", "degree": 7},
+      {"node": "hotpot_001_sent3", "degree": 6}
+    ]
+  },
+  "mode": "standard_pipeline",
+  "dataset": "hotpot",
+  "split": "train",
+  "edges_file": "data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_edges.jsonl",
+  "params": {
+    "top_k": 50,
+    "sim_threshold": 0.65
+  }
+}
+
+
+
+Example Full Graph Diagnostics (`data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_graph_results.jsonl`)
+--------------------------------------------------------------------------------------------------------------
 {
   "dataset": "hotpot_train",
   "iteration": 12,
@@ -93,6 +168,10 @@ Example Full Graph Diagnostics Entry (`graph_results.jsonl`)
   ]
 }
 """
+
+
+
+
 
 
 ### end of: 2 sets of graphs made with the train passage+iqoq set (is that right? not the dev set?)
@@ -148,6 +227,28 @@ PASSAGES_PATH = paths["passages_jsonl"]
 IQOQ_PATH = paths["iqoq_jsonl"]
 passages_emb_path = paths["passages_emb"]
 iqoq_emb_path = paths["iqoq_emb"]
+
+
+
+
+
+
+
+
+
+from pathlib import Path
+
+def graph_output_paths(model: str, dataset: str, split: str, variant: str) -> dict:
+    base = Path("data") / "graphs" / model / dataset / split / variant
+    return {
+        "edges": base / f"{dataset}_{split}_edges.jsonl",
+        "graph_gpickle": base / f"{dataset}_{split}_graph.gpickle",
+        "graph_eval": base / f"{dataset}_{split}_graph_eval.jsonl",
+        "graph_results": base / f"{dataset}_{split}_graph_results.jsonl",
+    }
+
+
+
 
 ################################################################################################################
 # GRAPH CONSTRUCTION
@@ -502,7 +603,8 @@ def run_graph_pipeline(
     iq_index = load_faiss_index(model_paths["iqoq_index"])
 
     # ---------- 3) Build edges ----------
-    edges_out = os.path.join(base_dir, f"{dataset}_edges.jsonl")
+    graph_paths = graph_output_paths(model, dataset, split, variant)
+    edges_out = str(graph_paths["edges"])
     edges = build_edges(
         oq_metadata=iqoq_md,
         iq_metadata=iqoq_md,
@@ -518,7 +620,9 @@ def run_graph_pipeline(
 
     # ---------- 5) Global eval ----------
     graph_eval = basic_graph_eval(G)
-    global_path = f"outputs/graphs/graph_stats/{dataset}_{split}_graph_eval.jsonl"
+    global_path = str(graph_paths["graph_eval"])
+    stats_path = str(graph_paths["graph_results"])
+
     os.makedirs("outputs", exist_ok=True)
     append_global_result(
         save_path=global_path,
@@ -538,7 +642,6 @@ def run_graph_pipeline(
     )
 
     # ---------- 6) Detailed stats ----------
-    stats_path = f"outputs/graphs/graph_stats/{dataset}_{split}_graph_results.jsonl"
 
     stats = graph_stats(
         G,
@@ -549,8 +652,8 @@ def run_graph_pipeline(
     )
 
     # ---------- 7) Optional graph saves ----------
-    graph_gpickle = f"outputs/{dataset}_{split}_graph.gpickle"
-    graph_graphml = f"outputs/{dataset}_{split}_graph.graphml"
+    graph_gpickle = str(graph_paths["graph_gpickle"])
+    graph_graphml = str(graph_paths["graph_gpickle"]).replace(".gpickle", ".graphml")
     if save_graph:
         nx.write_gpickle(G, graph_gpickle)
         print(f"[Graph] Saved -> {graph_gpickle}")

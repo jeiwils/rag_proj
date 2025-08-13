@@ -1,52 +1,104 @@
-import re
-import os
-import json
-import time
-
-from src.utils import load_jsonl, save_jsonl, append_jsonl, resolve_root, FOLDERS_BY_VARIANT
-from src.a2_text_prep import SERVER_CONFIGS
-from pathlib import Path
-
-
-
-
-
-
-
 """
+Module Overview
+---------------
+Clean, merge, and explode question-generation (IQ/OQ) output shards from generative models.
+
+This module processes IQ/OQ and optional conditioned-score outputs for each dataset, model, and variant
+(e.g., baseline, enhanced). It prepares standardized files for downstream graph construction, traversal,
+and evaluation in HopRAG-style QA pipelines.
 
 
-Clean, merge, and explode model output shards into standardized files.
+Workflow
+--------
 
-This stage prepares the question-generation outputs from previous steps for
-downstream representation building. For each dataset/model/variant it:
+For each (dataset, model, variant, split):
 
-1. Cleans individual IQ/OQ shard files and optional conditioned-score shards.
-2. Merges the cleaned shards into consolidated files.
-3. Explodes the merged IQ/OQ file into per-passage and per-question records.
-
-Input shards
-------------
-data/models/{model}/{dataset}/{split}/{hoprag_version}/raw/
-    {split}_iqoq_*.jsonl or *_{variant}.jsonl      # IQ/OQ shards
-    *_cs.jsonl                                    # conditioned-score shards
-
-Output files
-------------
-data/models/{model}/{dataset}/{split}/{hoprag_version}/cleaned/
-    iqoq.cleaned.jsonl
-    scored.cleaned.jsonl                          # if score shards were provided
-
-data/models/{model}/{dataset}/{split}/{hoprag_version}/exploded/
-    passages.exploded.jsonl
-    iqoq.exploded.jsonl
+1. Clean IQ/OQ shards using variant-specific filters.
+2. Merge cleaned IQ/OQ and score files into consolidated JSONLs.
+3. Explode the merged files into:
+   - one row per IQ/OQ (for graph edges)
+   - one row per passage (for node representations)
 
 
+Input Structure
+---------------
+
+Sharded files are located at:
+
+### data/models/{model}/{dataset}/{split}/shards/
+
+- {split}_passages_shard{N}_{size}.jsonl
+    → Raw input shards, split by model size:
+        - 1.5B → 4 shards
+        - 7B   → 2 shards
+        - 14B  → 1 shard
+
+### data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/
+
+- {split}_passages_shard{N}_{size}_iqoq_baseline.jsonl
+    → IQ/OQ generation (baseline variant, fixed IQ/OQ ratio)
+
+- {split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl
+    → IQ/OQ generation (enhanced variant, CS-guided ratio)
+
+- {split}_passages_shard{N}_{size}_cs.jsonl
+    → Conditioned-score values for passages
+
+- *_iqoq_baseline_debug.txt / *_enhanced_debug.txt / *_cs_debug.txt
+    → Per-shard debug logs
 
 
-#### MERGED CS
+Output Structure
+----------------
 
-{ # train_scored.jsonl
+### data/models/{model}/{dataset}/{split}/{hoprag_version}/cleaned/
+
+- iqoq.cleaned.jsonl
+    → Merged and cleaned IQ/OQ entries for all passages
+
+- scored.cleaned.jsonl
+    → Merged conditioned score entries (if available)
+
+
+### data/models/{model}/{dataset}/{split}/{hoprag_version}/exploded/
+
+- iqoq.exploded.jsonl
+    → One row per IQ/OQ question with minimal metadata
+
+- passages.exploded.jsonl
+    → One row per passage with optional conditioned score
+
+
+### data/models/{model}/{dataset}/{split}/{hoprag_version}/debug/
+
+- cleaning_debug.txt
+    → Aggregated stats, counts, drop rates, timing for cleaning stage
+
+
+Schemas
+-------
+
+### cleaned/iqoq.cleaned.jsonl
+
+{
+  "passage_id": "5a7a0693__arthur_s_magazine_sent0",
+  "title": "Arthur's Magazine",
+  "text": "Arthur's Magazine (1844–1846)...",
+  "IQs": ["Who founded Arthur's Magazine?", "..."],
+  "OQs": ["Which city was it based in?", "..."],
+  "num_iq": 3,
+  "num_oq": 3,
+  "cs_used": 0.25,                     # only in enhanced variant if scores are used
+  "hoprag_version": "enhanced_hoprag",
+  "dataset": "hotpotqa",
+  "split": "train",
+  "generation_model": "qwen-7b"
+}
+
+
+### cleaned/scored.cleaned.jsonl
+
+{
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
   "title": "Arthur's Magazine",
   "text": "Arthur's Magazine (1844–1846)...",
@@ -57,63 +109,9 @@ data/models/{model}/{dataset}/{split}/{hoprag_version}/exploded/
 }
 
 
+### exploded/iqoq.exploded.jsonl
 
-
-#### CLEANED AND MERGED IQOQ
-
-{ # train_iqoq.cleaned.baseline.jsonl
-  "passage_id": "5a7a0693__first_for_women_sent0",
-  "title": "First for Women",
-  "text": "First for Women is a woman's magazine...",
-  "IQs": ["Who publishes First for Women?", "When was First for Women launched?"],
-  "OQs": ["What is the target audience?", "How often is it published?", "Who is the editor?", "What is its circulation?"],
-  "num_iq": 2,
-  "num_oq": 4,
-  "cs_used": null,
-  "hoprag_version": "baseline_hoprag",
-  "dataset": "hotpotqa",
-  "split": "train",
-  "generation_model": "qwen-7b"
-}
-
-
-
-{ #train_iqoq.cleaned.enhanced.jsonl
-  "passage_id": "5a7a0693__arthur_s_magazine_sent0",
-  "title": "Arthur's Magazine",
-  "text": "Arthur's Magazine (1844–1846)...",
-  "IQs": ["Who founded Arthur's Magazine?", "When was it published?", "What content did it feature?"],
-  "OQs": ["Which city was it based in?", "Why did it cease?", "Who were notable contributors?"],
-  "num_iq": 3,
-  "num_oq": 3,
-  "cs_used": 0.25,
-  "hoprag_version": "enhanced_hoprag",
-  "dataset": "hotpotqa",
-  "split": "train",
-  "generation_model": "qwen-7b"
-}
-
-
-
-
-
-
-###### EXPLODED IQOQ
-
-{ # train_iqoq_items.cleaned.enhanced.jsonl
-  "dataset": "hotpotqa",
-  "split": "train",
-  "generation_model": "qwen-7b",
-  "parent_passage_id": "5a7a0693__arthur_s_magazine_sent0",
-  "iqoq_id": "5a7a0693__arthur_s_magazine_sent0_iq0",
-  "type": "IQ",
-  "index": 0,
-  "text": "Who founded Arthur's Magazine?"
-}
-
-
-
-{ # train_iqoq_items.cleaned.enhanced.jsonl
+{
   "dataset": "hotpotqa",
   "split": "train",
   "generation_model": "qwen-7b",
@@ -125,28 +123,29 @@ data/models/{model}/{dataset}/{split}/{hoprag_version}/exploded/
 }
 
 
+### exploded/passages.exploded.jsonl
 
-
-
-
-
-### EXPLODED PASSAGES
-
-{ # train_passages.cleaned.enhanced.jsonl
+{
   "dataset": "hotpotqa",
   "split": "train",
   "generation_model": "qwen-7b",
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
   "text": "Arthur's Magazine (1844–1846)...",
-  "conditioned_score": 0.25,
+  "conditioned_score": 0.25
 }
-
-
 
 """
 
 
 
+import re
+import os
+import json
+import time
+
+from src.utils import load_jsonl, save_jsonl, append_jsonl, resolve_root, FOLDERS_BY_VARIANT
+from src.a2_text_prep import SERVER_CONFIGS
+from pathlib import Path
 
 
 
@@ -171,16 +170,6 @@ def clean_iqoq(questions: list[str]) -> list[str]:
         cleaned.append(q)
 
     return cleaned
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -304,16 +293,6 @@ def write_cleaning_debug(
         if merged_output_path:
             f.write("\nMerged cleaned file:\n")
             f.write(f"- {merged_output_path}\n")
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -486,8 +465,11 @@ def process_job(dataset: str, model: str, variant: str, split: str,
     root = Path(base)
 
     # prefer .../raw as input if it exists, otherwise the variant folder itself
-    search_dir = root / "raw" if (root / "raw").is_dir() else root
-
+    search_dir = root / "shards" / hoprag_version
+    if not search_dir.is_dir():
+        print(f"[warn] no shard inputs for {dataset} | {model} | {variant} in {search_dir}")
+        return
+    
     # ensure output dirs exist
     cleaned_dir  = root / "cleaned";  cleaned_dir.mkdir(parents=True, exist_ok=True)
     exploded_dir = root / "exploded"; exploded_dir.mkdir(parents=True, exist_ok=True)
