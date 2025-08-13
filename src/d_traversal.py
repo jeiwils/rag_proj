@@ -10,7 +10,13 @@
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Callable
 from src.a2_text_prep import extract_keywords, query_llm, MODEL_SERVERS, load_jsonl
-from src.b_sparse_dense_representations import faiss_search_topk, jaccard_similarity, bge_model, ALPHA
+from src.b_sparse_dense_representations import (
+    faiss_search_topk,
+    jaccard_similarity,
+    bge_model,
+    ALPHA,
+    dataset_rep_paths,
+)
 from src.c_graphing import hoprag_graph, enhanced_graph, append_global_result
 import faiss 
 
@@ -488,9 +494,11 @@ def compute_traversal_summary(
 
 # Load resources for the dev set
 dataset = "hotpot"  # or "fever", etc.
-passage_metadata = load_jsonl("train/hotpot_passages.jsonl")
-passage_emb = np.load("train/hotpot_passages_emb.npy")
-passage_index = faiss.read_index("train/hotpot_faiss_passages.faiss")
+split = "train"
+paths = dataset_rep_paths(dataset, split)
+passage_metadata = load_jsonl(paths["passages_jsonl"])
+passage_emb = np.load(paths["passages_emb"])
+passage_index = faiss.read_index(paths["passages_index"])
 
 
 

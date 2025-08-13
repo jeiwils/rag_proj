@@ -100,6 +100,27 @@ def resolve_root(model: str, dataset: str, split: str, variant: str) -> Optional
             return root
     return None
 
+
+def resolve_repr_root(model: str, dataset: str, split: str, variant: str) -> str:
+    """Return the root directory for model representations.
+
+    The directory ``data/representations/models/{model}/{dataset}/{split}/{variant}``
+    is created if it does not already exist and the path is returned.
+    """
+    root = os.path.join(
+        "data",
+        "representations",
+        "models",
+        model,
+        dataset,
+        split,
+        variant,
+    )
+    os.makedirs(root, exist_ok=True)
+    return root
+
+
+
 __all__ = [
     "load_jsonl",
     "save_jsonl",
@@ -109,4 +130,5 @@ __all__ = [
     "pid_plus_title",
     "FOLDERS_BY_VARIANT",
     "resolve_root",
+    "resolve_repr_root",
 ]

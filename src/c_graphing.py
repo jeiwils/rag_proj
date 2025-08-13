@@ -6,17 +6,31 @@
 # - 2) enhanced hoprag (with CS as part of IQOQ generation)
 
 
-import os 
+import os
 from typing import List, Dict, Optional
 import numpy as np
 import networkx as nx
 from datetime import datetime
 import json
-from src.b_sparse_dense_representations import params, faiss_search_topk, jaccard_similarity, build_and_save_faiss_index, MAX_NEIGHBOURS, SIM_THRESHOLD, load_faiss_index, passages_emb_path, iqoq_emb_path
+from src.b_sparse_dense_representations import (
+    params,
+    faiss_search_topk,
+    jaccard_similarity,
+    build_and_save_faiss_index,
+    MAX_NEIGHBOURS,
+    SIM_THRESHOLD,
+    load_faiss_index,
+    dataset_rep_paths,
+)
 from src.utils import load_jsonl
 
-PASSAGES_PATH = "train/hotpot_passages.jsonl"
-IQOQ_PATH = "train/hotpot_iqoq.jsonl"
+DATASET = "hotpot"
+SPLIT = "train"
+paths = dataset_rep_paths(DATASET, SPLIT)
+PASSAGES_PATH = paths["passages_jsonl"]
+IQOQ_PATH = paths["iqoq_jsonl"]
+passages_emb_path = paths["passages_emb"]
+iqoq_emb_path = paths["iqoq_emb"]
 
 ################################################################################################################
 # GRAPH CONSTRUCTION
@@ -93,20 +107,7 @@ def build_edges(
 
 
 
-# # Load metadata
-# passages_metadata = load_jsonl(PASSAGES_PATH)
-# iqoq_metadata = load_jsonl(IQOQ_PATH)
 
-# # Load embeddings
-# passages_emb = np.load(passages_emb_path)
-# iqoq_emb = np.load(iqoq_emb_path)
-
-# # Build FAISS index
-# build_and_save_faiss_index(passages_emb, "hotpot", "passages", output_dir="train")
-# build_and_save_faiss_index(iqoq_emb, "hotpot", "iqoq", output_dir="train")
-
-# # Load FAISS index
-# iq_index = load_faiss_index("hotpot", "iqoq", base_dir="train")
 
 # # Make edges.jsonl
 # edges = build_edges(
@@ -411,22 +412,24 @@ def run_graph_pipeline(
       6) graph_stats -> append detailed stats jsonl
     """
     # ---------- 1) Load metadata + embeddings ----------
-    p_path = passages_file if passages_file else PASSAGES_PATH
-    q_path = iqoq_file if iqoq_file else IQOQ_PATH
+    paths = dataset_rep_paths(dataset, split)
+    p_path = passages_file if passages_file else paths["passages_jsonl"]
+    q_path = iqoq_file if iqoq_file else paths["iqoq_jsonl"]
 
     passages_md = load_jsonl(p_path)
     iqoq_md = load_jsonl(q_path)
 
-    passages_emb = np.load(passages_emb_path)
-    iqoq_emb = np.load(iqoq_emb_path)
+    passages_emb = np.load(paths["passages_emb"])
+    iqoq_emb = np.load(paths["iqoq_emb"])
 
     # ---------- 2) Build / load FAISS index ----------
-    os.makedirs(split, exist_ok=True)
-    build_and_save_faiss_index(iqoq_emb, dataset, "iqoq", output_dir=split)
-    iq_index = load_faiss_index(dataset, "iqoq", base_dir=split)
+    base_dir = os.path.dirname(paths["iqoq_index"])
+    os.makedirs(base_dir, exist_ok=True)
+    build_and_save_faiss_index(iqoq_emb, dataset, "iqoq", output_dir=base_dir)
+    iq_index = load_faiss_index(paths["iqoq_index"])
 
     # ---------- 3) Build edges ----------
-    edges_out = os.path.join(split, f"{dataset}_edges.jsonl")
+    edges_out = os.path.join(base_dir, f"{dataset}_edges.jsonl")
     edges = build_edges(
         oq_metadata=iqoq_md,
         iq_metadata=iqoq_md,

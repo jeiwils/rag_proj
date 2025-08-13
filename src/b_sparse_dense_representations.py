@@ -92,15 +92,19 @@ WRITE UP
 import json
 import numpy as np
 import faiss
-import os
 from typing import List, Dict
 from sentence_transformers import SentenceTransformer
-from .utils import load_jsonl, save_jsonl_safely, pid_plus_title, clean_text, resolve_root
-
+from .utils import (
+    load_jsonl,
+    save_jsonl_safely,
+    pid_plus_title,
+    clean_text,
+    resolve_repr_root,
+)
+from pathlib import Path    
 import re
 import torch
 import os, json, re, spacy
-import spacy
 from typing import Iterable, Set
 
 
@@ -109,7 +113,7 @@ SIM_THRESHOLD = 0.65
 MAX_NEIGHBOURS = 5
 ALPHA = 0.5
 
-params = { 
+params = {
     "sim_threshold": SIM_THRESHOLD,
     "max_neighbors": MAX_NEIGHBOURS,
     "alpha": ALPHA
@@ -117,7 +121,61 @@ params = {
 
 
 
+def dataset_rep_paths(dataset: str, split: str) -> Dict[str, str]:
+    """Return standard representation file paths for a dataset split.
 
+    Paths live under ``data/representations/{dataset}/{split}`` and include
+    JSONL metadata, NumPy embeddings and FAISS indexes for both passages and
+    IQ/OQ items.
+    """
+    base = os.path.join("data", "representations", dataset, split)
+    return {
+        "passages_jsonl": os.path.join(base, f"{dataset}_passages.jsonl"),
+        "passages_emb": os.path.join(base, f"{dataset}_passages_emb.npy"),
+        "passages_index": os.path.join(base, f"{dataset}_faiss_passages.faiss"),
+        "iqoq_jsonl": os.path.join(base, f"{dataset}_iqoq.jsonl"),
+        "iqoq_emb": os.path.join(base, f"{dataset}_iqoq_emb.npy"),
+        "iqoq_index": os.path.join(base, f"{dataset}_faiss_iqoq.faiss"),
+    }
+
+
+def model_rep_paths(model: str, dataset: str, split: str, variant: str) -> Dict[str, str]:
+    """Return representation paths for a specific model/variant.
+
+    These are placed under
+    ``data/representations/{model}/{dataset}/{split}/{variant}`` with the same
+    naming convention as :func:`dataset_rep_paths`.
+    """
+    base = os.path.join(
+        "data",
+        "representations",
+        model,
+        dataset,
+        split,
+        variant,
+    )
+    return {
+        "passages_jsonl": os.path.join(base, f"{dataset}_passages.jsonl"),
+        "passages_emb": os.path.join(base, f"{dataset}_passages_emb.npy"),
+        "passages_index": os.path.join(base, f"{dataset}_faiss_passages.faiss"),
+        "iqoq_jsonl": os.path.join(base, f"{dataset}_iqoq.jsonl"),
+        "iqoq_emb": os.path.join(base, f"{dataset}_iqoq_emb.npy"),
+        "iqoq_index": os.path.join(base, f"{dataset}_faiss_iqoq.faiss"),
+    }
+
+
+__all__ = [
+    "SIM_THRESHOLD",
+    "MAX_NEIGHBOURS",
+    "ALPHA",
+    "params",
+    "dataset_rep_paths",
+    "model_rep_paths",
+    "build_and_save_faiss_index",
+    "load_faiss_index",
+    "faiss_search_topk",
+    "jaccard_similarity",
+]
 
 ################################################################################################################
 # SPARSE AND DENSE REPRESENTATIONS
@@ -400,10 +458,6 @@ def add_keywords_to_iqoq_jsonl(iqoq_jsonl: str, out_field: str = "keywords"):
 
 
 
-############## passages_emb_path, iqoq_emb_path
-
-
-
 
 
 if __name__ == "__main__":
@@ -430,11 +484,20 @@ if __name__ == "__main__":
     for dataset in DATASETS:
         print(f"\n=== DATASET: {dataset} ({SPLIT}) ===")
 
-        passages_jsonl  = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl"
-        questions_jsonl = f"data/processed_datasets/{dataset}/{SPLIT}.jsonl"
+        dataset_dir = Path(f"data/representations/datasets/{dataset}/{SPLIT}")
+        os.makedirs(dataset_dir, exist_ok=True)
 
-        passages_npy  = passages_jsonl.replace(".jsonl", ".emb.npy")
-        questions_npy = questions_jsonl.replace(".jsonl", ".emb.npy")
+        passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl"
+        questions_jsonl_src = f"data/processed_datasets/{dataset}/{SPLIT}.jsonl"
+
+        passages_jsonl_name  = Path(passages_jsonl_src).name
+        questions_jsonl_name = Path(questions_jsonl_src).name
+
+        passages_jsonl  = dataset_dir / passages_jsonl_name
+        questions_jsonl = dataset_dir / questions_jsonl_name
+
+        passages_npy  = dataset_dir / passages_jsonl_name.replace(".jsonl", ".emb.npy")
+        questions_npy = dataset_dir / questions_jsonl_name.replace(".jsonl", ".emb.npy")
 
 
 
@@ -446,9 +509,9 @@ if __name__ == "__main__":
             print(f"[skip] {passages_npy} exists; loaded.")
         else:
             passages_emb = embed_and_save(
-                input_jsonl=passages_jsonl,
-                output_npy=passages_npy,
-                output_jsonl=passages_jsonl,
+                input_jsonl=passages_jsonl_src,
+                output_npy=str(passages_npy),
+                output_jsonl=str(passages_jsonl),
                 model=bge_model,
                 text_key="text",
             )
@@ -458,9 +521,9 @@ if __name__ == "__main__":
             print(f"[skip] {questions_npy} exists; loaded.")
         else:
             _ = embed_and_save(
-                input_jsonl=questions_jsonl,
-                output_npy=questions_npy,
-                output_jsonl=questions_jsonl,
+                input_jsonl=questions_jsonl_src,
+                output_npy=str(questions_npy),
+                output_jsonl=str(questions_jsonl),
                 model=bge_model,
                 text_key="question",
             )
@@ -475,11 +538,11 @@ if __name__ == "__main__":
             embeddings=passages_emb,
             dataset_name=index_tag_passages,
             index_type="passages",
-            output_dir=os.path.dirname(passages_jsonl),
+            output_dir=str(dataset_dir)
         )
 
         # Sparse keywords on passages
-        add_keywords_to_passages_jsonl(passages_jsonl, merged_with_iqoq=False)
+        add_keywords_to_passages_jsonl(str(passages_jsonl), merged_with_iqoq=False)
 
     # -------------------------------
     # Phase B: model-specific IQ/OQ
@@ -488,12 +551,11 @@ if __name__ == "__main__":
         print(f"\n=== MODEL: {model} ===")
         for dataset in DATASETS:
                 variant = CURRENT_VARIANT
-                root = resolve_root(model=model, dataset=dataset, split=SPLIT, variant=CURRENT_VARIANT)
-                if root is None:
-                    print(f"[warn] no folder for {dataset} | {model} | {variant}; skipping.")
-                    continue
+                repr_root = resolve_repr_root(
+                    model=model, dataset=dataset, split=SPLIT, variant=CURRENT_VARIANT
+                )
 
-                iqoq_jsonl = os.path.join(root, "exploded", "iqoq.exploded.jsonl")
+                iqoq_jsonl = os.path.join(repr_root, "iqoq.jsonl")
                 if not os.path.exists(iqoq_jsonl):
                     print(f"[warn] missing IQ/OQ file: {iqoq_jsonl}; skipping.")
                     continue
@@ -519,7 +581,7 @@ if __name__ == "__main__":
                     embeddings=iqoq_emb,
                     dataset_name=index_tag_iqoq,
                     index_type="iqoq",
-                    output_dir=root,
+                    output_dir=repr_root,
                 )
                 print(f"[done] {model} | {dataset} | {variant}")
 
