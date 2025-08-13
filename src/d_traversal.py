@@ -104,8 +104,9 @@ File Schema
 
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Callable
-from src.a2_text_prep import extract_keywords, query_llm, SERVER_CONFIGS, load_jsonl
+from src.a2_text_prep import query_llm, SERVER_CONFIGS, load_jsonl
 from src.b_sparse_dense_representations import (
+    extract_keywords,
     faiss_search_topk,
     jaccard_similarity,
     bge_model,

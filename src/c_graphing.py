@@ -87,7 +87,7 @@ Node:
   "passage_id": "hotpot_001_sent1",
   "text": "The Battle of Hastings took place in 1066...",
   "vec_id": 12,
-  "keywords": ["battle_of_hastings", "1066"]
+  "keywords_passage": ["battle_of_hastings", "1066"]
 }
 
 Edge:
@@ -383,8 +383,8 @@ def build_networkx_graph(
             p["passage_id"],
             text=p.get("text", ""),
             conditioned_score=p.get("conditioned_score", 0.0),
-            keywords=p.get("keywords_passage", []),
             vec_id=p.get("vec_id"),
+            keywords=p.get("keywords_passage", []),
         )
 
     # Add edges with similarity scores and OQ text

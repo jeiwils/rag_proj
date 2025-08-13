@@ -352,12 +352,17 @@ def extract_keywords(text: str) -> list[str]:
 
 def extract_all_keywords(entry: dict) -> dict:
     """
-    Adds 'keywords_IQ', 'keywords_OQ', and 'keywords_passage' to entry.
+    Adds 'keywords_iq', 'keywords_oq', and 'keywords_passage' to entry.
     Assumes 'IQs', 'OQs', and 'text' exist.
     """
-    entry["keywords_IQ"] = [extract_keywords(q) for q in entry.get("IQs", [])]
-    entry["keywords_OQ"] = [extract_keywords(q) for q in entry.get("OQs", [])]
+    entry["keywords_iq"] = [extract_keywords(q) for q in entry.get("IQs", [])]
+    entry["keywords_oq"] = [extract_keywords(q) for q in entry.get("OQs", [])]
     entry["keywords_passage"] = extract_keywords(entry.get("text", ""))
+
+    # to remove old formatting 
+    entry.pop("keywords_IQ", None)
+    entry.pop("keywords_OQ", None)
+
     return entry
 
 
@@ -378,11 +383,15 @@ def add_keywords_to_passages_jsonl(passages_jsonl: str, merged_with_iqoq: bool =
         if merged_with_iqoq:
             kws_iq = [extract_keywords(q) for q in (r.get("IQs") or [])]
             kws_oq = [extract_keywords(q) for q in (r.get("OQs") or [])]
+            r["keywords_iq"] = kws_iq
+            r["keywords_oq"] = kws_oq
             r["keywords_IQ"] = kws_iq
             r["keywords_OQ"] = kws_oq
             union = set(r["keywords_passage"])
-            for lst in kws_iq: union.update(lst)
-            for lst in kws_oq: union.update(lst)
+            for lst in kws_iq: 
+                union.update(lst)
+            for lst in kws_oq: 
+                union.update(lst)
             r["all_keywords"] = sorted(union)
     with open(passages_jsonl, "w", encoding="utf-8") as f:
             for r in rows:

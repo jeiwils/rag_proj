@@ -1075,7 +1075,6 @@ if __name__ == "__main__":
 
 __all__ = [
     "SERVER_CONFIGS",
-    "extract_keywords",
     "get_server_urls",
     "model_size",
     "split_jsonl",
