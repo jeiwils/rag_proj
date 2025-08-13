@@ -1,140 +1,97 @@
 """
-Traversal utilities for multi-hop retrieval.
+Module Overview
+---------------
+Run multi-hop traversal over a QA dataset using LLM-guided graph expansion.
 
-Template
---------
+This script performs seeded retrieval for each question, then expands through
+a directed graph of OQ→IQ edges using a local LLM to guide traversal. Results 
+are saved per query and summarized globally.
 
-Traversal Inputs
-~~~~~~~~~~~~~~~~
-query_text : str
-    Natural language question that seeds the traversal.
-faiss_index_path : str or Path
-    Location of the FAISS index built over passage embeddings.
-graph_jsonl_path : str or Path
-    JSONL file describing graph nodes, edges, and outgoing questions.
-
-Traversal Logic
-~~~~~~~~~~~~~~~
-1. Retrieve top-k seed passages from ``faiss_index_path``.
-2. Expand each hop using edges from ``graph_jsonl_path``.
-3. Continue until ``NUMBER_HOPS`` is reached or no new passages remain.
-
-Output Artifacts
-~~~~~~~~~~~~~~~~
-traversal.json
-    List of hop dictionaries describing the traversal.
-selected_passages.json
-    Deduplicated list of visited passage IDs.
-dev_results.jsonl
-    Per-query metrics including precision, recall, and hop trace.
-
-Field Reference
-~~~~~~~~~~~~~~~
-``traversal.json`` entries:
-    hop : int
-        Hop number starting at 0.
-    expanded_from : List[str]
-        Passages expanded at this hop.
-    new_passages : List[str]
-        Newly discovered passages.
-    edges_chosen : List[Dict]
-        Metadata for each traversed edge.
-    precision : float
-        Retrieval precision after visiting ``new_passages``.
-    none_count : int
-        Times no edge was selected.
-    repeat_visit_count : int
-        Count of revisited passages.
-
-``dev_results.jsonl`` entries:
-    query_id : str
-    visited_passages : List[str]
-    precision : float
-    recall : float
-    f1 : float
-    ccount : Dict[str, int]
-    hop_trace : List[Dict]
+It supports both baseline traversal (no node revisits) and enhanced traversal 
+(allowing node revisits but not edge revisits). Outputs are stored *inside the 
+graph variant directory* alongside the graph structure and edge logs.
 
 
-Example ``traversal.json``
--------------------------
-[
-  {
-    "hop": 0,
-    "expanded_from": ["hotpot_001_sent1"],
-    "new_passages": ["hotpot_002_sent4"],
-    "precision": 0.5,
-    "edges_chosen": [
-      {
-        "from": "hotpot_001_sent1",
-        "to": "hotpot_002_sent4",
-        "oq_id": "hotpot_001_sent1_oq1",
-        "iq_id": "hotpot_002_sent4_iq0",
-        "repeat_visit": false
-      }
-    ],
-    "none_count": 0,
-    "repeat_visit_count": 0
-  }
-]
+Inputs
+------
 
-Example ``selected_passages.json``
----------------------------------
-[
-  "hotpot_001_sent1",
-  "hotpot_002_sent4",
-  "hotpot_003_sent2"
-]
+### data/graphs/{model}/{dataset}/{split}/{variant}/
+
+- `{dataset}_{split}_graph.gpickle`  
+    Directed NetworkX graph. Nodes = passages, edges = OQ→IQ links.
+
+- `{dataset}_{split}.jsonl`  
+    Preprocessed query set, with `question_id`, `question`, and `gold_passages`.
+
+- `passages_emb.npy`, `passages_index.faiss`, `passages.jsonl`  
+    Passage embeddings, FAISS index, and metadata from dense/sparse encoder setup.
+
+
+Outputs
+-------
+
+### data/graphs/{model}/{dataset}/{split}/{variant}/traversal/
+
+- `per_query_traversal_results.jsonl`  
+    One entry per query with hop trace, visited nodes, and precision/recall/F1.
+
+- `final_selected_passages.json`  
+    Deduplicated set of all passages visited during traversal (used for answering).
+
+- `final_traversal_stats.json`  
+    Aggregate metrics across the full query set (e.g., mean precision, recall, hop stats).
 
 
 
+File Schema
+-----------
 
+### per_query_traversal_results.jsonl
 
-
-
-
-
-Example ``global_results.jsonl``
----------------------------------
-
-{ # {dataset}_dev_global_results.jsonl
-  "total_queries": 100,
-  "graph_eval": {
-    "avg_node_degree": 3.2,
-    "node_degree_variance": 1.9,
-    "gini_degree": 0.35,
-    "top_k_hub_nodes": [
-      {"node": "hotpot_042_sent1", "degree": 15},
-      {"node": "hotpot_089_sent0", "degree": 12}
-    ]
+{
+  "query_id": "{question_id}",
+  "gold_passages": ["{passage_id_1}", "..."],
+  "visited_passages": ["{passage_id_1}", "..."],
+  "visit_counts": {"{passage_id}": count, ...},
+  "hop_trace": [<hop dicts>],
+  "final_metrics": {
+    "precision": float,
+    "recall": float,
+    "f1": float
   },
-  "traversal_eval": {
-    "mean_precision": 0.63,
-    "mean_recall": 0.74,
-    "passage_coverage_all_gold_found": 82,
-    "initial_retrieval_coverage": 58,
-    "avg_hops_before_first_gold": 1.8,
-    "avg_total_hops": 2.4,
-    "avg_repeat_visits": 0.3,
-    "avg_none_count_per_query": 0.8,
-    "max_hop_depth_reached": 3,
-    "hop_depth_counts": [100, 95, 72, 20]
-  },
+  "traversal_algorithm": "{algorithm_name}"
 }
 
 
+### final_selected_passages.json
+
+[
+  "{passage_id_1}",
+  "{passage_id_2}",
+  ...
+]
 
 
+### traversal_stats.json
 
-
-
-
-
-
-
-
-
+{
+  "total_queries": int,
+  "traversal_eval": {
+    "mean_precision": float,
+    "mean_recall": float,
+    "passage_coverage_all_gold_found": int,
+    "initial_retrieval_coverage": int,
+    "avg_hops_before_first_gold": "TODO",
+    "avg_total_hops": float,
+    "avg_repeat_visits": float,
+    "avg_none_count_per_query": float,
+    "max_hop_depth_reached": int,
+    "hop_depth_counts": [int, int, ...]
+  }
+}
 """
+
+
 
 
 
@@ -172,6 +129,17 @@ from src.c_graphing import basic_graph_eval
 TOP_K_SEED_PASSAGES = 50 
 NUMBER_HOPS = 2
 
+
+def traversal_output_paths(model, dataset, split, variant):
+    base_dir = Path(f"data/graphs/{model}/{dataset}/{split}/{variant}/traversal")
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    return {
+        "dir": base_dir,
+        "results": base_dir / "per_query_traversal_results.jsonl",
+        "stats": base_dir / "final_traversal_stats.json",  # <-- updated here
+        "final_selected_passages": base_dir / "final_selected_passages.json"
+    }
 
 
 
@@ -465,7 +433,7 @@ def compute_hop_metrics(
 
 
 
-def save_dev_per_query_result( # helper for run_dev_set()
+def save_per_query_result( # helper for run_dev_set()
     query_id,
     gold_passages,
     visited_passages,
@@ -499,25 +467,31 @@ def save_dev_per_query_result( # helper for run_dev_set()
 ### all together now!!!
 
 
-
-def run_dev_set(
+def run_traversal(
     query_data: List[Dict],
     graph: nx.DiGraph,
     passage_metadata: List[Dict],
     passage_emb: np.ndarray,
     passage_index,
-    emb_model, # probs change this to just emb_model? any embeddings model I guess? 
+    emb_model,
     model_servers: List[str],
-    output_path="dev_results.jsonl",
-    seed_top_k=50, # top-k seed passages
-    alpha=0.5, 
+    output_paths: Dict[str, Path],  # use traversal_output_paths()
+    seed_top_k=50,
+    alpha=0.5,
     n_hops=2,
     traveral_alg=None
 ):
     """
-    Run LLM-driven multi-hop traversal on an entire dev set.
-    Saves results with precision/recall/F1 to output_path.
+    Run LLM-guided multi-hop traversal over a QA query set (e.g., train, dev).
+
+    Outputs:
+    - final_selected_passages.json: ✅ Used downstream (answer generation, reranking)
+    - per_query_traversal_results.jsonl: 🔍 Full per-query trace and metrics
+    - traversal_stats.json: 📈 Aggregate traversal metrics across the query set
     """
+        
+    all_traversals = []
+    all_selected_passages = set()
 
     for entry in query_data:
         query_id = entry["query_id"]
@@ -529,12 +503,11 @@ def run_dev_set(
         # --- Embed query ---
         query_emb = emb_model.encode(query_text, normalize_embeddings=True)
 
-        # --- Select seeds with hybrid similarity ---
+        # --- Select seed passages ---
         seed_passages = select_seed_passages(
             query_text=query_text,
             query_emb=query_emb,
             passage_metadata=passage_metadata,
-            passage_emb=passage_emb,
             passage_index=passage_index,
             seed_top_k=seed_top_k,
             alpha=alpha
@@ -543,26 +516,38 @@ def run_dev_set(
         print(f"[Seeds] Retrieved {len(seed_passages)} passages.")
 
         # --- Traverse ---
-        visited_passages, ccount, hop_trace, stats = traverse_graph( 
+        visited_passages, ccount, hop_trace, stats = traverse_graph(
             graph=graph,
             query_text=query_text,
             seed_passages=seed_passages,
             n_hops=n_hops,
-            model_servers=model_servers, ######################### this needs to be defined somewhere? isn't it passed as an argument? 
+            model_servers=model_servers,
             traveral_alg=traveral_alg
         )
 
         print(f"[Traversal] Visited {len(visited_passages)} passages (None={stats['none_count']}, Repeat={stats['repeat_visit_count']})")
 
-        # --- Save ---
-        save_dev_per_query_result(
+        # --- Save per-query JSONL ---
+        save_per_query_result(
             query_id=query_id,
             gold_passages=gold_passages,
             visited_passages=visited_passages,
             ccount=ccount,
             hop_trace=hop_trace,
-            output_path=output_path
+            output_path=output_paths["results"]
         )
+
+        # --- Accumulate traversal + selected passages ---
+        all_traversals.append({
+            "query_id": query_id,
+            "hop_trace": hop_trace
+        })
+        all_selected_passages.update(visited_passages)
+
+    # --- Save selected_passages.json ---
+    with open(output_paths["final_selected_passages"], "w") as f:
+        json.dump(sorted(all_selected_passages), f, indent=2)
+
 
 
 
@@ -631,80 +616,77 @@ def compute_traversal_summary(
 
 
 
-# Load resources for the dev set
-dataset = "hotpot"  # or "fever", etc.
-split = "train"
-paths = dataset_rep_paths(dataset, split)
-passage_metadata = load_jsonl(paths["passages_jsonl"])
-passage_emb = np.load(paths["passages_emb"])
-passage_index = faiss.read_index(paths["passages_index"])
 
 
+if __name__ == "__main__":
+    # === Hardcoded config ===
+    model = "qwen-7b"
+    dataset = "hotpot"
+    split = "dev"
+    variant_baseline = "baseline"
+    variant_enhanced = "enhanced"
 
-# Load dev query data
-query_data = [json.loads(line) for line in open(f"{dataset}_dev.jsonl")]
+    # === Load dataset representations ===
+    paths = dataset_rep_paths(dataset, split)
+    passage_metadata = load_jsonl(paths["passages_jsonl"])
+    passage_emb = np.load(paths["passages_emb"])
+    passage_index = faiss.read_index(paths["passages_index"])
+    query_data = [json.loads(line) for line in open(f"{dataset}_{split}.jsonl")]
 
-# Run pipeline
-run_dev_set(
-    query_data=query_data,
-    graph=hoprag_graph, 
-    passage_metadata=passage_metadata,
-    passage_emb=passage_emb,
-    passage_index=passage_index,
-    emb_model=bge_model,
-    model_servers=MODEL_SERVERS,
-    output_path="results/hotpot_dev_per_query_results.jsonl",
-    seed_top_k=TOP_K_SEED_PASSAGES,
-    alpha=ALPHA,
-    n_hops=NUMBER_HOPS,
-    traveral_alg=hoprag_traversal_algorithm
-)
+    ######################################
+    # 1. Run baseline (no revisit)
+    ######################################
+    print(f"\n=== Running BASELINE traversal ===")
+    output_paths = traversal_output_paths(model, dataset, split, variant_baseline)
 
+    run_traversal(
+        query_data=query_data,
+        graph=hoprag_graph,
+        passage_metadata=passage_metadata,
+        passage_emb=passage_emb,
+        passage_index=passage_index,
+        emb_model=bge_model,
+        model_servers=MODEL_SERVERS,
+        output_paths=output_paths,
+        seed_top_k=TOP_K_SEED_PASSAGES,
+        alpha=ALPHA,
+        n_hops=NUMBER_HOPS,
+        traveral_alg=hoprag_traversal_algorithm
+    )
 
-# Collect traversal-wide stats from per-query results
-traversal_metrics = compute_traversal_summary("results/hotpot_dev_results.jsonl")
+    traversal_metrics = compute_traversal_summary(output_paths["results"])
+    append_global_result(
+        save_path=output_paths["stats"],
+        total_queries=len(query_data),
+        traversal_eval=traversal_metrics
+    )
 
-graph_stats = basic_graph_eval(hoprag_graph)
+    ######################################
+    # 2. Run enhanced (allows revisit)
+    ######################################
+    print(f"\n=== Running ENHANCED traversal ===")
+    output_paths = traversal_output_paths(model, dataset, split, variant_enhanced)
 
-# Append to global results log
-append_global_result(
-    save_path="results/hotpot_dev_global_results.jsonl",
-    total_queries=len(query_data),
-    traversal_eval=traversal_metrics
-)
+    run_traversal(
+        query_data=query_data,
+        graph=enhanced_graph,
+        passage_metadata=passage_metadata,
+        passage_emb=passage_emb,
+        passage_index=passage_index,
+        emb_model=bge_model,
+        model_servers=MODEL_SERVERS,
+        output_paths=output_paths,
+        seed_top_k=TOP_K_SEED_PASSAGES,
+        alpha=ALPHA,
+        n_hops=NUMBER_HOPS,
+        traveral_alg=enhanced_traversal_algorithm
+    )
 
+    traversal_metrics = compute_traversal_summary(output_paths["results"])
+    append_global_result(
+        save_path=output_paths["stats"],
+        total_queries=len(query_data),
+        traversal_eval=traversal_metrics
+    )
 
-
-
-# Run pipeline
-run_dev_set(
-    query_data=query_data,
-    graph=enhanced_graph, 
-    passage_metadata=passage_metadata,
-    passage_emb=passage_emb,
-    passage_index=passage_index,
-    emb_model=bge_model,
-    model_servers=MODEL_SERVERS,
-    output_path="results/hotpot_dev_per_query_results.jsonl",
-    seed_top_k=TOP_K_SEED_PASSAGES,
-    alpha=ALPHA,
-    n_hops=NUMBER_HOPS,
-    traveral_alg=enhanced_traversal_algorithm
-)
-
-
-# Collect traversal-wide stats from per-query results
-traversal_metrics = compute_traversal_summary("results/hotpot_dev_results.jsonl")
-
-# Append to global results log
-append_global_result(
-    save_path="results/hotpot_dev_global_results.jsonl",
-    total_queries=len(query_data),
-    traversal_eval=traversal_metrics
-)
-
-
-
-
-
-
+    print("\nAll traversals completed.")

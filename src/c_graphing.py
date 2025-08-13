@@ -2,61 +2,65 @@
 Module Overview
 ---------------
 Construct a passage-level graph by linking Original Questions (OQs) to Inferred Questions (IQs).
+
 Each OQ retrieves candidate IQs from a FAISS index, computes hybrid similarity
 (cosine + Jaccard), and retains the top-scoring IQ. The resulting OQ→IQ edges
 form a directed graph over passages for downstream reasoning and traversal.
 
-This module builds the graph, saves edge lists and NetworkX files, and computes
-evaluation diagnostics for structure and similarity quality.
+This module builds the graph, saves edge lists and NetworkX `.gpickle` files,
+and logs diagnostic summaries for structural and similarity-based evaluation.
+
 
 
 Inputs
 ------
 
-### data/representations/{dataset}/{split}/
+### `data/representations/{dataset}/{split}/`
 
-- {dataset}_passages.jsonl  
-    – Passage metadata including passage_id, text, vec_id, and keywords_passage.
+- `{dataset}_passages.jsonl`  
+  – Passage metadata including passage ID, text, vector index, and keywords.
 
-- {dataset}_passages_emb.npy  
-    – Dense passage embeddings (NumPy array; aligns with vec_id field).
+- `{dataset}_passages_emb.npy`  
+  – Dense passage embeddings (`NumPy` array aligned with `vec_id` field).
 
 
+### `data/representations/{model}/{dataset}/{split}/{variant}/`
 
-### data/representations/{model}/{dataset}/{split}/{variant}/
+- `iqoq.cleaned.jsonl`  
+  – Cleaned IQ/OQ items with `vec_id`, `type` (OQ/IQ), `parent_passage_id`, and `keywords`.
 
-- iqoq.cleaned.jsonl  
-    – Cleaned IQ/OQ items with vec_id, type (OQ/IQ), parent_passage_id, and keywords.
+- `{dataset}_iqoq_emb.npy`  
+  – Dense IQ/OQ embeddings (`NumPy` array aligned with `vec_id` field).
 
-- {dataset}_iqoq_emb.npy  
-    – Dense IQ/OQ embeddings (NumPy array; aligns with vec_id field).
-
-- {dataset}_faiss_iqoq.faiss  
-    – FAISS index over IQ/OQ embeddings (inner-product over normalized vectors).
+- `{dataset}_faiss_iqoq.faiss`  
+  – FAISS index over IQ/OQ embeddings (inner product over normalized vectors).
 
 
 
 Outputs
 -------
 
-### data/graphs/{model}/{dataset}/{split}/{variant}/
+### `data/graphs/{model}/{dataset}/{split}/{variant}/`
 
-- {dataset}_{split}_edges.jsonl  
-    – List of OQ→IQ edges. Each line includes sim_cos, sim_jaccard, and sim_hybrid scores.
+- `{dataset}_{split}_edges.jsonl`  
+  – Top hybrid-scoring OQ→IQ edge per query with similarity scores.
 
-- {dataset}_{split}_graph.gpickle  
-    – NetworkX DiGraph: passages as nodes, OQ→IQ as directed edges.
+- `{dataset}_{split}_graph.gpickle`  
+  – Directed `NetworkX` graph: passages as nodes, OQ→IQ as edges.
 
-- {dataset}_{split}_graph_eval.jsonl  
-    – Global summary: average degree, Gini, top-k hubs. One line per run.
+- `{dataset}_{split}_graph_log.jsonl`  
+  – Global summary with average degree, Gini coefficient, and top-k hubs.
 
-- {dataset}_{split}_graph_results.jsonl  
-    – Full diagnostics: edge similarity stats, degree distribution, components, etc.
+- `{dataset}_{split}_graph_results.jsonl`  
+  – Detailed diagnostics: edge similarity stats, degree distributions, components, etc.
 
 
 
-Example Edge Record (`data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_edges.jsonl`)
--------------------------------------------------------------------------------------------
+File Schema
+-----------
+
+### `{dataset}_{split}_edges.jsonl`
+
 {
   "oq_id": "hotpot_001_sent1_oq1",
   "oq_parent": "hotpot_001_sent1",
@@ -74,9 +78,9 @@ Example Edge Record (`data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_edg
 
 
 
-Example Graph Entry (`data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_graph.gpickle`)
---------------------------------------------------------------------------------------------
-# Loaded using NetworkX. Nodes are passage IDs. Example:
+
+
+#### `{dataset}_{split}_graph.gpickle`
 
 Node:
 {
@@ -97,9 +101,8 @@ Edge:
 }
 
 
+### {dataset}_{split}_graph_log.jsonl
 
-Example Graph Eval Summary (`data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_graph_eval.jsonl`)
-------------------------------------------------------------------------------------------------------
 {
   "timestamp": "2025-08-13T14:22:31",
   "total_queries": 100,
@@ -124,8 +127,8 @@ Example Graph Eval Summary (`data/graphs/qwen-7b/hotpot/train/baseline/hotpot_tr
 
 
 
-Example Full Graph Diagnostics (`data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_graph_results.jsonl`)
---------------------------------------------------------------------------------------------------------------
+### {dataset}_{split}_graph_results.jsonl
+
 {
   "dataset": "hotpot_train",
   "iteration": 12,
@@ -243,7 +246,7 @@ def graph_output_paths(model: str, dataset: str, split: str, variant: str) -> di
     return {
         "edges": base / f"{dataset}_{split}_edges.jsonl",
         "graph_gpickle": base / f"{dataset}_{split}_graph.gpickle",
-        "graph_eval": base / f"{dataset}_{split}_graph_eval.jsonl",
+        "graph_log": base / f"{dataset}_{split}_graph_log.jsonl",
         "graph_results": base / f"{dataset}_{split}_graph_results.jsonl",
     }
 
@@ -620,7 +623,7 @@ def run_graph_pipeline(
 
     # ---------- 5) Global eval ----------
     graph_eval = basic_graph_eval(G)
-    global_path = str(graph_paths["graph_eval"])
+    global_path = str(graph_paths["graph_log"])
     stats_path = str(graph_paths["graph_results"])
 
     os.makedirs("outputs", exist_ok=True)
@@ -664,7 +667,7 @@ def run_graph_pipeline(
     return {
         "graph": G,
         "edges_path": edges_out,
-        "global_results_path": global_path,
+        "global_log_path": global_path,
         "graph_results_path": stats_path,
     }
 

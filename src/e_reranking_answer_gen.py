@@ -1,81 +1,6 @@
 
 
 
-
-
-
-
-"""Rerank visited passages and generate answers from top-scoring nodes.
-
-This module first scores each visited passage for *helpfulness* and then
-queries an LLM with the highest‑scoring passages to produce a final answer.
-
-Reranking
----------
-Helpfulness scores are computed as the average of a passage's query
-similarity and its normalized visit frequency.  Passages are then sorted by
-this score.
-
-Answer generation
------------------
-The top‑``k`` passages are formatted alongside the original query and sent to
-an LLM server to produce an answer string and its normalized form.
-
-
-Inputs
-------
-
-############### FILEPATHS / DIRECTORIES 
-
-* ``visited_passage_ids`` – iterable of explored passage identifiers.
-* ``graph`` – :class:`networkx.DiGraph` containing passage text and similarity.
-* ``ccount`` – mapping of passage IDs to visit counts from traversal.
-* ``server_url`` – endpoint of the LLM used for answer generation.
-
-
-Outputs
--------
-* list of ``(passage_id, helpfulness_score)`` tuples representing the reranked
-  passages.
-* answer JSON ``{"raw_answer": str, "normalized_answer": str}``.
-
-
-
-Example
--------
->>> visited_passages = {"p1", "p2", "p3"}
->>> graph = nx.DiGraph()
->>> graph.add_node("p1", text="The capital is Paris", query_sim=0.9)
->>> graph.add_node("p2", text="France is in Europe", query_sim=0.5)
->>> graph.add_node("p3", text="Paris has the Louvre", query_sim=0.7)
->>> ccount = {"p1": 2, "p3": 1}  # visitation counts from traversal
->>> reranked = rerank_passages_by_helpfulness(
-...     candidate_passages=list(visited_passages),
-...     query_text="What is the capital of France?",
-...     ccount=ccount,
-...     graph=graph,
-...     top_k=2,
-... )
->>> reranked
-[("p1", 0.95), ("p3", 0.60)]
->>> answer = ask_llm_with_passages(
-...     query_text="What is the capital of France?",
-...     passage_ids=[pid for pid, _ in reranked],
-...     graph=graph,
-...     server_url="http://localhost:8000",
-... )
->>> answer
-{"raw_answer": "The capital of France is Paris", "normalized_answer": "paris"}
-
-Helpfulness scores are represented as floats (0.0–1.0) in the second element
-of each tuple returned by :func:`rerank_passages_by_helpfulness`. They are
-computed as the average of query similarity and the normalised visit count
-for each passage.
-"""
-
-
-
-
 ### end of: 3 sets of answers+metrics made with the dev query+gold set (is that right? not the train set?)
 # - 1) dense retrieval only RAG
 # - 2) standard hop-RAG with preceding steps (I don't think there's any actual difference at this point)
@@ -246,34 +171,6 @@ def ask_llm_with_passages(
 
 
 
-"""
-
-
-
-top_helpful_passages = rerank_passages_by_helpfulness(
-    candidate_passages=list(visited_passages),
-    query_text=query_text,
-    ccount=ccount,
-    graph=graph,
-    top_k=TOP_K_ANSWER_PASSAGES  
-)
-
-top_passage_ids = [pid for pid, _ in top_helpful_passages]
-
-llm_result = ask_llm_with_passages(
-    query_text=query_text,
-    passage_ids=top_passage_ids,
-    graph=graph,
-    server_url=model_servers[0],
-    max_tokens=100 ################ I think I have this set up globally somewhere? 
-)
-
-normalised_answer = llm_result["normalised_answer"]
-# do I need to do something with the raw answer here as well??? I guess I need to save it somewhere??
-
-
-"""
-
 
 
 def compute_exact_match(
@@ -337,74 +234,6 @@ def evaluate_answers(
         "EM": 100.0 * em_total / total,
         "F1": 100.0 * f1_total / total
     }
-
-
-
-
-"""
-
-
-gold_answers = {}
-
-with open("data/dev/hotpot_dev.jsonl", 'r') as f:
-    for line in f:
-        obj = json.loads(line)
-        qid = obj["question_id"]
-        ans = obj["gold_answer"]
-        gold_answers[qid] = [normalise_answer(ans)] # needs to be a list for evaluate_answers
-
-
-
-answers = evaluate_answers(normalised_answer, gold_answers) #### these gold answers need to be normalised somewhere as well 
-
-
-
-append_global_result(
-    save_path=f"{dataset}_dev_global_results.jsonl",
-    total_queries=len(gold_answers),
-    answer_eval=answers
-)
-
-
-
-#
-#
-# { # {dataset}_dev_global_results.jsonl
-#   "total_queries": 100,
-#   "graph_eval": {
-#     "avg_node_degree": 3.2,
-#     "node_degree_variance": 1.9,
-#     "gini_degree": 0.35,
-#     "top_k_hub_nodes": [
-#       {"node": "hotpot_042_sent1", "degree": 15},
-#       {"node": "hotpot_089_sent0", "degree": 12}
-#     ]
-#   },
-#   "traversal_eval": {
-#     "mean_precision": 0.63,
-#     "mean_recall": 0.74,
-#     "passage_coverage_all_gold_found": 82,
-#     "initial_retrieval_coverage": 58,
-#     "avg_hops_before_first_gold": 1.8,
-#     "avg_total_hops": 2.4,
-#     "avg_repeat_visits": 0.3,
-#     "avg_none_count_per_query": 0.8,
-#     "max_hop_depth_reached": 3,
-#     "hop_depth_counts": [100, 95, 72, 20]
-#   },
-#   "answer_eval": {
-#     "average_em": 72.5,
-#     "average_f1": 78.9
-#   }
-# }
-#
-#
-
-
-
-
-"""
-
 
 
 
@@ -578,3 +407,77 @@ def run_pipeline(
     else:
         raise ValueError(f"Unknown mode: {mode}")
 
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    # --- Required objects: define or load them before this block ---
+    # These must be defined earlier in your script or imported:
+    # query_data: List[Dict]
+    # graph: nx.DiGraph
+    # passage_metadata: List[Dict]
+    # passage_emb: np.ndarray
+    # passage_index: FAISS or similar
+    # emb_model: embedding model with `.encode()`
+    # model_servers: List[str]
+
+    seed_top_k = 50
+    alpha = 0.5
+    n_hops = 2
+    output_base = "results"
+
+    os.makedirs(output_base, exist_ok=True)
+
+    print("\n========== Running DENSE RAG ==========")
+    run_pipeline(
+        mode="dense",
+        query_data=query_data,
+        graph=None,
+        passage_metadata=passage_metadata,
+        passage_emb=passage_emb,
+        passage_index=passage_index,
+        emb_model=emb_model,
+        model_servers=model_servers,
+        output_path=os.path.join(output_base, "dev_dense.jsonl"),
+        seed_top_k=seed_top_k,
+        alpha=alpha
+    )
+
+    print("\n========== Running STANDARD HopRAG ==========")
+    run_pipeline(
+        mode="hoprag",
+        query_data=query_data,
+        graph=graph,
+        passage_metadata=passage_metadata,
+        passage_emb=passage_emb,
+        passage_index=passage_index,
+        emb_model=emb_model,
+        model_servers=model_servers,
+        output_path=os.path.join(output_base, "dev_hoprag.jsonl"),
+        seed_top_k=seed_top_k,
+        alpha=alpha,
+        n_hops=n_hops
+    )
+
+    print("\n========== Running ENHANCED HopRAG ==========")
+    run_pipeline(
+        mode="enhanced",
+        query_data=query_data,
+        graph=graph,
+        passage_metadata=passage_metadata,
+        passage_emb=passage_emb,
+        passage_index=passage_index,
+        emb_model=emb_model,
+        model_servers=model_servers,
+        output_path=os.path.join(output_base, "dev_enhanced.jsonl"),
+        seed_top_k=seed_top_k,
+        alpha=alpha,
+        n_hops=n_hops
+    )
+
+    print("\n✅ All modes complete.")
