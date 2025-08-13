@@ -1,35 +1,99 @@
-"""Build graphs linking original questions (OQ) to inferred questions (IQ).
+"""
+Module Overview
+---------------
+Construct a graph that links original questions (OQ) to inferred questions (IQ).
+Each OQ retrieves candidate IQs from a FAISS index, computes hybrid similarity
+(cosine + Jaccard), and retains the highest-scoring IQ edge.
 
 Inputs
 ------
-PASSAGES_PATH : ``data/representations/hotpot/train/hotpot_passages.jsonl``
-    Passage metadata JSONL.
-passages_emb_path : ``data/representations/hotpot/train/hotpot_passages_emb.npy``
-    Passage embeddings.
-IQOQ_PATH : ``data/representations/qwen-7b/hotpot/train/baseline/hotpot_iqoq.jsonl``
-    IQ/OQ metadata JSONL.
-iqoq_emb_path : ``data/representations/qwen-7b/hotpot/train/baseline/hotpot_iqoq_emb.npy``
-    IQ/OQ embeddings.
-model_paths["iqoq_index"] : ``data/representations/qwen-7b/hotpot/train/baseline/hotpot_faiss_iqoq.faiss``
-    FAISS index for IQ/OQ embeddings.
+
+################# PATHS / DIRECTORIES
+
+- ``passages.jsonl`` – Passage metadata (IDs, text, keywords, etc.)
+- ``iqoq.jsonl`` – IQ/OQ metadata
+- ``passages_emb.npy`` – Passage embeddings
+- ``iqoq_emb.npy`` – IQ/OQ embeddings
+- ``hotpot_faiss_iqoq.faiss`` – FAISS index for IQ/OQ embeddings
 
 Outputs
 -------
-``data/representations/qwen-7b/hotpot/train/baseline/hotpot_edges.jsonl``
-    JSONL listing the highest-scoring IQ for each OQ.
-``networkx.DiGraph``
-    Graph relating passage and question nodes.
 
-Example edge record
--------------------
+################# WRITTEN FILES
+
+- ``{dataset}_edges.jsonl`` – JSONL edge list linking each OQ to its top IQ  
+  Each line is a top-ranked edge, including cosine, Jaccard, and hybrid similarity.
+
+- ``{dataset}_{split}_graph.gpickle`` – NetworkX directed graph (passage-level, with OQ→IQ edges)
+
+- ``graph_stats/{dataset}_{split}_graph_eval.jsonl`` – Summary graph statistics  
+  Includes: avg degree, degree variance, Gini coefficient, top-k hubs.
+
+- ``graph_stats/{dataset}_{split}_graph_results.jsonl`` – Full graph diagnostics (1 line per run)  
+  Includes: component stats, degree distributions, edge sim stats, top-k hubs, etc.
+
+Example Edge Record (`{dataset}_edges.jsonl`)
+---------------------------------------------
 {
     "oq_id": "hotpot_001_sent1_oq1",
     "oq_parent": "hotpot_001_sent1",
+    "oq_vec_id": 12,
+    "oq_text": "What year was the Battle of Hastings?",
+
     "iq_id": "hotpot_002_sent4_iq0",
     "iq_parent": "hotpot_002_sent4",
+    "iq_vec_id": 37,
+
+    "sim_cos": 0.72,
+    "sim_jaccard": 0.56,
     "sim_hybrid": 0.64
 }
+
+Example Full Graph Diagnostics Entry (`graph_results.jsonl`)
+------------------------------------------------------------
+{
+  "dataset": "hotpot_train",
+  "iteration": 12,
+  "timestamp": "2025-08-13T14:22:31",
+  "params": {
+    "top_k": 50,
+    "sim_threshold": 0.65
+  },
+  "num_nodes": 1478,
+  "num_edges": 1321,
+  "num_components": 45,
+  "largest_component_size": 732,
+  "largest_component_ratio": 0.4953,
+
+  "avg_in_degree": 0.89,
+  "min_in_degree": 0,
+  "max_in_degree": 9,
+  "var_in_degree": 1.12,
+
+  "avg_out_degree": 0.89,
+  "min_out_degree": 0,
+  "max_out_degree": 1,
+  "var_out_degree": 0.27,
+
+  "nodes_with_no_in_edges": 654,
+  "nodes_with_no_out_edges": 845,
+
+  "edge_sim_hybrid_mean": 0.6483,
+  "edge_sim_hybrid_max": 0.9212,
+  "edge_sim_hybrid_min": 0.6512,
+  "edge_sim_hybrid_var": 0.0089,
+
+  "avg_node_degree": 1.43,
+  "node_degree_variance": 0.97,
+  "gini_degree": 0.27,
+
+  "top_k_hub_nodes": [
+    {"node": "hotpot_002_sent4", "degree": 7},
+    {"node": "hotpot_001_sent3", "degree": 6}
+  ]
+}
 """
+
 
 ### end of: 2 sets of graphs made with the train passage+iqoq set (is that right? not the dev set?)
 # - 1) standard hoprag
@@ -304,54 +368,6 @@ def append_global_result(
 
 
 
-############## I NEED TWO GRAPHS AT THE END OF THIS - THE STANDARD HOPRAG AND THE ENHANCED
-
-
-# hoprag_graph = 
-# enhanced_graph = 
-
-
-# # Load passages
-# with open("data/hotpot_passages.jsonl", "r", encoding="utf-8") as f:
-#     passages = [json.loads(line) for line in f]
-
-# # Load edges
-# with open("data/hotpot_edges.jsonl", "r", encoding="utf-8") as f:
-#     edges = [json.loads(line) for line in f]
-
-# G = build_networkx_graph(passages, edges)
-
-# graph_eval = basic_graph_eval(G, top_k_hubs=5)
-
-# append_global_result(
-#     save_path="outputs/hotpot_dev_global_results.jsonl",
-#     total_queries=100,
-#     graph_eval=graph_eval
-# )
-
-
-
-#
-#
-# { # {dataset}_dev_global_results.jsonl
-#   "total_queries": 100,
-#
-#   "graph_eval": {
-#     "avg_node_degree": 3.2,
-#     "node_degree_variance": 1.9,
-#     "gini_degree": 0.35,
-#     "top_k_hub_nodes": [
-#       {"node": "hotpot_042_sent1", "degree": 15},
-#       {"node": "hotpot_089_sent0", "degree": 12}
-#     ]
-#   },
-# }
-#
-#
-#
-
-
-
 
 
 def graph_stats(
@@ -495,7 +511,7 @@ def run_graph_pipeline(
 
     # ---------- 5) Global eval ----------
     graph_eval = basic_graph_eval(G)
-    global_path = f"outputs/{dataset}_{split}_global_results.jsonl"
+    global_path = f"outputs/graphs/graph_stats/{dataset}_{split}_graph_eval.jsonl"
     os.makedirs("outputs", exist_ok=True)
     append_global_result(
         save_path=global_path,
@@ -515,7 +531,8 @@ def run_graph_pipeline(
     )
 
     # ---------- 6) Detailed stats ----------
-    stats_path = f"outputs/{dataset}_{split}_graph_results.jsonl"
+    stats_path = f"outputs/graphs/graph_stats/{dataset}_{split}_graph_results.jsonl"
+
     stats = graph_stats(
         G,
         save_path=stats_path,
@@ -577,58 +594,5 @@ if __name__ == "__main__":
     print(result_paths)
 
 
-
-
-# graph_stats(
-#     G,
-#     save_path="outputs/hotpot_dev_graph_results.jsonl",
-#     params=params,
-#     iteration=12,
-#     dataset="hotpot_dev"
-# )
-
-
-#
-#
-#
-# { # {dataset}_dev_graph_results.jsonl 
-#   "dataset": "hotpot_dev",
-#   "iteration": 12,
-#   "timestamp": "2025-08-06T14:32:11",
-#
-#   "params": {
-#     "sim_threshold": 0.65,
-#     "max_neighbors": 5,
-#     "beam_width": 3 ######################
-#   },
-#
-#   "num_nodes": 8,
-#   "num_edges": 6,
-#
-#   "num_components": 3, ##################
-#   "largest_component_size": 5, ##############
-#   "largest_component_ratio": 0.625, ############
-#
-#   "avg_in_degree": 0.75,
-#   "min_in_degree": 0,
-#   "max_in_degree": 2,
-#   "var_in_degree": 0.4375,
-#
-#   "avg_out_degree": 0.75,
-#   "min_out_degree": 0,
-#   "max_out_degree": 2,
-#   "var_out_degree": 0.4375,
-#
-#   "nodes_with_no_in_edges": 4,
-#   "nodes_with_no_out_edges": 4,
-#
-#   "edge_sim_hybrid_mean": 0.63, ################################
-#   "edge_sim_hybrid_max": 0.92,
-#   "edge_sim_hybrid_min": 0.41,
-#   "edge_sim_hybrid_var": 0.033,
-# }
-#
-#
-#
 
 

@@ -1,78 +1,101 @@
-
 """
+Traversal utilities for multi-hop retrieval.
 
-Module Overview
----------------
+Template
+--------
 
-Graph traversal helpers for multi-hop retrieval. The utilities coordinate
-passage selection and graph exploration for a given question.
+Traversal Inputs
+~~~~~~~~~~~~~~~~
+query_text : str
+    Natural language question that seeds the traversal.
+faiss_index_path : str or Path
+    Location of the FAISS index built over passage embeddings.
+graph_jsonl_path : str or Path
+    JSONL file describing graph nodes, edges, and outgoing questions.
 
-Inputs
-------
-query_text (str)
-    Natural-language query that seeds the traversal.
-faiss_index_path (str or Path)
-    Filesystem path to the FAISS index of passage embeddings.
-graph_jsonl_path (str or Path)
-    Path to the JSONL graph describing nodes, edges and outgoing questions.
+Traversal Logic
+~~~~~~~~~~~~~~~
+1. Retrieve top-k seed passages from ``faiss_index_path``.
+2. Expand each hop using edges from ``graph_jsonl_path``.
+3. Continue until ``NUMBER_HOPS`` is reached or no new passages remain.
 
-Outputs
--------
-traversal_logs_path (str or Path)
-    JSON log recording each hop taken, e.g. ``logs/traversal.json``.
-selected_passages_path (str or Path)
-    JSON list of visited passage IDs, e.g. ``logs/selected_passages.json``.
+Output Artifacts
+~~~~~~~~~~~~~~~~
+traversal.json
+    List of hop dictionaries describing the traversal.
+selected_passages.json
+    Deduplicated list of visited passage IDs.
+dev_results.jsonl
+    Per-query metrics including precision, recall, and hop trace.
 
-    
+Field Reference
+~~~~~~~~~~~~~~~
+``traversal.json`` entries:
+    hop : int
+        Hop number starting at 0.
+    expanded_from : List[str]
+        Passages expanded at this hop.
+    new_passages : List[str]
+        Newly discovered passages.
+    edges_chosen : List[Dict]
+        Metadata for each traversed edge.
+    precision : float
+        Retrieval precision after visiting ``new_passages``.
+    none_count : int
+        Times no edge was selected.
+    repeat_visit_count : int
+        Count of revisited passages.
 
-
-{ # {dataset}_dev_results.jsonl ############ I THINK THIS IS THE WRONG LAYOUT # SHOULD BE DEV_PER_QUERY_RESULTS.JSONL
-    query_id = "hotpot_001",
-    gold_passages = ["hotpot_002_sent4", "hotpot_003_sent2"], ############# for precision, recall, f1
-    visited_passages = ["hotpot_001_sent1", "hotpot_002_sent4", "hotpot_003_sent2"], ############# recall coverage - did we see gold passages before pruning?
-    "precision": 0.666,
-    "recall": 1.0,
-    "f1": 1.0,
-    ccount = {"hotpot_002_sent4": 2, "hotpot_003_sent2": 1}, #### for importance (for helpfulness) - identify high-traffic nodes
-    hop_trace = [ ###### prune n-hops (for graph density, pruning thresholds?)
-        {
-            "hop": 0,
-            "expanded_from": ["hotpot_001_sent1"],
-            "new_passages": ["hotpot_002_sent4"],
-            "edges_chosen": [
-                {
-                    "from": "hotpot_001_sent1",
-                    "to": "hotpot_002_sent4",
-                    "oq_id": "hotpot_001_sent1_oq1",
-                    "iq_id": "hotpot_002_sent4_iq0",
-                    "repeat_visit": False
-                }
-            ],
-            "none_count": 0,
-            "repeat_visit_count": 0
-        },
-        {
-            "hop": 1,
-            "expanded_from": ["hotpot_002_sent4"],
-            "new_passages": ["hotpot_003_sent2"],
-            "edges_chosen": [
-                {
-                    "from": "hotpot_002_sent4",
-                    "to": "hotpot_003_sent2",
-                    "oq_id": "hotpot_002_sent4_oq0",
-                    "iq_id": "hotpot_003_sent2_iq0",
-                    "repeat_visit": False
-                }
-            ],
-            "none_count": 1,
-            "repeat_visit_count": 0
-        }
-    ]
-}
+``dev_results.jsonl`` entries:
+    query_id : str
+    visited_passages : List[str]
+    precision : float
+    recall : float
+    f1 : float
+    ccount : Dict[str, int]
+    hop_trace : List[Dict]
 
 
+Example ``traversal.json``
+-------------------------
+[
+  {
+    "hop": 0,
+    "expanded_from": ["hotpot_001_sent1"],
+    "new_passages": ["hotpot_002_sent4"],
+    "precision": 0.5,
+    "edges_chosen": [
+      {
+        "from": "hotpot_001_sent1",
+        "to": "hotpot_002_sent4",
+        "oq_id": "hotpot_001_sent1_oq1",
+        "iq_id": "hotpot_002_sent4_iq0",
+        "repeat_visit": false
+      }
+    ],
+    "none_count": 0,
+    "repeat_visit_count": 0
+  }
+]
+
+Example ``selected_passages.json``
+---------------------------------
+[
+  "hotpot_001_sent1",
+  "hotpot_002_sent4",
+  "hotpot_003_sent2"
+]
 
 
+
+
+
+
+
+
+
+Example ``global_results.jsonl``
+---------------------------------
 
 { # {dataset}_dev_global_results.jsonl
   "total_queries": 100,
@@ -141,6 +164,7 @@ import os
 from pathlib import Path
 from collections import defaultdict
 import json
+from src.c_graphing import basic_graph_eval
 
 
 # TRAVERSAL TUNING
@@ -639,6 +663,8 @@ run_dev_set(
 
 # Collect traversal-wide stats from per-query results
 traversal_metrics = compute_traversal_summary("results/hotpot_dev_results.jsonl")
+
+graph_stats = basic_graph_eval(hoprag_graph)
 
 # Append to global results log
 append_global_result(

@@ -1,31 +1,33 @@
 
 
-
-"""Prepare passage shards and generate conditioned scores and question lists.
+"""Split passages into model-sized shards and generate conditioned scores and
+IQ/OQ lists.
 
 Inputs
 ------
-* ``data/processed_datasets/{dataset}/{split}_passages.jsonl`` – source passages
-  with ``passage_id``, ``title`` and ``text`` fields.
+data/processed_datasets/{dataset}/{split}_passages.jsonl
+    Source passages with ``passage_id``, ``title`` and ``text`` fields.
 
 Outputs
 -------
-* ``data/models/{model}/{dataset}/{split}/shards/train_passages_shard{N}_{size}.jsonl`` –
-  unannotated passage shards.
-* ``data/models/{model}/{dataset}/{split}/{hoprag_version}/train_passages_shard{N}_{size}_cs.jsonl`` –
-  adds a ``conditioned_score`` for each passage.
-* ``data/models/{model}/{dataset}/{split}/{hoprag_version}/train_passages_shard{N}_{size}_iqoq_{baseline|enhanced}.jsonl`` –
-  stores ``IQs``/``OQs`` lists, ``num_iq``, ``num_oq`` and optional ``cs_used``.
-* Debug text files ``*_cs_debug.txt``, ``*_iqoq_baseline_debug.txt`` and
-  ``*_iqoq_enhanced_debug.txt`` summarizing processing statistics.
+data/models/{model}/{dataset}/{split}/shards/{split}_passages_shard{N}_{size}.jsonl
+    Unannotated passage shards.
+data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_cs.jsonl
+    Conditioned-score shards.
+data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_iqoq_baseline.jsonl
+    Baseline IQ/OQ shards.
+data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl
+    Enhanced IQ/OQ shards.
+data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_cs_debug.txt
+    Per-shard debug summaries for CS.
+data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_iqoq_baseline_debug.txt
+    Per-shard debug summaries for baseline IQ/OQ.
+data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_iqoq_enhanced_debug.txt
+    Per-shard debug summaries for enhanced IQ/OQ.
 
-  
-
-Example
-
-## Conditioned score record (`*_cs.jsonl`)
-```json
-{
+Examples
+--------
+{ # data/models/qwen-7b/hotpotqa/train/train_passages_shard1_7b_cs.jsonl
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
   "title": "Arthur's Magazine",
   "text": "Arthur's Magazine (1844–1846)...",
@@ -34,11 +36,8 @@ Example
   "split": "train",
   "generation_model": "qwen-7b"
 }
-```
 
-## Baseline IQ/OQ record (`*_iqoq_baseline.jsonl`)
-```json
-{
+{ # data/models/qwen-7b/hotpotqa/train/train_passages_shard1_7b_iqoq_baseline.jsonl
   "passage_id": "5a7a0693__first_for_women_sent0",
   "title": "First for Women",
   "text": "First for Women is a woman's magazine...",
@@ -46,31 +45,13 @@ Example
   "OQs": ["...", "...", "...", "..."],
   "num_iq": 2,
   "num_oq": 4,
-  "cs_used": null,
+  "cs_used": null, # WOULD BE NUMERICAL IF ENHANCED
   "hoprag_version": "baseline_hoprag",
   "dataset": "hotpotqa",
   "split": "train",
   "generation_model": "qwen-7b"
 }
-```
 
-## Enhanced IQ/OQ record (`*_iqoq_enhanced.jsonl`)
-```json
-{
-  "passage_id": "5a7a0693__arthur_s_magazine_sent0",
-  "title": "Arthur's Magazine",
-  "text": "Arthur's Magazine (1844–1846)...",
-  "IQs": ["...", "...", "..."],
-  "OQs": ["...", "...", "..."],
-  "num_iq": 3,
-  "num_oq": 3,
-  "cs_used": 0.25,
-  "hoprag_version": "enhanced_hoprag",
-  "dataset": "hotpotqa",
-  "split": "train",
-  "generation_model": "qwen-7b"
-}
-```
 
 ## Debug files
 Plain text files (`*_cs_debug.txt`, `*_iqoq_baseline_debug.txt`, `*_iqoq_enhanced_debug.txt`) include:

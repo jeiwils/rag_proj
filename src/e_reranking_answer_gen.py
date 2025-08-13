@@ -7,24 +7,37 @@
 
 """Rerank visited passages and generate answers from top-scoring nodes.
 
-This module scores passages collected during graph traversal for their
-helpfulness and queries an LLM endpoint with the most relevant passages to
-produce an answer.
+This module first scores each visited passage for *helpfulness* and then
+queries an LLM with the highest‑scoring passages to produce a final answer.
 
+Reranking
+---------
+Helpfulness scores are computed as the average of a passage's query
+similarity and its normalized visit frequency.  Passages are then sorted by
+this score.
+
+Answer generation
+-----------------
+The top‑``k`` passages are formatted alongside the original query and sent to
+an LLM server to produce an answer string and its normalized form.
 
 
 Inputs
 ------
-visited passage IDs : iterable of strings describing the passages explored
-graph : :class:`networkx.DiGraph` containing passage text and similarity
-ccount : mapping of passage IDs to visit counts from traversal
-server_url : string endpoint of the LLM used for answer generation
+
+############### FILEPATHS / DIRECTORIES 
+
+* ``visited_passage_ids`` – iterable of explored passage identifiers.
+* ``graph`` – :class:`networkx.DiGraph` containing passage text and similarity.
+* ``ccount`` – mapping of passage IDs to visit counts from traversal.
+* ``server_url`` – endpoint of the LLM used for answer generation.
 
 
 Outputs
 -------
-reranked list : list of ``(passage_id, helpfulness_score)`` tuples
-generated answer : ``{"raw_answer": str, "normalised_answer": str}``
+* list of ``(passage_id, helpfulness_score)`` tuples representing the reranked
+  passages.
+* answer JSON ``{"raw_answer": str, "normalized_answer": str}``.
 
 
 
@@ -44,7 +57,7 @@ Example
 ...     top_k=2,
 ... )
 >>> reranked
-[('p1', 0.95), ('p3', 0.60)]
+[("p1", 0.95), ("p3", 0.60)]
 >>> answer = ask_llm_with_passages(
 ...     query_text="What is the capital of France?",
 ...     passage_ids=[pid for pid, _ in reranked],
@@ -52,7 +65,7 @@ Example
 ...     server_url="http://localhost:8000",
 ... )
 >>> answer
-{'raw_answer': 'The capital of France is Paris', 'normalised_answer': 'paris'}
+{"raw_answer": "The capital of France is Paris", "normalized_answer": "paris"}
 
 Helpfulness scores are represented as floats (0.0–1.0) in the second element
 of each tuple returned by :func:`rerank_passages_by_helpfulness`. They are
@@ -185,9 +198,28 @@ def ask_llm_with_passages(
     max_tokens: int = 100,
     passage_lookup: Optional[Dict[str, str]] = None  # optional for dense mode
 ) -> Dict[str, str]:
-    """
-    Format top passages and send them with the query to the LLM.
-    Works with or without a graph.
+    """Generate an answer from top passages using an LLM server.
+
+    Inputs
+    ------
+    query_text : str
+        User question to be answered.
+    passage_ids : List[str]
+        Visited passage identifiers ranked by helpfulness.
+    graph : Optional[nx.DiGraph]
+        Graph containing passage texts. ``None`` if passages are looked up
+        elsewhere.
+    server_url : str
+        URL of the LLM completion endpoint.
+    max_tokens : int, optional
+        Maximum number of tokens to generate, by default ``100``.
+    passage_lookup : Optional[Dict[str, str]]
+        Mapping from ``passage_id`` to passage text when ``graph`` is ``None``.
+
+    Outputs
+    -------
+    Dict[str, str]
+        ``{"raw_answer": str, "normalized_answer": str}``.
     """
     passage_texts = []
 

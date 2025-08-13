@@ -6,37 +6,37 @@
 
 """
 
-
-Prepare raw multi-hop QA datasets for downstream retrieval and evaluation.
-
-The script reads each dataset's original files, normalizes question text and
+Module Overview
+---------------
+Prepare raw multi-hop QA datasets for downstream retrieval and evaluation. The
+script reads each dataset's original files, normalizes question text and
 passages, and writes paired question and passage JSONL files. Question files
-store only the IDs of gold passages while the companion `_passages` files hold
-the text of every passage.
+store only the IDs of gold passages while companion `_passages` files hold the
+text of every passage.
 
 Inputs
 ------
-data/raw_datasets/hotpotqa/hotpot_train_v1.1.json
-data/raw_datasets/hotpotqa/hotpot_dev_fullwiki_v1.json
-data/raw_datasets/2wikimultihopqa/{split}.json
-data/raw_datasets/musique/musique_ans_v1.0_{split}.jsonl
+- ``data/raw_datasets/hotpotqa/hotpot_train_v1.1.json`` – HotpotQA training data.
+- ``data/raw_datasets/hotpotqa/hotpot_dev_fullwiki_v1.json`` – HotpotQA dev data.
+- ``data/raw_datasets/2wikimultihopqa/{split}.json`` – 2WikiMultiHopQA data.
+- ``data/raw_datasets/musique/musique_ans_v1.0_{split}.jsonl`` – MuSiQue data.
 
 Outputs
 -------
-data/processed_datasets/hotpotqa/{split}.jsonl
-data/processed_datasets/hotpotqa/{split}_passages.jsonl
-data/processed_datasets/2wikimultihopqa/{split}.jsonl
-data/processed_datasets/2wikimultihopqa/{split}_passages.jsonl
-data/processed_datasets/musique/{split}.jsonl
-data/processed_datasets/musique/{split}_passages.jsonl
+- ``data/processed_datasets/{dataset}/{split}.jsonl`` – processed questions with
+  gold passage IDs.
+- ``data/processed_datasets/{dataset}/{split}_passages.jsonl`` – corresponding
+  passages with text content.
 
 
 
 
 
+Example
+-------
+### Question row (``data/processed_datasets/hotpotqa/train.jsonl``)
 
-
-{ # data/processed_datasets/hotpotqa/{split}.jsonl
+{
   "question_id": "5a7a06935542990198eaf050",
   "dataset": "hotpotqa",
   "split": "{split}",
@@ -47,61 +47,31 @@ data/processed_datasets/musique/{split}_passages.jsonl
     "5a7a06935542990198eaf050__first_for_women_sent0"
   ]
 }
+```
+Fields
+- ``question_id``: unique question identifier.
+- ``dataset``: dataset name.
+- ``split``: dataset split.
+- ``question``: normalized question text.
+- ``gold_answer``: reference answer.
+- ``passages``: list of gold passage IDs pointing to
+  ``data/processed_datasets/{dataset}/{split}_passages.jsonl``.
 
-# data/processed_datasets/hotpotqa/{split}_passages.jsonl
-{"passage_id":"5a7a06935542990198eaf050__arthur_s_magazine_sent0","title":"Arthur's Magazine","text":"Arthur's Magazine (1844–1846) was an American literary periodical published in Philadelphia in the 19th century."}
-{"passage_id":"5a7a06935542990198eaf050__first_for_women_sent0","title":"First for Women","text":"First for Women is a woman's magazine published by Bauer Media Group in the USA. The magazine was started in 1989."}
 
+  
 
-
-
-
-
-
-
-{ # data/processed_datasets/2wikimultihopqa/{split}.jsonl
-  "question_id": "13f5ad2c088c11ebbd6fac1f6bf848b6",
-  "dataset": "2wikimultihopqa",
-  "split": "{split}",
-  "question": "Are director of film Move (1970 Film) and director of film Méditerranée (1963 Film) from the same country?",
-  "gold_answer": "no",
-  "passages": [
-    "13f5ad2c088c11ebbd6fac1f6bf848b6__move_1970_film_sent0",
-    "13f5ad2c088c11ebbd6fac1f6bf848b6__m_diterran_e_1963_film_sent0",
-    "13f5ad2c088c11ebbd6fac1f6bf848b6__stuart_rosenberg_sent0",
-    "13f5ad2c088c11ebbd6fac1f6bf848b6__jean_daniel_pollet_sent0"
-  ]
+### Passage row (``data/processed_datasets/hotpotqa/train_passages.jsonl``)
+```json
+{
+  "passage_id": "5a7a06935542990198eaf050__arthur_s_magazine_sent0",
+  "title": "Arthur's Magazine",
+  "text": "Arthur's Magazine (1844–1846) was an American literary periodical..."
 }
-
-# data/processed_datasets/2wikimultihopqa/{split}_passages.jsonl
-{"passage_id":"13f5ad2c088c11ebbd6fac1f6bf848b6__move_1970_film_sent0","title":"Move (1970 film)","text":"Move is a 1970 American comedy film starring Elliott Gould, Paula Prentiss and Geneviève Waïte, and directed by Stuart Rosenberg."}
-{"passage_id":"13f5ad2c088c11ebbd6fac1f6bf848b6__m_diterran_e_1963_film_sent0","title":"Méditerranée (1963 film)","text":"Méditerranée is a 1963 French experimental film directed by Jean-Daniel Pollet with assistance from Volker Schlöndorff."}
-{"passage_id":"13f5ad2c088c11ebbd6fac1f6bf848b6__stuart_rosenberg_sent0","title":"Stuart Rosenberg","text":"Stuart Rosenberg (1927–2007) was an American film and television director whose motion pictures include Cool Hand Luke (1967) and The Amityville Horror (1979)."}
-{"passage_id":"13f5ad2c088c11ebbd6fac1f6bf848b6__jean_daniel_pollet_sent0","title":"Jean-Daniel Pollet","text":"Jean-Daniel Pollet (1936–2004) was a French film director and screenwriter who was most active in the 1960s and 1970s."}
-
-
-
-
-
-
-
-{ # data/processed_datasets/musique/{split}.jsonl
-  "question_id": "2hop__482757_12019",
-  "dataset": "musique",
-  "split": "{split}",
-  "question": "When was the institute that owned The Collegian founded?",
-  "gold_answer": "1960",
-  "passages": [
-    "2hop__482757_12019_sent5",
-    "2hop__482757_12019_sent9"
-  ]
-}
-
-# data/processed_datasets/musique/{split}_passages.jsonl
-{"passage_id":"2hop__482757_12019_sent5","title":"The Collegian (Houston Baptist University)","text":"The Collegian is the bi-weekly official student publication of Houston Baptist University in Houston, Texas. It was founded in 1963 as a newsletter, and adopted the newspaper format in 1990."}
-{"passage_id":"2hop__482757_12019_sent9","title":"Houston","text":"Houston Baptist University, affiliated with the Baptist General Convention of Texas, offers bachelor's and graduate degrees. It was founded in 1960 and is located in the Sharpstown area in Southwest Houston."}
-
-
+```
+Fields
+- ``passage_id``: unique passage identifier.
+- ``title``: source page title.
+- ``text``: sentence-level passage text.
 
 
 
