@@ -31,14 +31,18 @@ Examples
 
 Example line from ``results/dense_rag_results.jsonl``::
 
-    {
-      "query_id": "q1",
-      "question": "...",
-      "predicted_answer": "...",
-      "EM": 1,
-      "F1": 1.0,
-      "method": "dense_rag"
-    }
+{
+  "query_id": "q1",
+  "question": "Who founded Google?",
+  "gold_answer": "Larry Page and Sergey Brin",
+  "predicted_answer": "Larry Page and Sergey Brin",
+  "normalised_pred": "larry page sergey brin",
+  "normalised_gold": "larry page sergey brin",
+  "retrieved_passages": ["passage_102", "passage_304", ...],
+  "EM": 1,
+  "F1": 1.0,
+  "method": "dense_rag"
+}
 
 
 ``results/dev_results.jsonl`` ######################### what does this look like? 

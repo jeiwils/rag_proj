@@ -146,6 +146,7 @@ def process_hotpotqa(
         items=examples,
         get_id=lambda ex, i: ex["_id"],
         phase_label=f"hotpotqa {split} questions",
+        id_field="question_id",
     )
 
     def iter_pids():
@@ -161,6 +162,7 @@ def process_hotpotqa(
         items=iter_pids(),
         get_id=lambda pid, i: pid,
         phase_label=f"hotpotqa {split} passages",
+        id_field="question_id",
     )
 
     for ex in examples:
@@ -234,6 +236,7 @@ def process_2wikimultihopqa(
         items=examples,
         get_id=lambda ex, i: ex["_id"],
         phase_label=f"2wikimultihopqa {split} questions",
+        id_field="question_id",
     )
 
     def iter_pids():
@@ -249,6 +252,7 @@ def process_2wikimultihopqa(
         items=iter_pids(),
         get_id=lambda pid, i: pid,
         phase_label=f"2wikimultihopqa {split} passages",
+        id_field="question_id",
     )
 
     for ex in examples:

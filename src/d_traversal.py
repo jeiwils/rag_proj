@@ -660,7 +660,8 @@ if __name__ == "__main__":
                     out_path=str(output_paths["results"]),
                     items=query_data_full,
                     get_id=lambda q, i: q["query_id"],
-                    phase_label=f"Traversal ({variant})"
+                    phase_label=f"Traversal ({variant})",
+                    id_field="query_id",
                 )
                 remaining_queries = [q for q in query_data_full if q["query_id"] not in done_ids]
                 if not remaining_queries:

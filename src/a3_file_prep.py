@@ -137,15 +137,14 @@ Schemas
 """
 
 
-
 import re
 import os
 import json
 import time
-from src.a2_text_prep import SERVER_CONFIGS, existing_ids, compute_resume_sets
+from src.a2_text_prep import SERVER_CONFIGS, compute_resume_sets
 from src.utils import load_jsonl, save_jsonl, append_jsonl, resolve_root, FOLDERS_BY_VARIANT
-from src.a2_text_prep import SERVER_CONFIGS
 from pathlib import Path
+
 
 
 
@@ -260,8 +259,6 @@ def clean_file(in_path, out_path, cleaner, resume: bool = False):
 def merge_jsonl_files(in_paths, out_path, dedup_key=None, resume: bool = False):
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     seen = set()
-    if dedup_key and resume:
-        seen.update(existing_ids(out_path, id_field=dedup_key))
     out = []
     for p in in_paths:
         rows = load_jsonl(p)
@@ -271,6 +268,7 @@ def merge_jsonl_files(in_paths, out_path, dedup_key=None, resume: bool = False):
             items=rows,
             get_id=lambda r, i: r.get(dedup_key, f"idx:{i}") if dedup_key else f"idx:{i}",
             phase_label="merge",
+            id_field=dedup_key
         )
         for i, row in enumerate(rows):
             k = row.get(dedup_key, f"idx:{i}") if dedup_key else f"idx:{i}"
@@ -383,8 +381,9 @@ def explode_iqoq(master_path: str, output_path: str, resume: bool = False):
         items=items,
         get_id=lambda x, i: x,
         phase_label="explode_iqoq",
+        id_field="iqoq_id",
     )
-    seen = set(existing_ids(output_path, id_field="iqoq_id")) if resume else set()
+    seen = set()
     out = []
     for e in data:
         pid = e["passage_id"]

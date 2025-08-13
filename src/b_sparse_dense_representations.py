@@ -137,7 +137,7 @@ params = {
 }
 
 RESUME = True
-
+SPLIT = os.environ.get("SPLIT", "train")
 _bge_model = None
 
 
@@ -458,29 +458,6 @@ def add_keywords_to_passages_jsonl(
             r["all_keywords"] = sorted(union)
 
 
-def add_keywords_to_iqoq_jsonl(
-    iqoq_jsonl: str,
-    out_field: str = "keywords",
-    only_ids: Set[str] | None = None,
-):
-    rows = [json.loads(l) for l in open(iqoq_jsonl, "r", encoding="utf-8")]
-    if only_ids:
-        targets = [r for r in rows if r.get("iqoq_id") in only_ids]
-    else:
-        targets = rows
-    texts = [r.get("text", "") for r in targets]
-
-    for r, doc in zip(targets, nlp.pipe(texts, batch_size=128, n_process=1)):
-        kws = {
-            normalise_text(ent.text)
-            for ent in doc.ents
-            if ent.label_ in KEEP_ENTS and ent.text.strip()
-        }
-        r[out_field] = sorted(kws)
-
-    with open(iqoq_jsonl, "w", encoding="utf-8") as f:
-        for r in rows:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
 
 
@@ -609,6 +586,7 @@ if __name__ == "__main__":
                     text_key="text",
                     id_field="iqoq_id",
                     done_ids=done_q,
+                    id_field="iqoq_id",
                 )
 
     # -------------------------------
@@ -647,6 +625,7 @@ if __name__ == "__main__":
                     items=iq_items,
                     get_id=lambda x, i: x["iqoq_id"],
                     phase_label="iqoq embeddings",
+                    id_field="iqoq_id",
                 )
                 new_ids = shard_ids - done_ids
                 iqoq_emb, new_iqoq_embs = embed_and_save(
