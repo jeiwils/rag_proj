@@ -191,10 +191,12 @@ Edge:
 
 import os
 from typing import List, Dict, Optional
+
 import numpy as np
 import networkx as nx
 from datetime import datetime
 import json
+
 from src.b_sparse_dense_representations import (
     params,
     faiss_search_topk,
@@ -204,11 +206,13 @@ from src.b_sparse_dense_representations import (
     SIM_THRESHOLD,
     load_faiss_index,
     dataset_rep_paths,
-model_rep_paths,
+    model_rep_paths,
 )
 
-
 from src.utils import load_jsonl
+from src.a2_text_prep import compute_resume_sets
+
+
 
 DATASET = "hotpot"
 SPLIT = "train"
@@ -576,6 +580,7 @@ def run_graph_pipeline(
     iteration: int = 0,
     save_graph: bool = True,
     save_graphml: bool = False,
+    resume: bool = True,
 ):
     """
     Full pipeline:
@@ -605,18 +610,40 @@ def run_graph_pipeline(
     build_and_save_faiss_index(iqoq_emb, dataset, "iqoq", output_dir=base_dir)
     iq_index = load_faiss_index(model_paths["iqoq_index"])
 
-    # ---------- 3) Build edges ----------
+    # ---------- 3) Build edges with optional resume ----------
     graph_paths = graph_output_paths(model, dataset, split, variant)
     edges_out = str(graph_paths["edges"])
-    edges = build_edges(
-        oq_metadata=iqoq_md,
+
+    oq_items = [q for q in iqoq_md if q.get("type") == "OQ"]
+    done_ids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=edges_out,
+        items=oq_items,
+        get_id=lambda x, i: x["iqoq_id"],
+        phase_label="edges",
+        id_field="oq_id",
+    )
+    existing_edges = load_jsonl(edges_out) if resume and os.path.exists(edges_out) else []
+    oq_to_process = [q for q in oq_items if q["iqoq_id"] not in done_ids]
+
+    new_edges = build_edges(
+        oq_metadata=oq_to_process,
         iq_metadata=iqoq_md,
         oq_emb=iqoq_emb,
         iq_index=iq_index,
         top_k=top_k if top_k is not None else MAX_NEIGHBOURS,
         sim_threshold=sim_threshold if sim_threshold is not None else SIM_THRESHOLD,
-        output_jsonl=edges_out,
+        output_jsonl=None,
     )
+    edges = existing_edges + new_edges
+    if new_edges or not existing_edges:
+        with open(edges_out, "w", encoding="utf-8") as f:
+            for e in edges:
+                f.write(json.dumps(e) + "\n")
+        print(f"[Edges] Saved {len(edges)} edges to {edges_out}")
+    else:
+        print(f"[Edges] Using existing {len(edges)} edges from {edges_out}")
+    
 
     # ---------- 4) Build graph ----------
     G = build_networkx_graph(passages=passages_md, edges=edges)

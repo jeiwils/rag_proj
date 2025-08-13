@@ -81,14 +81,8 @@ Fields
 import json
 import os
 from typing import List, Dict
-from src.utils import (
-    load_jsonl,
-    save_jsonl,
-    append_jsonl,
-    save_jsonl_safely,
-    clean_text,
-    pid_plus_title,
-)
+from src.utils import append_jsonl, clean_text, pid_plus_title
+from src.a2_text_prep import existing_ids, compute_resume_sets
 
 
 
@@ -126,51 +120,87 @@ os.makedirs("data/processed_datasets", exist_ok=True)
 
 
 # ==== HOTPOT: include ALL passages, but ONLY GOLD IDs in {split}.jsonl ====
-def process_hotpotqa(split: str, file_path: str, max_examples: int | None = None, overwrite: bool = False) -> None:
+def process_hotpotqa(
+    split: str,
+    file_path: str,
+    max_examples: int | None = None,
+    overwrite: bool = False,
+    *,
+    resume: bool = False,
+) -> None:
     with open(file_path, "r", encoding="utf-8") as f:
         examples = json.load(f)
 
     if isinstance(max_examples, int):
         examples = examples[:max_examples]
 
-    qa, passages = [], []
+    out_dir = "data/processed_datasets/hotpotqa"
+    os.makedirs(out_dir, exist_ok=True)
+    qa_path = f"{out_dir}/{split}.jsonl"
+    passages_path = f"{out_dir}/{split}_passages.jsonl"
+
+    # --- compute resume sets ---
+    done_qids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=qa_path,
+        items=examples,
+        get_id=lambda ex, i: ex["_id"],
+        phase_label=f"hotpotqa {split} questions",
+    )
+
+    def iter_pids():
+        for ex in examples:
+            qid = ex["_id"]
+            for title, sents in ex["context"]:
+                for i, _ in enumerate(sents):
+                    yield pid_plus_title(qid, title, i)
+
+    done_pids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=passages_path,
+        items=iter_pids(),
+        get_id=lambda pid, i: pid,
+        phase_label=f"hotpotqa {split} passages",
+    )
 
     for ex in examples:
         qid = ex["_id"]
-        ex_all_passage_ids = []
 
-        # Build the full passage list
+        # Extract GOLD passage IDs from supporting_facts
+        if qid not in done_qids:
+            gold_ids, seen = [], set()
+            for title, idx in ex.get("supporting_facts", []):
+                pid = pid_plus_title(qid, title, idx)
+                if pid not in seen:
+                    gold_ids.append(pid)
+                    seen.add(pid)
+            append_jsonl(
+                qa_path,
+                {
+                    "question_id": qid,
+                    "dataset": "hotpotqa",
+                    "split": split,
+                    "question": clean_text(ex["question"]),
+                    "gold_answer": clean_text(ex.get("answer", "")),
+                    "gold_passages": gold_ids,
+                },
+            )
+
+        # Build and append passage list
         for title, sents in ex["context"]:
             for i, sent in enumerate(sents):
                 pid = pid_plus_title(qid, title, i)
-                ex_all_passage_ids.append(pid)
-                passages.append({
-                    "passage_id": pid,
-                    "title": title,
-                    "text": clean_text(sent),
-                })
+                if pid in done_pids:
+                    continue
+                append_jsonl(
+                    passages_path,
+                    {
+                        "passage_id": pid,
+                        "title": title,
+                        "text": clean_text(sent),
+                    },
+                )
 
-        # Extract GOLD passage IDs from supporting_facts
-        gold_ids, seen = [], set()
-        for title, idx in ex.get("supporting_facts", []):
-            pid = pid_plus_title(qid, title, idx)
-            if pid not in seen:
-                gold_ids.append(pid)
-                seen.add(pid)
-
-        qa.append({
-            "question_id": qid,
-            "dataset": "hotpotqa",
-            "split": split,
-            "question": clean_text(ex["question"]),
-            "gold_answer": clean_text(ex.get("answer", "")),
-            "gold_passages": gold_ids,   
-        })
-
-    out_dir = "data/processed_datasets/hotpotqa"
-    os.makedirs(out_dir, exist_ok=True)
-    save_jsonl_safely(f"{out_dir}/{split}.jsonl", qa, overwrite=overwrite)
-    save_jsonl_safely(f"{out_dir}/{split}_passages.jsonl", passages, overwrite=overwrite)
 
 
 
@@ -178,51 +208,83 @@ def process_hotpotqa(split: str, file_path: str, max_examples: int | None = None
 
 
 # ==== 2WIKI: include ALL passages, but ONLY GOLD IDs in {split}.jsonl ====
-def process_2wikimultihopqa(split: str, file_path: str, max_examples: int | None = None, overwrite: bool = False) -> None:
+def process_2wikimultihopqa(
+    split: str,
+    file_path: str,
+    max_examples: int | None = None,
+    overwrite: bool = False,
+    *,
+    resume: bool = False,
+) -> None:
     with open(file_path, "r", encoding="utf-8") as f:
         examples = json.load(f)
 
     if isinstance(max_examples, int):
         examples = examples[:max_examples]
 
-    qa, passages = [], []
+    out_dir = "data/processed_datasets/2wikimultihopqa"
+    os.makedirs(out_dir, exist_ok=True)
+    qa_path = f"{out_dir}/{split}.jsonl"
+    passages_path = f"{out_dir}/{split}_passages.jsonl"
+
+    # --- compute resume sets ---
+    done_qids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=qa_path,
+        items=examples,
+        get_id=lambda ex, i: ex["_id"],
+        phase_label=f"2wikimultihopqa {split} questions",
+    )
+
+    def iter_pids():
+        for ex in examples:
+            qid = ex["_id"]
+            for title, sents in ex["context"]:
+                for i, _ in enumerate(sents):
+                    yield pid_plus_title(qid, title, i)
+
+    done_pids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=passages_path,
+        items=iter_pids(),
+        get_id=lambda pid, i: pid,
+        phase_label=f"2wikimultihopqa {split} passages",
+    )
 
     for ex in examples:
         qid = ex["_id"]
-        ex_all_passage_ids = []
+        if qid not in done_qids:
+            gold_ids, seen = [], set()
+            for title, idx in ex.get("supporting_facts", []):
+                pid = pid_plus_title(qid, title, idx)
+                if pid not in seen:
+                    gold_ids.append(pid)
+                    seen.add(pid)
+            append_jsonl(
+                qa_path,
+                {
+                    "question_id": qid,
+                    "dataset": "2wikimultihopqa",
+                    "split": split,
+                    "question": clean_text(ex["question"]),
+                    "gold_answer": clean_text(ex.get("answer", "")),
+                    "gold_passages": gold_ids,
+                },
+            )
 
-        # Build the full passage list
         for title, sents in ex["context"]:
             for i, sent in enumerate(sents):
                 pid = pid_plus_title(qid, title, i)
-                ex_all_passage_ids.append(pid)
-                passages.append({
-                    "passage_id": pid,
-                    "title": title,
-                    "text": clean_text(sent),
-                })
-
-        # Extract GOLD passage IDs from supporting_facts
-        gold_ids, seen = [], set()
-        for title, idx in ex.get("supporting_facts", []):
-            pid = pid_plus_title(qid, title, idx)
-            if pid not in seen:
-                gold_ids.append(pid)
-                seen.add(pid)
-
-        qa.append({
-            "question_id": qid,
-            "dataset": "2wikimultihopqa",
-            "split": split,
-            "question": clean_text(ex["question"]),
-            "gold_answer": clean_text(ex.get("answer", "")),
-            "gold_passages": gold_ids,   
-        })
-
-    out_dir = "data/processed_datasets/2wikimultihopqa"
-    os.makedirs(out_dir, exist_ok=True)
-    save_jsonl_safely(f"{out_dir}/{split}.jsonl", qa, overwrite=overwrite)
-    save_jsonl_safely(f"{out_dir}/{split}_passages.jsonl", passages, overwrite=overwrite)
+                if pid in done_pids:
+                    continue
+                append_jsonl(
+                    passages_path,
+                    {
+                        "passage_id": pid,
+                        "title": title,
+                        "text": clean_text(sent),
+                    },
+                )
 
 
 
@@ -232,52 +294,89 @@ def process_2wikimultihopqa(split: str, file_path: str, max_examples: int | None
 
 # ==== MUSIQUE: include ALL paragraphs + gold_answer inline ====
 
-def process_musique(split: str, file_path: str, max_examples: int | None = None, overwrite: bool = False) -> None:
-    qa, passages = [], []
-
+def process_musique(
+    split: str,
+    file_path: str,
+    max_examples: int | None = None,
+    overwrite: bool = False,
+    *,
+    resume: bool = False,
+) -> None:
+    examples: List[Dict] = []
     with open(file_path, "r", encoding="utf-8") as f:
         for k, line in enumerate(f):
             if isinstance(max_examples, int) and k >= max_examples:
                 break
-
-            ex = json.loads(line)
-            qid = ex["id"]
-            paras = ex.get("paragraphs", [])
-
-            ex_all_passage_ids = []
-            for p in paras:
-                j = p.get("idx")
-                pid = f"{qid}_sent{j}" if j is not None else f"{qid}_sent{len(ex_all_passage_ids)}"
-                ex_all_passage_ids.append(pid)
-                passages.append({
-                    "passage_id": pid,
-                    "title": p.get("title", ""),
-                    "text": clean_text(p.get("paragraph_text", "")),
-                })
-
-            # GOLD paragraphs are those with is_supporting == True
-            gold_ids, seen = [], set()
-            for p in paras:
-                if p.get("is_supporting"):
-                    j = p.get("idx")
-                    pid = f"{qid}_sent{j}" if j is not None else f"{qid}_sent{len(gold_ids)}"
-                    if pid not in seen:
-                        gold_ids.append(pid)
-                        seen.add(pid)
-
-            qa.append({
-                "question_id": qid,
-                "dataset": "musique",
-                "split": split,
-                "question": clean_text(ex.get("question", "")),
-                "gold_answer": clean_text(ex.get("answer", "")),
-                "gold_passages": gold_ids,   
-            })
+            examples.append(json.loads(line))
 
     out_dir = "data/processed_datasets/musique"
     os.makedirs(out_dir, exist_ok=True)
-    save_jsonl_safely(f"{out_dir}/{split}.jsonl", qa, overwrite=overwrite)
-    save_jsonl_safely(f"{out_dir}/{split}_passages.jsonl", passages, overwrite=overwrite)
+    qa_path = f"{out_dir}/{split}.jsonl"
+    passages_path = f"{out_dir}/{split}_passages.jsonl"
+
+    done_qids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=qa_path,
+        items=examples,
+        get_id=lambda ex, i: ex["id"],
+        phase_label=f"musique {split} questions",
+    )
+
+    def iter_pids():
+        for ex in examples:
+            qid = ex["id"]
+            paras = ex.get("paragraphs", [])
+            for idx, p in enumerate(paras):
+                j = p.get("idx")
+                pid = f"{qid}_sent{j}" if j is not None else f"{qid}_sent{idx}"
+                yield pid
+
+    done_pids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=passages_path,
+        items=iter_pids(),
+        get_id=lambda pid, i: pid,
+        phase_label=f"musique {split} passages",
+    )
+
+    for ex in examples:
+        qid = ex["id"]
+        paras = ex.get("paragraphs", [])
+
+        if qid not in done_qids:
+            gold_ids, seen = [], set()
+            for idx, p in enumerate(paras):
+                if p.get("is_supporting"):
+                    j = p.get("idx")
+                    pid = f"{qid}_sent{j}" if j is not None else f"{qid}_sent{idx}"
+                    if pid not in seen:
+                        gold_ids.append(pid)
+                        seen.add(pid)
+            append_jsonl(
+                qa_path,
+                {
+                    "question_id": qid,
+                    "dataset": "musique",
+                    "split": split,
+                    "question": clean_text(ex.get("question", "")),
+                    "gold_answer": clean_text(ex.get("answer", "")),
+                    "gold_passages": gold_ids,
+                },
+            )
+
+        for idx, p in enumerate(paras):
+            j = p.get("idx")
+            pid = f"{qid}_sent{j}" if j is not None else f"{qid}_sent{idx}"
+            if pid in done_pids:
+                continue
+            append_jsonl(
+                passages_path,
+                {
+                    "passage_id": pid,
+                    "title": p.get("title", ""),
+                    "text": clean_text(p.get("paragraph_text", "")),
+                },
+            )
 
 
 
@@ -306,27 +405,26 @@ def process_musique(split: str, file_path: str, max_examples: int | None = None,
 
 if __name__ == "__main__":
 
+    RESUME = True
+    DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
+    SPLITS = ["dev"]
     MAX_EXAMPLES = 200
 
-
-    for split in ["dev"]: # 
-
-
-        # Hotpot uses different file names for train/dev
-        hotpot_path = (
-            "data/raw_datasets/hotpotqa/hotpot_train_v1.1.json"
-            if split == "train"
-            else "data/raw_datasets/hotpotqa/hotpot_dev_fullwiki_v1.json"
-        )
-        process_hotpotqa(split, hotpot_path, max_examples=MAX_EXAMPLES)
-
-        # 2Wiki: files are {split}.json
-        process_2wikimultihopqa(split, f"data/raw_datasets/2wikimultihopqa/{split}.json", max_examples=MAX_EXAMPLES)
-
-        # Musique: files are musique_ans_v1.0_{split}.jsonl
-        process_musique(split, f"data/raw_datasets/musique/musique_ans_v1.0_{split}.jsonl", max_examples=MAX_EXAMPLES)
-
-
+    for dataset in DATASETS:
+        for split in SPLITS:
+            if dataset == "hotpotqa":
+                file_path = (
+                    "data/raw_datasets/hotpotqa/hotpot_train_v1.1.json"
+                    if split == "train"
+                    else "data/raw_datasets/hotpotqa/hotpot_dev_fullwiki_v1.json"
+                )
+                process_hotpotqa(split, file_path, max_examples=MAX_EXAMPLES, resume=RESUME)
+            elif dataset == "2wikimultihopqa":
+                file_path = f"data/raw_datasets/2wikimultihopqa/{split}.json"
+                process_2wikimultihopqa(split, file_path, max_examples=MAX_EXAMPLES, resume=RESUME)
+            elif dataset == "musique":
+                file_path = f"data/raw_datasets/musique/musique_ans_v1.0_{split}.jsonl"
+                process_musique(split, file_path, max_examples=MAX_EXAMPLES, resume=RESUME)
 
 
 

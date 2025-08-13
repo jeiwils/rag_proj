@@ -651,7 +651,8 @@ def compute_resume_sets(
     out_path: str,
     items: Iterable[Any],
     get_id: Callable[[Any, int], Hashable],
-    phase_label: str
+    phase_label: str,
+    id_field: str = "passage_id",
 ) -> Tuple[Set[Hashable], Set[Hashable]]:
     """
     Returns (done_ids, shard_ids) for the current shard/phase and prints an accurate
@@ -664,9 +665,11 @@ def compute_resume_sets(
     if not resume:
         return set(), shard_ids
 
-    done_all = existing_ids(out_path)         # only this shard's file
-    done_ids = done_all & shard_ids           # defensive intersection
-    print(f"[resume] {phase_label}: {len(done_ids)}/{len(shard_ids)} already present in this shard – skipping those")
+    done_all = existing_ids(out_path, id_field=id_field)  # only this shard's file
+    done_ids = done_all & shard_ids  # defensive intersection
+    print(
+        f"[resume] {phase_label}: {len(done_ids)}/{len(shard_ids)} already present in this shard – skipping those"
+    )
     return done_ids, shard_ids
 
 

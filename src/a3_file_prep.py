@@ -142,7 +142,7 @@ import re
 import os
 import json
 import time
-
+from src.a2_text_prep import SERVER_CONFIGS, existing_ids, compute_resume_sets
 from src.utils import load_jsonl, save_jsonl, append_jsonl, resolve_root, FOLDERS_BY_VARIANT
 from src.a2_text_prep import SERVER_CONFIGS
 from pathlib import Path
@@ -199,16 +199,31 @@ def clean_baseline(questions):
     return clean_iqoq(collected if collected else list(map(str, seq)))
 
 
-def clean_file(in_path, out_path, cleaner):
+def clean_file(in_path, out_path, cleaner, resume: bool = False):
     """Clean one shard. Returns a compact summary. No debug files here."""
     raw = load_jsonl(in_path)
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
 
+    done_ids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=out_path,
+        items=raw,
+        get_id=lambda e, i: e.get("passage_id", f"idx:{i}"),
+        phase_label="clean",
+    )
+
     cleaned = []
     total_raw_iq = total_raw_oq = 0
     total_clean_iq = total_clean_oq = 0
+    skipped = 0
 
-    for e in raw:
+    for i, e in enumerate(raw):
+        pid = e.get("passage_id", f"idx:{i}")
+        if resume and pid in done_ids:
+            print(f"[resume] clean skipping {pid}")
+            skipped += 1
+            continue
+
         raw_IQs = list(e.get("IQs") or [])
         raw_OQs = list(e.get("OQs") or [])
         total_raw_iq += len(raw_IQs)
@@ -224,29 +239,54 @@ def clean_file(in_path, out_path, cleaner):
         total_clean_oq += len(cOQ)
         cleaned.append(e)
 
-    save_jsonl(out_path, cleaned)
+    if resume:
+        for e in cleaned:
+            append_jsonl(out_path, e)
+    else:
+        save_jsonl(out_path, cleaned)
+
     return {
         "shard_path": in_path,
         "out_path": out_path,
-        "num_entries": len(raw),
+        "num_entries": len(cleaned),
         "raw_iq": total_raw_iq,
         "raw_oq": total_raw_oq,
         "clean_iq": total_clean_iq,
         "clean_oq": total_clean_oq,
+        "skipped": skipped,
     }
 
 
-def merge_jsonl_files(in_paths, out_path, dedup_key=None):
+def merge_jsonl_files(in_paths, out_path, dedup_key=None, resume: bool = False):
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-    seen = set(); out = []
+    seen = set()
+    if dedup_key and resume:
+        seen.update(existing_ids(out_path, id_field=dedup_key))
+    out = []
     for p in in_paths:
-        for row in load_jsonl(p):
+        rows = load_jsonl(p)
+        done_ids, _ = compute_resume_sets(
+            resume=resume,
+            out_path=out_path,
+            items=rows,
+            get_id=lambda r, i: r.get(dedup_key, f"idx:{i}") if dedup_key else f"idx:{i}",
+            phase_label="merge",
+        )
+        for i, row in enumerate(rows):
+            k = row.get(dedup_key, f"idx:{i}") if dedup_key else f"idx:{i}"
+            if resume and k in done_ids:
+                print(f"[resume] merge skipping {k}")
+                continue
+            if dedup_key and k in seen:
+                continue
             if dedup_key:
-                k = row.get(dedup_key)
-                if k in seen: continue
                 seen.add(k)
             out.append(row)
-    save_jsonl(out_path, out)
+    if resume:
+        for row in out:
+            append_jsonl(out_path, row)
+    else:
+        save_jsonl(out_path, out)
 
 
 
@@ -324,41 +364,73 @@ def explode_passages(master_path: str, output_path: str):
 
 
 
-
-def explode_iqoq(master_path: str, output_path: str):
+def explode_iqoq(master_path: str, output_path: str, resume: bool = False):
     """
     Input: CLEANED, merged file per variant
     Output: one row per IQ/OQ with core metadata (no keywords).
     """
     data = load_jsonl(master_path)
+    items: list[str] = []
+    for e in data:
+        pid = e["passage_id"]
+        for i, _ in enumerate(e.get("IQs", []) or []):
+            items.append(f"{pid}_iq{i}")
+        for i, _ in enumerate(e.get("OQs", []) or []):
+            items.append(f"{pid}_oq{i}")
+    done_ids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=output_path,
+        items=items,
+        get_id=lambda x, i: x,
+        phase_label="explode_iqoq",
+    )
+    seen = set(existing_ids(output_path, id_field="iqoq_id")) if resume else set()
     out = []
     for e in data:
         pid = e["passage_id"]
 
         for i, q in enumerate(e.get("IQs", []) or []):
+            iqid = f"{pid}_iq{i}"
+            if resume and iqid in done_ids:
+                print(f"[resume] explode_iqoq skipping {iqid}")
+                continue
+            if iqid in seen:
+                continue
+            seen.add(iqid)
             out.append({
                 "dataset": e.get("dataset"),
                 "split": e.get("split"),
                 "generation_model": e.get("generation_model"),
                 "parent_passage_id": pid,
-                "iqoq_id": f"{pid}_iq{i}",
+                "iqoq_id": iqid,
                 "type": "IQ",
                 "index": i,
                 "text": q,
             })
 
         for i, q in enumerate(e.get("OQs", []) or []):
+            oqid = f"{pid}_oq{i}"
+            if resume and oqid in done_ids:
+                print(f"[resume] explode_iqoq skipping {oqid}")
+                continue
+            if oqid in seen:
+                continue
+            seen.add(oqid)
             out.append({
                 "dataset": e.get("dataset"),
                 "split": e.get("split"),
                 "generation_model": e.get("generation_model"),
                 "parent_passage_id": pid,
-                "iqoq_id": f"{pid}_oq{i}",
+                "iqoq_id": oqid,
                 "type": "OQ",
                 "index": i,
                 "text": q,
             })
-    save_jsonl(output_path, out)
+    if resume:
+        for rec in out:
+            append_jsonl(output_path, rec)
+    else:
+        save_jsonl(output_path, out)
 
 
 
@@ -459,7 +531,8 @@ CLEANER_BY_VARIANT = {
 
 def process_job(dataset: str, model: str, variant: str, split: str,
                 run_clean: bool, run_merge: bool, run_explode: bool,
-                keep_shard_outputs: bool = False) -> None:
+                keep_shard_outputs: bool = False,
+                resume: bool = False) -> None:
     hoprag_version = FOLDERS_BY_VARIANT[variant][0]  # e.g., "baseline_hoprag"
     base = resolve_root(model, dataset, split, variant) or f"data/models/{model}/{dataset}/{split}/{hoprag_version}"
     root = Path(base)
@@ -498,19 +571,19 @@ def process_job(dataset: str, model: str, variant: str, split: str,
         for p in iqoq_inputs:
             stem = Path(p).stem
             out_clean = cleaned_dir / f"{stem}.cleaned.jsonl"
-            summary = clean_file(p, str(out_clean), cleaner)
+            summary = clean_file(p, str(out_clean), cleaner, resume=resume)
             summaries.append(summary)
             cleaned_paths.append(str(out_clean))
 
     # MERGE cleaned IQ/OQ → cleaned/iqoq.cleaned.jsonl   (NEW name)
     merged_iqoq = cleaned_dir / "iqoq.cleaned.jsonl"
     if run_merge and cleaned_paths:
-        merge_jsonl_files(cleaned_paths, str(merged_iqoq), dedup_key="passage_id")
+        merge_jsonl_files(cleaned_paths, str(merged_iqoq), dedup_key="passage_id", resume=resume)
 
     # MERGE scored shards (accepts *_cs.jsonl) → cleaned/scored.cleaned.jsonl  
     merged_scored = cleaned_dir / "scored.cleaned.jsonl"
     if run_merge and scored_inputs:
-        merge_jsonl_files(scored_inputs, str(merged_scored), dedup_key="passage_id")
+        merge_jsonl_files(scored_inputs, str(merged_scored), dedup_key="passage_id", resume=resume)
         print(f"[scores] merged → {merged_scored}")
 
 
@@ -525,8 +598,8 @@ def process_job(dataset: str, model: str, variant: str, split: str,
     if run_explode and merged_iqoq.exists():
         passages_out = exploded_dir / "passages.exploded.jsonl"
         iqoq_out    = exploded_dir / "iqoq.exploded.jsonl"
-        explode_passages(str(merged_iqoq), str(passages_out))
-        explode_iqoq(str(merged_iqoq), str(iqoq_out))
+        explode_passages(str(merged_iqoq), str(passages_out), resume=resume)
+        explode_iqoq(str(merged_iqoq), str(iqoq_out), resume=resume)
 
     # DEBUG (one TXT per phase) → debug/cleaning_debug.txt   (NEW name)
     if run_clean and summaries:
@@ -637,6 +710,7 @@ if __name__ == "__main__":
     RUN_CLEAN    = True
     RUN_MERGE    = True
     RUN_EXPLODE  = True
+    RESUME       = True
 
     # optional: skip specific combos
     SKIP = set()  # e.g., {("musique", "qwen-7b", "baseline")}
@@ -654,6 +728,7 @@ if __name__ == "__main__":
             run_clean=RUN_CLEAN,
             run_merge=RUN_MERGE,
             run_explode=RUN_EXPLODE,
+            resume=RESUME
         )
 
 

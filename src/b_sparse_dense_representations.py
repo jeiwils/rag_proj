@@ -123,7 +123,7 @@ import re
 import torch
 import os, json, re, spacy
 from typing import Iterable, Set
-
+from src.a2_text_prep import existing_ids, compute_resume_sets
 
 
 SIM_THRESHOLD = 0.65
@@ -135,6 +135,8 @@ params = {
     "max_neighbors": MAX_NEIGHBOURS,
     "alpha": ALPHA
 }
+
+RESUME = True
 
 _bge_model = None
 
@@ -216,43 +218,65 @@ __all__ = [
 
 
 
-
-
-
-def embed_and_save(input_jsonl, output_npy, output_jsonl, model, text_key):
+def embed_and_save(
+    input_jsonl,
+    output_npy,
+    output_jsonl,
+    model,
+    text_key,
+    *,
+    id_field="passage_id",
+    done_ids: Set[str] | None = None,
+):
     if not text_key:
         raise ValueError("You must provide a valid text_key (e.g., 'text' or 'question').")
 
-    # 1) Read all entries + build texts list
     data, texts = [], []
     with open(input_jsonl, "r", encoding="utf-8") as f:
         for line in f:
             entry = json.loads(line)
-            texts.append(entry[text_key])   # raises KeyError if missing
+            if done_ids and entry.get(id_field) in done_ids:
+                continue
+            texts.append(entry[text_key])
             data.append(entry)
 
-    # 2) ⬇️ Put your batched encode with tqdm RIGHT HERE ⬇️
-    embs = model.encode(
-        texts,                      # list of strings
+    if not data:
+        if os.path.exists(output_npy):
+            embs_all = np.load(output_npy).astype("float32")
+        else:
+            embs_all = np.empty((0, model.get_sentence_embedding_dimension()), dtype="float32")
+        print(f"[Embeddings] No new items for {input_jsonl}; skipping.")
+        return embs_all, np.empty((0, embs_all.shape[1] if embs_all.size else 0), dtype="float32")
+
+    new_embs = model.encode(
+        texts,
         normalize_embeddings=True,
         batch_size=128,
         convert_to_numpy=True,
-        show_progress_bar=True
+        show_progress_bar=True,
     ).astype("float32")
 
-    # 3) Attach vec_id, save npy + jsonl
+    vec_offset = len(done_ids) if done_ids else 0
     for i, entry in enumerate(data):
-        entry["vec_id"] = i
+        entry["vec_id"] = i + vec_offset
 
     os.makedirs(os.path.dirname(output_npy), exist_ok=True)
-    np.save(output_npy, embs)
+    if done_ids and os.path.exists(output_npy):
+        existing = np.load(output_npy).astype("float32")
+        embs_all = np.vstack([existing, new_embs])
+    else:
+        embs_all = new_embs
+    np.save(output_npy, embs_all)
 
-    with open(output_jsonl, "w", encoding="utf-8") as f_out:
+    mode = "a" if done_ids else "w"
+    with open(output_jsonl, mode, encoding="utf-8") as f_out:
         for d in data:
             f_out.write(json.dumps(d) + "\n")
 
-    print(f"[Embeddings] Saved {len(data)} vectors to {output_npy} and updated JSONL {output_jsonl}")
-    return embs
+    print(
+        f"[Embeddings] Saved {len(data)} new vectors to {output_npy} and updated JSONL {output_jsonl}"
+    )
+    return embs_all, new_embs
 
 
 
@@ -264,26 +288,47 @@ def build_and_save_faiss_index(
     embeddings: np.ndarray,
     dataset_name: str,
     index_type: str,
-    output_dir: str = "."
+    output_dir: str = ".",
+    new_vectors: np.ndarray | None = None,
 ):
-    """
-    Build and save a FAISS cosine-similarity index for a given dataset.
+    """Build or update a FAISS cosine-similarity index.
 
+    If ``new_vectors`` is provided and an existing index file is found, the new
+    vectors are appended to that index. Otherwise, a fresh index is built from
+    ``embeddings``.
     """
     if not index_type or index_type not in {"passages", "iqoq"}:
         raise ValueError(
             "index_type must be provided and set to either 'passages' or 'iqoq'."
         )
 
-    # Build flat inner-product index
-    index = faiss.IndexFlatIP(embeddings.shape[1]) # calculates inner product - vectors already normalised when generated, so no need for L2 norm
-    index.add(embeddings)
-
-    # Save with clear naming
     faiss_path = os.path.join(output_dir, f"{dataset_name}_faiss_{index_type}.faiss")
-    faiss.write_index(index, faiss_path)
 
-    print(f"[FAISS] Saved {index_type} index to {faiss_path} with {embeddings.shape[0]} vectors.")
+    if new_vectors is not None and os.path.exists(faiss_path):
+        index = faiss.read_index(faiss_path)
+        index.add(new_vectors)
+    else:
+        index = faiss.IndexFlatIP(embeddings.shape[1])
+        index.add(embeddings)
+
+    faiss.write_index(index, faiss_path)
+    print(f"[FAISS] Saved {index_type} index to {faiss_path} with {index.ntotal} vectors.")
+
+def load_faiss_index(path: str):
+    index = faiss.read_index(path)
+    print(f"[FAISS] Loaded {index.ntotal} vectors from {path}")
+    return index
+
+
+
+def faiss_search_topk(query_emb: np.ndarray, index, top_k: int = 50):
+    """
+    retrieves top-k most similar items from .faiss file
+
+    uses vec_id_int
+    """
+    scores, idx = index.search(query_emb, top_k)
+    return idx[0], scores[0]
 
 
 
@@ -381,15 +426,21 @@ def extract_all_keywords(entry: dict) -> dict:
 
 
 
+def add_keywords_to_passages_jsonl(
+    passages_jsonl: str,
+    merged_with_iqoq: bool = False,
+    only_ids: Set[str] | None = None,
+):
+    rows = [json.loads(l) for l in open(passages_jsonl, "r", encoding="utf-8")]
+    if only_ids:
+        targets = [r for r in rows if r.get("passage_id") in only_ids]
+    else:
+        targets = rows
+    texts = [r.get("text", "") for r in targets]
 
-
-def add_keywords_to_passages_jsonl(passages_jsonl: str, merged_with_iqoq: bool = False):
-    rows  = [json.loads(l) for l in open(passages_jsonl, "r", encoding="utf-8")]
-    texts = [r.get("text", "") for r in rows]  # <-- raw text
-
-    for r, doc in zip(rows, nlp.pipe(texts, batch_size=128, n_process=1)):
+    for r, doc in zip(targets, nlp.pipe(texts, batch_size=128, n_process=1)):
         kws = {
-            normalise_text(ent.text)  # normalise_text will handle cleaning
+            normalise_text(ent.text)
             for ent in doc.ents
             if ent.label_ in KEEP_ENTS and ent.text.strip()
         }
@@ -397,19 +448,40 @@ def add_keywords_to_passages_jsonl(passages_jsonl: str, merged_with_iqoq: bool =
         if merged_with_iqoq:
             kws_iq = [extract_keywords(q) for q in (r.get("IQs") or [])]
             kws_oq = [extract_keywords(q) for q in (r.get("OQs") or [])]
-            r["keywords_iq"] = kws_iq
-            r["keywords_oq"] = kws_oq
             r["keywords_IQ"] = kws_iq
             r["keywords_OQ"] = kws_oq
             union = set(r["keywords_passage"])
-            for lst in kws_iq: 
+            for lst in kws_iq:
                 union.update(lst)
-            for lst in kws_oq: 
+            for lst in kws_oq:
                 union.update(lst)
             r["all_keywords"] = sorted(union)
-    with open(passages_jsonl, "w", encoding="utf-8") as f:
-            for r in rows:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+
+def add_keywords_to_iqoq_jsonl(
+    iqoq_jsonl: str,
+    out_field: str = "keywords",
+    only_ids: Set[str] | None = None,
+):
+    rows = [json.loads(l) for l in open(iqoq_jsonl, "r", encoding="utf-8")]
+    if only_ids:
+        targets = [r for r in rows if r.get("iqoq_id") in only_ids]
+    else:
+        targets = rows
+    texts = [r.get("text", "") for r in targets]
+
+    for r, doc in zip(targets, nlp.pipe(texts, batch_size=128, n_process=1)):
+        kws = {
+            normalise_text(ent.text)
+            for ent in doc.ents
+            if ent.label_ in KEEP_ENTS and ent.text.strip()
+        }
+        r[out_field] = sorted(kws)
+
+    with open(iqoq_jsonl, "w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
 
 
 def add_keywords_to_iqoq_jsonl(iqoq_jsonl: str, out_field: str = "keywords"):
@@ -430,17 +502,17 @@ def add_keywords_to_iqoq_jsonl(iqoq_jsonl: str, out_field: str = "keywords"):
 
 
 
-
 if __name__ == "__main__":
     print(f"[spaCy] Using: {SPACY_MODEL}")
 
-    bge_model = get_embedding_model()
+    BGE_MODEL = os.environ.get("BGE_MODEL", "BAAI/bge-base-en-v1.5")
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    bge_model = SentenceTransformer(BGE_MODEL, device=DEVICE)
+    print(f"[BGE] Loaded {BGE_MODEL} on {DEVICE}")
 
     # Config
     MODELS   = ["qwen-7b", "deepseek-distill-qwen-7b"]
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-    VARIANTS = ["baseline", "enhanced"]
-    SPLIT    = "train"
 
     CURRENT_VARIANT = "enhanced"
 
@@ -467,40 +539,77 @@ if __name__ == "__main__":
             questions_npy       = dataset_dir / Path(questions_jsonl_src).with_suffix(".emb.npy").name
 
             # === PASSAGE EMBEDDINGS ===
-            if os.path.exists(passages_npy):
+            if os.path.exists(passages_npy) and not RESUME:
                 passages_emb = np.load(passages_npy).astype("float32")
                 print(f"[skip] {passages_npy} exists; loaded.")
+                if not os.path.exists(pass_paths["passages_index"]):
+                    build_and_save_faiss_index(
+                        embeddings=passages_emb,
+                        dataset_name=dataset,
+                        index_type="passages",
+                        output_dir=str(dataset_dir),
+                    )
             else:
-                passages_emb = embed_and_save(
+                pass_items = load_jsonl(passages_jsonl_src)
+                done_ids, shard_ids = compute_resume_sets(
+                    resume=RESUME,
+                    out_path=str(passages_jsonl),
+                    items=pass_items,
+                    get_id=lambda x, i: x["passage_id"],
+                    phase_label="passage embeddings",
+                )
+                new_ids = shard_ids - done_ids
+                passages_emb, new_pass_embs = embed_and_save(
                     input_jsonl=passages_jsonl_src,
                     output_npy=str(passages_npy),
                     output_jsonl=str(passages_jsonl),
                     model=bge_model,
                     text_key="text",
+                    id_field="passage_id",
+                    done_ids=done_ids,
                 )
+                if new_pass_embs.size > 0:
+                    add_keywords_to_passages_jsonl(
+                        str(passages_jsonl),
+                        merged_with_iqoq=False,
+                        only_ids=new_ids,
+                    )
+                    build_and_save_faiss_index(
+                        embeddings=passages_emb,
+                        dataset_name=dataset,
+                        index_type="passages",
+                        output_dir=str(dataset_dir),
+                        new_vectors=new_pass_embs,
+                    )
+                elif not os.path.exists(pass_paths["passages_index"]):
+                    build_and_save_faiss_index(
+                        embeddings=passages_emb,
+                        dataset_name=dataset,
+                        index_type="passages",
+                        output_dir=str(dataset_dir),
+                    )
 
             # === QUESTION EMBEDDINGS ===
-            if os.path.exists(questions_npy):
+            if os.path.exists(questions_npy) and not RESUME:
                 print(f"[skip] {questions_npy} exists; loaded.")
             else:
-                _ = embed_and_save(
+                q_items = load_jsonl(questions_jsonl_src)
+                done_q, _ = compute_resume_sets(
+                    resume=RESUME,
+                    out_path=str(questions_jsonl),
+                    items=q_items,
+                    get_id=lambda x, i: x["iqoq_id"],
+                    phase_label="question embeddings",
+                )
+                embed_and_save(
                     input_jsonl=questions_jsonl_src,
                     output_npy=str(questions_npy),
                     output_jsonl=str(questions_jsonl),
                     model=bge_model,
-                    text_key="text",  # was "question", changed to "text" for consistency with exploded
+                    text_key="text",
+                    id_field="iqoq_id",
+                    done_ids=done_q,
                 )
-
-            # === PASSAGE FAISS INDEX ===
-            build_and_save_faiss_index(
-                embeddings=passages_emb,
-                dataset_name=dataset,
-                index_type="passages",
-                output_dir=str(dataset_dir)
-            )
-
-            # === SPARSE KEYWORDS FOR PASSAGES ===
-            add_keywords_to_passages_jsonl(str(passages_jsonl), merged_with_iqoq=False)
 
     # -------------------------------
     # Phase B: IQ/OQ (Model-specific)
@@ -520,31 +629,50 @@ if __name__ == "__main__":
                 print(f"[warn] Missing IQ/OQ input file: {iqoq_jsonl}; skipping.")
                 continue
 
-            if os.path.exists(iqoq_npy):
+            if os.path.exists(iqoq_npy) and not RESUME:
                 iqoq_emb = np.load(iqoq_npy).astype("float32")
                 print(f"[skip] {iqoq_npy} exists; loaded.")
+                if not os.path.exists(os.path.join(repr_root, f"{dataset}_faiss_iqoq.faiss")):
+                    build_and_save_faiss_index(
+                        embeddings=iqoq_emb,
+                        dataset_name=dataset,
+                        index_type="iqoq",
+                        output_dir=repr_root,
+                    )
             else:
-                iqoq_emb = embed_and_save(
+                iq_items = load_jsonl(iqoq_jsonl)
+                done_ids, shard_ids = compute_resume_sets(
+                    resume=RESUME,
+                    out_path=iqoq_jsonl,
+                    items=iq_items,
+                    get_id=lambda x, i: x["iqoq_id"],
+                    phase_label="iqoq embeddings",
+                )
+                new_ids = shard_ids - done_ids
+                iqoq_emb, new_iqoq_embs = embed_and_save(
                     input_jsonl=iqoq_jsonl,
                     output_npy=iqoq_npy,
                     output_jsonl=iqoq_jsonl,
                     model=bge_model,
                     text_key="text",
+                    id_field="iqoq_id",
+                    done_ids=done_ids,
                 )
-
-            # === SPARSE KEYWORDS FOR IQ/OQ ===
-            add_keywords_to_iqoq_jsonl(iqoq_jsonl)
-
-            # === IQ/OQ FAISS INDEX ===
-            build_and_save_faiss_index(
-                embeddings=iqoq_emb,
-                dataset_name=dataset,
-                index_type="iqoq",
-                output_dir=repr_root,
-            )
+                if new_iqoq_embs.size > 0:
+                    add_keywords_to_iqoq_jsonl(iqoq_jsonl, only_ids=new_ids)
+                    build_and_save_faiss_index(
+                        embeddings=iqoq_emb,
+                        dataset_name=dataset,
+                        index_type="iqoq",
+                        output_dir=repr_root,
+                        new_vectors=new_iqoq_embs,
+                    )
+                elif not os.path.exists(os.path.join(repr_root, f"{dataset}_faiss_iqoq.faiss")):
+                    build_and_save_faiss_index(
+                        embeddings=iqoq_emb,
+                        dataset_name=dataset,
+                        index_type="iqoq",
+                        output_dir=repr_root,
+                    )
 
             print(f"[done] {model} | {dataset} | {variant}")
-
-
-
-

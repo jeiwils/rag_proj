@@ -103,13 +103,12 @@ File Schema
 
 
 import numpy as np
-from typing import List, Dict, Optional, Tuple, Callable
-from src.a2_text_prep import query_llm, SERVER_CONFIGS, load_jsonl
+from typing import List, Dict, Optional, Tuple, Callable, Set
+from src.a2_text_prep import extract_keywords, query_llm, SERVER_CONFIGS, load_jsonl, compute_resume_sets
 from src.b_sparse_dense_representations import (
-    extract_keywords,
     faiss_search_topk,
     jaccard_similarity,
-    get_embedding_model,
+    bge_model,
     ALPHA,
     dataset_rep_paths,
 )
@@ -555,12 +554,12 @@ def run_traversal(
 ### overall metrics
 
 
-
 def compute_traversal_summary(
-        results_path: str
+        results_path: str,
+        include_ids: Optional[Set[str]] = None
         ) -> dict:
     """
-    Summarize traversal-wide metrics across all dev results.
+    Summarize traversal-wide metrics across all dev results or a filtered subset.
     """
     import json
 
@@ -575,8 +574,11 @@ def compute_traversal_summary(
 
     with open(results_path, "r") as f:
         for line in f:
-            total_queries += 1
             entry = json.loads(line)
+            if include_ids is not None and entry["query_id"] not in include_ids:
+                continue
+
+            total_queries += 1
 
             final = entry["final_metrics"]
             sum_precision += final["precision"]
@@ -617,79 +619,69 @@ def compute_traversal_summary(
 
 
 
-
-
 if __name__ == "__main__":
-    # === Hardcoded config ===
-    model = "qwen-7b"
-    dataset = "hotpot"
-    split = "dev"
-    variant_baseline = "baseline"
-    variant_enhanced = "enhanced"
+    # Configuration lists
+    DATASETS = ["hotpot"]
+    MODELS = ["qwen-7b"]
+    VARIANTS = ["baseline", "enhanced"]
+    RESUME = True
+    SPLIT = "dev"
 
-    # === Load dataset representations ===
-    paths = dataset_rep_paths(dataset, split)
-    passage_metadata = load_jsonl(paths["passages_jsonl"])
-    passage_emb = np.load(paths["passages_emb"])
-    passage_index = faiss.read_index(paths["passages_index"])
-    query_data = [json.loads(line) for line in open(f"{dataset}_{split}.jsonl")]
+    variant_cfg = {
+        "baseline": (hoprag_graph, hoprag_traversal_algorithm),
+        "enhanced": (enhanced_graph, enhanced_traversal_algorithm),
+    }
 
-    bge_model = get_embedding_model()
+    for dataset in DATASETS:
+        # Load dataset-wide resources once per dataset
+        paths = dataset_rep_paths(dataset, SPLIT)
+        passage_metadata = load_jsonl(paths["passages_jsonl"])
+        passage_emb = np.load(paths["passages_emb"])
+        passage_index = faiss.read_index(paths["passages_index"])
+        query_data_full = [json.loads(line) for line in open(f"{dataset}_{SPLIT}.jsonl")]
 
-    ######################################
-    # 1. Run baseline (no revisit)
-    ######################################
-    print(f"\n=== Running BASELINE traversal ===")
-    output_paths = traversal_output_paths(model, dataset, split, variant_baseline)
+        for model in MODELS:
+            for variant in VARIANTS:
+                print(f"\n=== Running {variant.upper()} traversal | {dataset} | {model} ===")
 
-    run_traversal(
-        query_data=query_data,
-        graph=hoprag_graph,
-        passage_metadata=passage_metadata,
-        passage_emb=passage_emb,
-        passage_index=passage_index,
-        emb_model=bge_model,
-        model_servers=SERVER_CONFIGS,
-        output_paths=output_paths,
-        seed_top_k=TOP_K_SEED_PASSAGES,
-        alpha=ALPHA,
-        n_hops=NUMBER_HOPS,
-        traveral_alg=hoprag_traversal_algorithm
-    )
+                graph_obj, trav_alg = variant_cfg[variant]
+                output_paths = traversal_output_paths(model, dataset, SPLIT, variant)
 
-    traversal_metrics = compute_traversal_summary(output_paths["results"])
-    append_global_result(
-        save_path=output_paths["stats"],
-        total_queries=len(query_data),
-        traversal_eval=traversal_metrics
-    )
+                done_ids, _ = compute_resume_sets(
+                    resume=RESUME,
+                    out_path=str(output_paths["results"]),
+                    items=query_data_full,
+                    get_id=lambda q, i: q["query_id"],
+                    phase_label=f"Traversal ({variant})"
+                )
+                remaining_queries = [q for q in query_data_full if q["query_id"] not in done_ids]
+                if not remaining_queries:
+                    print("No new queries to process.")
+                    continue
 
-    ######################################
-    # 2. Run enhanced (allows revisit)
-    ######################################
-    print(f"\n=== Running ENHANCED traversal ===")
-    output_paths = traversal_output_paths(model, dataset, split, variant_enhanced)
+                run_traversal(
+                    query_data=remaining_queries,
+                    graph=graph_obj,
+                    passage_metadata=passage_metadata,
+                    passage_emb=passage_emb,
+                    passage_index=passage_index,
+                    emb_model=bge_model,
+                    model_servers=SERVER_CONFIGS,
+                    output_paths=output_paths,
+                    seed_top_k=TOP_K_SEED_PASSAGES,
+                    alpha=ALPHA,
+                    n_hops=NUMBER_HOPS,
+                    traveral_alg=trav_alg
+                )
 
-    run_traversal(
-        query_data=query_data,
-        graph=enhanced_graph,
-        passage_metadata=passage_metadata,
-        passage_emb=passage_emb,
-        passage_index=passage_index,
-        emb_model=bge_model,
-        model_servers=SERVER_CONFIGS,
-        output_paths=output_paths,
-        seed_top_k=TOP_K_SEED_PASSAGES,
-        alpha=ALPHA,
-        n_hops=NUMBER_HOPS,
-        traveral_alg=enhanced_traversal_algorithm
-    )
-
-    traversal_metrics = compute_traversal_summary(output_paths["results"])
-    append_global_result(
-        save_path=output_paths["stats"],
-        total_queries=len(query_data),
-        traversal_eval=traversal_metrics
-    )
+                new_ids = {q["query_id"] for q in remaining_queries}
+                traversal_metrics = compute_traversal_summary(
+                    output_paths["results"], include_ids=new_ids
+                )
+                append_global_result(
+                    save_path=output_paths["stats"],
+                    total_queries=len(new_ids),
+                    traversal_eval=traversal_metrics
+                )
 
     print("\nAll traversals completed.")
