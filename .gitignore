@@ -20,3 +20,5 @@ __pycache__/
 # Jupyter and system artifacts
 .ipynb_checkpoints/
 .DS_Store
+.cache/
+bin/
