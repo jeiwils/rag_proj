@@ -21,8 +21,24 @@ from src.b_sparse_dense_representations import (
     SIM_THRESHOLD,
     load_faiss_index,
     dataset_rep_paths,
+model_rep_paths,
 )
+
+
 from src.utils import load_jsonl
+
+DATASET = "hotpot"
+SPLIT = "train"
+MODEL = "qwen-7b"
+VARIANT = "baseline"
+
+pass_paths = dataset_rep_paths(DATASET, SPLIT)
+PASSAGES_PATH = pass_paths["passages_jsonl"]
+passages_emb_path = pass_paths["passages_emb"]
+
+iqoq_paths = model_rep_paths(MODEL, DATASET, SPLIT, VARIANT)
+IQOQ_PATH = iqoq_paths["iqoq_jsonl"]
+iqoq_emb_path = iqoq_paths["iqoq_emb"]
 
 DATASET = "hotpot"
 SPLIT = "train"
@@ -391,8 +407,10 @@ def graph_stats(
 
 
 def run_graph_pipeline(
-    dataset: str = "hotpot", ##########################
-    split: str = "train", ################################
+    dataset: str = DATASET,
+    split: str = SPLIT,
+    model: str = MODEL,
+    variant: str = VARIANT,
     passages_file: str = None,
     iqoq_file: str = None,
     top_k: int = None,
@@ -404,7 +422,8 @@ def run_graph_pipeline(
 ):
     """
     Full pipeline:
-      1) Load passages + IQ/OQ metadata and embeddings
+        1) Load passage metadata/embeddings from the dataset folder and IQ/OQ
+         metadata/embeddings from the model-specific folder
       2) Build/load FAISS index for IQs
       3) build_edges(...) -> save edges jsonl
       4) build_networkx_graph(passages, edges)
@@ -412,21 +431,22 @@ def run_graph_pipeline(
       6) graph_stats -> append detailed stats jsonl
     """
     # ---------- 1) Load metadata + embeddings ----------
-    paths = dataset_rep_paths(dataset, split)
-    p_path = passages_file if passages_file else paths["passages_jsonl"]
-    q_path = iqoq_file if iqoq_file else paths["iqoq_jsonl"]
+    pass_paths = dataset_rep_paths(dataset, split)
+    model_paths = model_rep_paths(model, dataset, split, variant)
+    p_path = passages_file if passages_file else pass_paths["passages_jsonl"]
+    q_path = iqoq_file if iqoq_file else model_paths["iqoq_jsonl"]
 
     passages_md = load_jsonl(p_path)
     iqoq_md = load_jsonl(q_path)
 
-    passages_emb = np.load(paths["passages_emb"])
-    iqoq_emb = np.load(paths["iqoq_emb"])
+    passages_emb = np.load(pass_paths["passages_emb"])
+    iqoq_emb = np.load(model_paths["iqoq_emb"])
 
     # ---------- 2) Build / load FAISS index ----------
-    base_dir = os.path.dirname(paths["iqoq_index"])
+    base_dir = os.path.dirname(model_paths["iqoq_index"])
     os.makedirs(base_dir, exist_ok=True)
     build_and_save_faiss_index(iqoq_emb, dataset, "iqoq", output_dir=base_dir)
-    iq_index = load_faiss_index(paths["iqoq_index"])
+    iq_index = load_faiss_index(model_paths["iqoq_index"])
 
     # ---------- 3) Build edges ----------
     edges_out = os.path.join(base_dir, f"{dataset}_edges.jsonl")
@@ -498,12 +518,7 @@ if __name__ == "__main__":
     dataset = "hotpot"
     model = "qwen-7b"
     split = "train"
-    hoprag_mode = "baseline_hoprag"
-
-    passages_file   = f"data/processed_datasets/{dataset}/{split}_passages.jsonl"
-    iqoq_file       = f"data/models/{model}/{dataset}/{hoprag_mode}/{split}_iqoq.jsonl" ################################## DON'T HAVE THIS YET - is it even merged???
-    passages_emb    = f"embeddings/{split}/{dataset}_passages.npy"
-    iqoq_emb        = f"embeddings/{split}/{dataset}_iqoq.npy"
+    variant = "baseline"
 
 
 
@@ -516,8 +531,10 @@ if __name__ == "__main__":
     result_paths = run_graph_pipeline(
         dataset=dataset,
         split=split,
-        passages_file=None,   # uses PASSAGES_PATH internally
-        iqoq_file=None,       # uses IQOQ_PATH internally
+        model=model,
+        variant=variant,
+        passages_file=None,   # uses dataset_rep_paths internally
+        iqoq_file=None,        # uses model_rep_paths internally
         top_k=None,           # defaults to MAX_NEIGHBOURS
         sim_threshold=None,   # defaults to SIM_THRESHOLD
         total_queries=total_queries,

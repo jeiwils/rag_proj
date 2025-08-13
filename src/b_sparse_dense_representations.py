@@ -122,29 +122,28 @@ params = {
 
 
 def dataset_rep_paths(dataset: str, split: str) -> Dict[str, str]:
-    """Return standard representation file paths for a dataset split.
+    """Return representation file paths for dataset passages only.
 
-    Paths live under ``data/representations/{dataset}/{split}`` and include
-    JSONL metadata, NumPy embeddings and FAISS indexes for both passages and
-    IQ/OQ items.
+    Passages are stored under ``data/representations/{dataset}/{split}`` and
+    include JSONL metadata, NumPy embeddings, and a FAISS index. IQ/OQ items
+    are stored separately in the model-specific directories (see
+    :func:`model_rep_paths`).
     """
     base = os.path.join("data", "representations", dataset, split)
     return {
         "passages_jsonl": os.path.join(base, f"{dataset}_passages.jsonl"),
         "passages_emb": os.path.join(base, f"{dataset}_passages_emb.npy"),
         "passages_index": os.path.join(base, f"{dataset}_faiss_passages.faiss"),
-        "iqoq_jsonl": os.path.join(base, f"{dataset}_iqoq.jsonl"),
-        "iqoq_emb": os.path.join(base, f"{dataset}_iqoq_emb.npy"),
-        "iqoq_index": os.path.join(base, f"{dataset}_faiss_iqoq.faiss"),
     }
 
 
 def model_rep_paths(model: str, dataset: str, split: str, variant: str) -> Dict[str, str]:
-    """Return representation paths for a specific model/variant.
+    """Return representation paths for model-specific IQ/OQ items.
 
-    These are placed under
-    ``data/representations/{model}/{dataset}/{split}/{variant}`` with the same
-    naming convention as :func:`dataset_rep_paths`.
+    IQ/OQ representations are stored under
+    ``data/representations/{model}/{dataset}/{split}/{variant}`` and include
+    JSONL metadata, NumPy embeddings and a FAISS index. Passages live in the
+    dataset-level directories (see :func:`dataset_rep_paths`).
     """
     base = os.path.join(
         "data",
@@ -155,9 +154,6 @@ def model_rep_paths(model: str, dataset: str, split: str, variant: str) -> Dict[
         variant,
     )
     return {
-        "passages_jsonl": os.path.join(base, f"{dataset}_passages.jsonl"),
-        "passages_emb": os.path.join(base, f"{dataset}_passages_emb.npy"),
-        "passages_index": os.path.join(base, f"{dataset}_faiss_passages.faiss"),
         "iqoq_jsonl": os.path.join(base, f"{dataset}_iqoq.jsonl"),
         "iqoq_emb": os.path.join(base, f"{dataset}_iqoq_emb.npy"),
         "iqoq_index": os.path.join(base, f"{dataset}_faiss_iqoq.faiss"),
@@ -177,6 +173,9 @@ __all__ = [
     "jaccard_similarity",
 ]
 
+
+
+
 ################################################################################################################
 # SPARSE AND DENSE REPRESENTATIONS
 ################################################################################################################
@@ -184,44 +183,6 @@ __all__ = [
 
 
 
-
-
-# def embed_and_save(input_jsonl, output_npy, output_jsonl, model, text_key):
-#     """
-
-#     for graph embeddings
-#     and dev set checks 
-
-#     Generate normalized embeddings for FAISS indexing.
-#     - Adds vec_id to each entry for FAISS alignment.
-#     - Saves embeddings to .npy and JSONL metadata with vec_id.
-#     - Raises an error if text_key is not provided.
-#     """
-#     if not text_key:
-#         raise ValueError("You must provide a valid text_key (e.g., 'text' or 'question').")
-
-#     data, embeddings = [], []
-
-#     with open(input_jsonl, "r", encoding="utf-8") as f:
-#         for idx, line in enumerate(f):
-#             entry = json.loads(line)
-#             text = entry[text_key]  # will raise KeyError if the key is missing
-#             vec = model.encode(text, normalize_embeddings=True)
-
-#             entry["vec_id"] = idx
-#             embeddings.append(vec)
-#             data.append(entry)
-
-#     embeddings = np.array(embeddings, dtype="float32")
-#     os.makedirs(os.path.dirname(output_npy), exist_ok=True)
-#     np.save(output_npy, embeddings)
-
-#     with open(output_jsonl, "w", encoding="utf-8") as f_out:
-#         for d in data:
-#             f_out.write(json.dumps(d) + "\n")
-
-#     print(f"[Embeddings] Saved {len(data)} vectors to {output_npy} and updated JSONL {output_jsonl}")
-#     return embeddings
 
 
 
@@ -295,18 +256,6 @@ def build_and_save_faiss_index(
 
 
 
-# def load_faiss_index(dataset_name: str, text_content: str, base_dir: str = "train"): 
-    
-#     """
-#     Load FAISS index (.faiss) for passages or pseudoquestions.
-
-#     """
-#     faiss_path = f"{base_dir}/{dataset_name}_faiss_{text_content}.faiss" #################################### check directories
-#     index = faiss.read_index(faiss_path)
-#     print(f"[FAISS] Loaded {index.ntotal} vectors from {faiss_path}")
-#     return index
-
-
 
 def load_faiss_index(path: str):
     index = faiss.read_index(path)
@@ -323,6 +272,11 @@ def faiss_search_topk(query_emb: np.ndarray, index, top_k: int = 50):
     """
     scores, idx = index.search(query_emb, top_k)
     return idx[0], scores[0]
+
+
+
+
+
 
 
 
@@ -392,26 +346,6 @@ def extract_all_keywords(entry: dict) -> dict:
 
 
 
-# def add_keywords_to_passages_jsonl(passages_jsonl: str, merged_with_iqoq: bool = False):
-#     """Writes keywords_text, and (optionally) keywords_IQ/keywords_OQ + all_keywords."""
-#     rows = [json.loads(l) for l in open(passages_jsonl, "r", encoding="utf-8")]
-#     out = []
-#     for r in rows:
-#         r["keywords_text"] = extract_keywords(r.get("text", ""))
-#         if merged_with_iqoq:
-#             kws_iq = [extract_keywords(q) for q in (r.get("IQs") or [])]
-#             kws_oq = [extract_keywords(q) for q in (r.get("OQs") or [])]
-#             r["keywords_IQ"] = kws_iq
-#             r["keywords_OQ"] = kws_oq
-#             union = set(r["keywords_text"])
-#             for lst in kws_iq: union.update(lst)
-#             for lst in kws_oq: union.update(lst)
-#             r["all_keywords"] = sorted(union)
-#         out.append(r)
-#     with open(passages_jsonl, "w", encoding="utf-8") as f:
-#         for r in out:
-#             f.write(json.dumps(r) + "\n")
-#     print(f"[sparse] passages keywords → {passages_jsonl}")
 
 def add_keywords_to_passages_jsonl(passages_jsonl: str, merged_with_iqoq: bool = False):
     rows  = [json.loads(l) for l in open(passages_jsonl, "r", encoding="utf-8")]
@@ -597,113 +531,60 @@ if __name__ == "__main__":
 
 
 
-
-
 """
 
 
 
+Illustrative layout of representation artifacts written by this module.
 
+Dataset-level outputs live under ``data/representations/datasets/{dataset}/{split}``:
 
-
-
-
-
-{ # data/processed_datasets/{dataset}/{split}_passages.jsonl
+{ # data/representations/datasets/{dataset}/{split}/{split}_passages.jsonl
   "dataset": "hotpotqa",
   "split": "train",
-  "generation_model": "qwen-7b",
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
   "text": "Arthur's Magazine (1844–1846)...",
-  "conditioned_score": 0.25,
-  "vec_id": 123,                      // row index in passages.emb.npy
+  "vec_id": 123,                      // row index in {split}_passages.emb.npy
   "keywords_text": [
-    "arthur_s_magazine", "american", "literary", "periodical", "philadelphia", "1844_1846"
+    "arthur_s_magazine", "american", "literary",
+    "periodical", "philadelphia", "1844_1846"
   ]
 }
 
 
 
-data/processed_datasets/{dataset}/{split}_passages.emb.npy
+
+data/representations/datasets/{dataset}/{split}/{split}_passages.emb.npy
 # shape: (num_passages, 768), dtype float32
 # row i corresponds to the JSONL line with "vec_id": i
 
+data/representations/datasets/{dataset}/{split}/{split}_passages.keywords.jsonl
+# optional keywords-only view keyed by passage_id
 
-data/processed_datasets/{dataset}/{dataset}_{split}_faiss_passages.faiss
+data/representations/datasets/{dataset}/{split}/{dataset}_{split}_faiss_passages.faiss
+
+data/representations/datasets/{dataset}/{split}/{split}.jsonl
+data/representations/datasets/{dataset}/{split}/{split}.emb.npy
+# question metadata and embeddings (with keywords if available)
 
 
 
 
 
 
+Model-specific IQ/OQ artifacts live under
+``data/representations/models/{model}/{dataset}/{split}/{variant}``:
 
-{ # data/processed_datasets/{dataset}/{split}.jsonl
-  "question_id": "5a7a06935542990198eaf050",
+{ # data/representations/models/{model}/{dataset}/{split}/{variant}/iqoq.jsonl
   "dataset": "hotpotqa",
   "split": "train",
-  "question": "Which magazine was started first Arthur's Magazine or First for Women?",
-  "gold_answer": "Arthur's Magazine",
-  "passages": [
-    "5a7a06935542990198eaf050__arthur_s_magazine_sent0",
-    "5a7a06935542990198eaf050__first_for_women_sent0"
-  ],
-  "vec_id": 42                        // row index in train.emb.npy
-}
-
-
-
-
-data/processed_datasets/{dataset}/{split}.emb.npy
-# shape: (num_questions, 768), dtype float32
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-{root}/{split}_iqoq_items.cleaned.{variant}.jsonl
-# root = data/models/{model}/{dataset}/{variant_folder}
-
-
-
-
-
-
-{
-  "dataset": "hotpotqa",
-  "split": "train",
-  "generation_model": "qwen-7b",
-  "parent_passage_id": "5a7a0693__arthur_s_magazine_sent0",
-  "iqoq_id": "5a7a0693__arthur_s_magazine_sent0_iq0",
-  "type": "IQ",
-  "index": 0,
   "text": "Who founded Arthur's Magazine?",
-  "vec_id": 987,
+  "vec_id": 987,                      // row index in iqoq.emb.npy
   "keywords": ["arthur_s_magazine", "founded", "who"]
 }
 
-
-
-{root}/{split}_iqoq_items.cleaned.{variant}.emb.npy
-# shape: (num_items, 768), dtype float32
-
-
-
-{root}/{dataset}_{split}_{model}_{variant}_faiss_iqoq.faiss
-
-
+data/representations/models/{model}/{dataset}/{split}/{variant}/iqoq.emb.npy
+{dataset}_{split}_{model}_{variant}_faiss_iqoq.faiss
 
 
 
