@@ -1,80 +1,79 @@
-
-
-
-
-
-
 """
 
 Module Overview
 ---------------
-Prepare raw multi-hop QA datasets for downstream retrieval and evaluation. The
-script reads each dataset's original files, normalizes question text and
-passages, and writes paired question and passage JSONL files. Question files
-store only the IDs of gold passages while companion `_passages` files hold the
-text of every passage.
+Prepare raw multi-hop QA datasets for downstream retrieval and evaluation.
+
+This script reads each dataset's original files, normalizes question text and
+passages, and writes paired question and passage JSONL files. Each question
+entry includes only the IDs of gold passages, while companion `_passages` files
+contain the full text of all available passages.
+
+
+
 
 Inputs
 ------
-- ``data/raw_datasets/hotpotqa/hotpot_train_v1.1.json`` – HotpotQA training data.
-- ``data/raw_datasets/hotpotqa/hotpot_dev_fullwiki_v1.json`` – HotpotQA dev data.
-- ``data/raw_datasets/2wikimultihopqa/{split}.json`` – 2WikiMultiHopQA data.
-- ``data/raw_datasets/musique/musique_ans_v1.0_{split}.jsonl`` – MuSiQue data.
+
+### data/raw_datasets/{dataset}/
+
+- hotpot_train_v1.1.json                  - HotpotQA training data.
+- hotpot_dev_fullwiki_v1.json                 - HotpotQA dev data.
+- {split}.json``                             - 2WikiMultiHopQA data (either 'train' or 'dev')
+- musique_ans_v1.0_{split}.jsonl              - MuSiQue data. (either 'train' or 'dev')
+
+
+
 
 Outputs
 -------
-- ``data/processed_datasets/{dataset}/{split}.jsonl`` – processed questions with
-  gold passage IDs.
-- ``data/processed_datasets/{dataset}/{split}_passages.jsonl`` – corresponding
-  passages with text content.
+
+### data/processed_datasets/{dataset}/
+
+- {split}.jsonl                                       - processed questions with gold passage IDs.
+- {split}_passages.jsonl                               - corresponding ID passages with text content.
 
 
 
 
 
-Example
--------
-### Question row (``data/processed_datasets/hotpotqa/train.jsonl``)
+File Schema
+-----------
+
+### {split}.jsonl 
 
 {
-  "question_id": "5a7a06935542990198eaf050",
-  "dataset": "hotpotqa",
+  "question_id": "{question_id}",
+  "dataset": "{dataset}",
   "split": "{split}",
-  "question": "Which magazine was started first Arthur's Magazine or First for Women?",
-  "gold_answer": "Arthur's Magazine",
-  "passages": [
-    "5a7a06935542990198eaf050__arthur_s_magazine_sent0",
-    "5a7a06935542990198eaf050__first_for_women_sent0"
-  ]
+  "question": "{normalized_question}",
+  "gold_answer": "{gold_answer}",
+  "gold_passages": ["{passage_id_1}", "{passage_id_2}", "..."]
 }
-```
+
 Fields
 - ``question_id``: unique question identifier.
 - ``dataset``: dataset name.
 - ``split``: dataset split.
 - ``question``: normalized question text.
 - ``gold_answer``: reference answer.
-- ``passages``: list of gold passage IDs pointing to
-  ``data/processed_datasets/{dataset}/{split}_passages.jsonl``.
+- ``gold_passages``: list of gold passage IDs, each pointing to a matching entry in ``{split}_passages.jsonl`` in the same directory
 
 
-  
 
-### Passage row (``data/processed_datasets/hotpotqa/train_passages.jsonl``)
-```json
+
+### {split}_passages.jsonl   
+
 {
-  "passage_id": "5a7a06935542990198eaf050__arthur_s_magazine_sent0",
-  "title": "Arthur's Magazine",
-  "text": "Arthur's Magazine (1844–1846) was an American literary periodical..."
+  "passage_id": "{passage_id}",
+  "title": "{source_title}",
+  "text": "{passage_text}"
 }
-```
+
 Fields
 - ``passage_id``: unique passage identifier.
 - ``title``: source page title.
 - ``text``: sentence-level passage text.
-
-
-
 
 """
 
@@ -212,7 +211,7 @@ def process_hotpotqa(split: str, file_path: str, max_examples: int | None = None
             "split": split,
             "question": clean_text(ex["question"]),
             "gold_answer": clean_text(ex.get("answer", "")),
-            "passages": gold_ids,   # ONLY gold passages here
+            "gold_passages": gold_ids,   
         })
 
     out_dir = "data/processed_datasets/hotpotqa"
@@ -264,7 +263,7 @@ def process_2wikimultihopqa(split: str, file_path: str, max_examples: int | None
             "split": split,
             "question": clean_text(ex["question"]),
             "gold_answer": clean_text(ex.get("answer", "")),
-            "passages": gold_ids,   # ONLY gold passages here
+            "gold_passages": gold_ids,   
         })
 
     out_dir = "data/processed_datasets/2wikimultihopqa"
@@ -319,7 +318,7 @@ def process_musique(split: str, file_path: str, max_examples: int | None = None,
                 "split": split,
                 "question": clean_text(ex.get("question", "")),
                 "gold_answer": clean_text(ex.get("answer", "")),
-                "passages": gold_ids,   # ONLY gold passages here
+                "gold_passages": gold_ids,   
             })
 
     out_dir = "data/processed_datasets/musique"
