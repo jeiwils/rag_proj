@@ -11,7 +11,6 @@ contain the full text of all available passages.
 
 
 
-
 Inputs
 ------
 
@@ -24,7 +23,6 @@ Inputs
 
 
 
-
 Outputs
 -------
 
@@ -32,7 +30,6 @@ Outputs
 
 - {split}.jsonl                                       - processed questions with gold passage IDs.
 - {split}_passages.jsonl                               - corresponding ID passages with text content.
-
 
 
 
@@ -81,53 +78,9 @@ Fields
 
 
 
-
-# 
-# with or without updated IQOQ prompts
-# with or without CS-guided IQOQ
-# with or without updated algorithm 
-# timings for iqoq generation - baseline vs enhanced prompt
-# 
-# 
-# 
-
-
-
-# ENTIRE PROJECT STRUCTURE 
-# - build and tune on train set (200 ROWS)
-# - rebuild and test on dev set (500 ROWS)
-
-
-
-
-
-
-
-# TO DO
-# - different folders for the 3 pipelines ??????????????????????????????????????
-# - neo4j for final graph build + test traversal
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import json
 import os
+from typing import List, Dict
 from src.utils import (
     load_jsonl,
     save_jsonl,
@@ -137,7 +90,7 @@ from src.utils import (
     pid_plus_title,
 )
 
-from typing import List, Dict
+
 
 
 

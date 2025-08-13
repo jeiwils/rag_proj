@@ -1,33 +1,63 @@
+"""
+Module Overview
+---------------
+Split passages into model-specific shards and generate conditioned scores (CS) 
+alongside incoming and outgoing question (IQ/OQ) lists for each passage.
+
+This script supports both baseline and enhanced HopRAG workflows using multiple
+LLM servers. Enhanced IQ/OQ generation is guided by conditioned scores.
+
+Key steps include:
+- Splitting `{split}_passages.jsonl` into N shards based on model size.
+- Generating conditioned scores for each passage.
+- Creating IQ/OQ lists either with fixed or score-based ratios.
+- Writing debug summaries for each shard and phase.
 
 
-"""Split passages into model-sized shards and generate conditioned scores and
-IQ/OQ lists.
 
 Inputs
 ------
 data/processed_datasets/{dataset}/{split}_passages.jsonl
-    Source passages with ``passage_id``, ``title`` and ``text`` fields.
+    Source passages with the following fields:
+    - ``passage_id``: unique identifier.
+    - ``title``: source article or document title.
+    - ``text``: passage content.
+
+    
 
 Outputs
 -------
-data/models/{model}/{dataset}/{split}/shards/{split}_passages_shard{N}_{size}.jsonl
-    Unannotated passage shards.
-data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_cs.jsonl
-    Conditioned-score shards.
-data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_iqoq_baseline.jsonl
-    Baseline IQ/OQ shards.
-data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl
-    Enhanced IQ/OQ shards.
-data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_cs_debug.txt
-    Per-shard debug summaries for CS.
-data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_iqoq_baseline_debug.txt
-    Per-shard debug summaries for baseline IQ/OQ.
-data/models/{model}/{dataset}/{split}/{hoprag_version}/{split}_passages_shard{N}_{size}_iqoq_enhanced_debug.txt
-    Per-shard debug summaries for enhanced IQ/OQ.
+Sharded output files written to:
+
+data/models/{model}/{dataset}/{split}/shards/
+    - {split}_passages_shard{N}_{size}.jsonl
+        → Raw input shards split by model size (1.5b → 4 shards, 7b → 2, 14b → 1).
+
+data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/
+
+
+    - {split}_passages_shard{N}_{size}_cs.jsonl
+        → Passages with conditioned scores.
+
+    - {split}_passages_shard{N}_{size}_iqoq_baseline.jsonl
+        → IQ/OQ questions from baseline HopRAG prompts (fixed ratio).
+
+    - {split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl
+        → IQ/OQ questions generated using conditioned score–based ratios.
+
+    - *_cs_debug.txt
+    - *_iqoq_baseline_debug.txt
+    - *_iqoq_enhanced_debug.txt
+        → Per-shard debug summaries (counts, missing values, timing).
+
+        
 
 Examples
 --------
-{ # data/models/qwen-7b/hotpotqa/train/train_passages_shard1_7b_cs.jsonl
+
+### _cs.jsonl 
+
+{
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
   "title": "Arthur's Magazine",
   "text": "Arthur's Magazine (1844–1846)...",
@@ -37,7 +67,11 @@ Examples
   "generation_model": "qwen-7b"
 }
 
-{ # data/models/qwen-7b/hotpotqa/train/train_passages_shard1_7b_iqoq_baseline.jsonl
+
+
+### _iqoq_baseline.jsonl
+
+{
   "passage_id": "5a7a0693__first_for_women_sent0",
   "title": "First for Women",
   "text": "First for Women is a woman's magazine...",
@@ -45,7 +79,7 @@ Examples
   "OQs": ["...", "...", "...", "..."],
   "num_iq": 2,
   "num_oq": 4,
-  "cs_used": null, # WOULD BE NUMERICAL IF ENHANCED
+  "cs_used": null,                                             # baseline uses fixed ratio, no CS - enhanced would have a float here
   "hoprag_version": "baseline_hoprag",
   "dataset": "hotpotqa",
   "split": "train",
@@ -53,12 +87,14 @@ Examples
 }
 
 
-## Debug files
-Plain text files (`*_cs_debug.txt`, `*_iqoq_baseline_debug.txt`, `*_iqoq_enhanced_debug.txt`) include:
+
+Debug Logs
+----------
+Each debug file logs:
 - Total passages processed
-- Model / dataset / phase
+- Model, dataset, and phase info
 - Total time taken (seconds)
-- Optional sections listing missing CS / missing IQ / missing OQ (with IDs)
+- List of missing conditioned scores or missing IQ/OQ generations
 
 
 """
@@ -346,12 +382,6 @@ def query_llm(prompt: str, server_url: str, max_tokens: int = 5, temperature: fl
 
 
 
-
-###########################################################################
-
-
-
-
 def write_debug_file(
     task_type: str,
     total_processed: int,
@@ -368,7 +398,7 @@ def write_debug_file(
 ):
     size = model_size(model)
     shard_stem = Path(shard_path).stem
-    debug_dir = Path(f"data/models/{model}/{dataset}/{split_name}/{hoprag_version}")
+    debug_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards/{hoprag_version}")
     debug_dir.mkdir(parents=True, exist_ok=True)
 
     if task_type == "cs":
@@ -672,7 +702,7 @@ def process_server_task(config: dict):
     resume     = bool(config.get("resume", False))
 
     # outputs live under .../{dataset}/{split}/{hoprag_version}
-    phase_dir = Path(f"data/models/{model}/{dataset}/{split_name}/{hoprag_version}")
+    phase_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards/{hoprag_version}")
     phase_dir.mkdir(parents=True, exist_ok=True)
 
     t0 = time.time()
@@ -918,13 +948,6 @@ def process_server_task(config: dict):
 
 
 
-
-
-
-
-
-########################## CAREFUL!!!
-##### THIS NEEDS TO SAVE 2 VERSIONS EACH TIME - WIITH AN INDEX AND _BACKUP
 
 
 
