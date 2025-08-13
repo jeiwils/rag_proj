@@ -4,7 +4,7 @@ import os
 import json
 import time
 
-from src.a1_dataset_processing import load_jsonl, save_jsonl, append_jsonl
+from src.utils import load_jsonl, save_jsonl, append_jsonl, resolve_root, FOLDERS_BY_VARIANT
 from src.a2_text_prep import SERVER_CONFIGS
 from pathlib import Path
 
@@ -471,11 +471,6 @@ def list_inputs(root: str, split: str, variant: str):
 
 
 
-# Maps variant → preferred folder names to search (first match wins).
-FOLDERS_BY_VARIANT = {
-    "baseline": ["baseline_hoprag"],
-    "enhanced": ["enhanced_hoprag"],
-}
 
 # Maps variant → cleaning function to apply to IQ/OQ fields.
 CLEANER_BY_VARIANT = {
@@ -489,41 +484,6 @@ CLEANER_BY_VARIANT = {
 
 
 
-
-
-
-
-
-def resolve_root(model: str, ######################################## could i use this earlier? isn't it useful in all my directories?
-                 dataset: str,
-                 split: str,
-                 variant: str) -> str | None:
-    """
-    Resolve the root directory that contains input/output files for a job.
-
-    Given a `(model, dataset, variant)` triple, this tries each candidate folder
-    defined in `FOLDERS_BY_VARIANT[variant]` under the path:
-        data/models/{model}/{dataset}/{candidate_folder}
-    and returns the first folder that exists on disk.
-
-    Args:
-        model: Model identifier (e.g., "Qwen-7b") used in the directory path.
-        dataset: Dataset identifier (e.g., "hotpotqa") used in the directory path.
-        variant: Variant name (e.g., "baseline", "enhanced") used to choose folders.
-
-    Returns:
-        The first existing root directory path as a string, or `None` if no
-        candidate folder exists.
-
-    Examples:
-        >>> resolve_root("Qwen-7b", "hotpotqa", "baseline")
-        'data/models/Qwen-7b/hotpotqa/baseline_hoprag'   # if it exists
-    """
-    for hoprag_version in FOLDERS_BY_VARIANT[variant]:
-        root = f"data/models/{model}/{dataset}/{split}/{hoprag_version}"
-        if os.path.isdir(root):
-            return root
-    return None
 
 
 

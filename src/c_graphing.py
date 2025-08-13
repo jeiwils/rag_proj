@@ -13,7 +13,10 @@ import networkx as nx
 from datetime import datetime
 import json
 from src.b_sparse_dense_representations import params, faiss_search_topk, jaccard_similarity, build_and_save_faiss_index, MAX_NEIGHBOURS, SIM_THRESHOLD, load_faiss_index, passages_emb_path, iqoq_emb_path
-from src.a2_text_prep import load_jsonl, passages_path, iqoq_path
+from src.utils import load_jsonl
+
+PASSAGES_PATH = "train/hotpot_passages.jsonl"
+IQOQ_PATH = "train/hotpot_iqoq.jsonl"
 
 ################################################################################################################
 # GRAPH CONSTRUCTION
@@ -91,8 +94,8 @@ def build_edges(
 
 
 # # Load metadata
-# passages_metadata = load_jsonl(passages_path)
-# iqoq_metadata = load_jsonl(iqoq_path)
+# passages_metadata = load_jsonl(PASSAGES_PATH)
+# iqoq_metadata = load_jsonl(IQOQ_PATH)
 
 # # Load embeddings
 # passages_emb = np.load(passages_emb_path)
@@ -408,8 +411,8 @@ def run_graph_pipeline(
       6) graph_stats -> append detailed stats jsonl
     """
     # ---------- 1) Load metadata + embeddings ----------
-    p_path = passages_file if passages_file else passages_path
-    q_path = iqoq_file if iqoq_file else iqoq_path
+    p_path = passages_file if passages_file else PASSAGES_PATH
+    q_path = iqoq_file if iqoq_file else IQOQ_PATH
 
     passages_md = load_jsonl(p_path)
     iqoq_md = load_jsonl(q_path)
@@ -510,8 +513,8 @@ if __name__ == "__main__":
     result_paths = run_graph_pipeline(
         dataset=dataset,
         split=split,
-        passages_file=None,   # uses passages_path internally
-        iqoq_file=None,       # uses iqoq_path internally
+        passages_file=None,   # uses PASSAGES_PATH internally
+        iqoq_file=None,       # uses IQOQ_PATH internally
         top_k=None,           # defaults to MAX_NEIGHBOURS
         sim_threshold=None,   # defaults to SIM_THRESHOLD
         total_queries=total_queries,

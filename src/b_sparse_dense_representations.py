@@ -95,9 +95,7 @@ import faiss
 import os
 from typing import List, Dict
 from sentence_transformers import SentenceTransformer
-from src.a1_dataset_processing import clean_text
-from src.a2_text_prep import load_jsonl
-from src.a3_file_prep import resolve_root
+from .utils import load_jsonl, save_jsonl_safely, pid_plus_title, clean_text, resolve_root
 
 import re
 import torch

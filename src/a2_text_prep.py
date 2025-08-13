@@ -140,7 +140,7 @@ from pathlib import Path
 import re
 import requests
 from multiprocessing import Process
-from src.a1_dataset_processing import load_jsonl, save_jsonl, append_jsonl
+from src.utils import load_jsonl, save_jsonl, append_jsonl
 from tqdm import tqdm
 from typing import Callable, List, Dict
 import time 

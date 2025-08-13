@@ -73,10 +73,17 @@ metrics
 
 
 
-import re
+
 import json
-import unicodedata
 import os
+from src.utils import (
+    load_jsonl,
+    save_jsonl,
+    append_jsonl,
+    save_jsonl_safely,
+    clean_text,
+    pid_plus_title,
+)
 
 from typing import List, Dict
 
@@ -224,135 +231,6 @@ data/processed_datasets/{dataset}/{split}_passages.jsonl
 
 
 
-
-
-
-
-
-
-
-
-
-############################
-# 1. JSONL and General I/O
-############################
-
-def load_jsonl(path: str) -> List[Dict]:
-    with open(path, 'r', encoding='utf-8') as f:
-        return [json.loads(line) for line in f]
-
-def save_jsonl(path: str, data: List[Dict]):
-    with open(path, 'w', encoding='utf-8') as f:
-        for item in data:
-            f.write(json.dumps(item, ensure_ascii=False) + '\n')
-
-def append_jsonl(path, obj):
-    os.makedirs(os.path.dirname(path), exist_ok=True)  # create dirs if needed
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(obj, ensure_ascii=False) + "\n")
-
-
-
-
-
-
-
-
-
-
-
-
-def _next_version_path(path: str) -> str:
-    """If foo.jsonl exists, return foo.v1.jsonl, foo.v2.jsonl, ..."""
-    base, ext = os.path.splitext(path)
-    i = 1
-    candidate = f"{base}.v{i}{ext}"
-    while os.path.exists(candidate):
-        i += 1
-        candidate = f"{base}.v{i}{ext}"
-    return candidate
-
-
-def save_jsonl_safely(path: str, data: List[Dict], overwrite: bool = False) -> str:
-    """Write jsonl; if path exists and overwrite=False, write to a versioned filename."""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    out_path = path
-    if os.path.exists(path) and not overwrite:
-        out_path = _next_version_path(path)
-    with open(out_path, 'w', encoding='utf-8') as f:
-        for item in data:
-            f.write(json.dumps(item, ensure_ascii=False) + '\n')
-    return out_path
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def clean_text(
-        text: str 
-        ) -> str:
-    """
-    for dataset text
-
-    Normalize whitespace, remove HTML/markdown/wiki markup.
-    For readable text and dense representation.
-    
-    """
-    # normalise whitespace
-    text = re.sub(r'\s+', ' ', text).strip()
-
-    # remove leftover HTML stuff 
-    text = re.sub(r'\[\[.*?\]\]', '', text)       
-    text = re.sub(r'\[.*?\]', '', text)           
-    text = re.sub(r'={2,}.*?={2,}', '', text)     
-
-    # remove markdown-style formatting 
-    text = unicodedata.normalize('NFKC', text)
-    return text
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def pid_plus_title(qid: str, title: str, sent_idx: int) -> str:
-    # keep your current style; just consistent slugging
-    if not title:
-        safe = "no_title"
-    else:
-        safe = title.lower()
-        safe = re.sub(r'[^a-z0-9]+', '_', safe)
-        safe = re.sub(r'_+', '_', safe).strip('_') or "no_title"
-    return f"{qid}__{safe}_sent{sent_idx}"
 
 
 
