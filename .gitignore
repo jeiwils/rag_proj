@@ -1,0 +1,22 @@
+# Ignore all datasets and large generated files
+data/
+*.npy
+*.faiss
+*.jsonl
+*.pt
+*.ckpt
+*.log
+*.debug.txt
+
+# Ignore virtual environments
+.venv/
+env/
+venv/
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+
+# Jupyter and system artifacts
+.ipynb_checkpoints/
+.DS_Store
