@@ -14,7 +14,8 @@ import os
 from pathlib import Path
 from typing import Dict, List
 
-from .a2_text_prep import compute_resume_sets, existing_ids
+from .a2_text_prep import SERVER_CONFIGS, compute_resume_sets, existing_ids
+
 from .e_reranking_answer_gen import run_pipeline
 from .utils import load_jsonl
 
@@ -89,7 +90,7 @@ if __name__ == "__main__":
                             passage_emb=None,
                             passage_index=None,
                             emb_model=None,
-                            model_servers=[],
+                            server_configs=SERVER_CONFIGS,
                             output_path=str(out_file),
                         )
 

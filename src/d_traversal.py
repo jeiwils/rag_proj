@@ -198,16 +198,15 @@ def select_seed_passages(  # helper for run_dev_set()
 ### COMPONENT 2 - traversal 
 
 
-
-def llm_choose_edge( # helper for multi_hop_graph_traverse_llm()
-        query_text: str, # from multi_hop_graph_traverse_llm() # the llm reads the query
-        passage_text: str, # form build_edges() -> build_networkx_graph() # the llm reads the passages
-        candidate_edges: list, # from multi_hop_graph_traverse_llm() # then the llm considers all possible OQs in the outgoing edges
-        model_servers: list # from arg. in multi_hop_traverse() 
-        ): 
+def llm_choose_edge(  # helper for multi_hop_graph_traverse_llm()
+        query_text: str,  # from multi_hop_graph_traverse_llm() # the llm reads the query
+        passage_text: str,  # form build_edges() -> build_networkx_graph() # the llm reads the passages
+        candidate_edges: list,  # from multi_hop_graph_traverse_llm() # then the llm considers all possible OQs in the outgoing edges
+        server_configs: list  # from arg. in multi_hop_traverse()
+        ):
     """
     Ask the local LLM to choose the best outgoing OQ edge to follow.
-    Uses the OQ worker (assumed model_servers[1]).
+    Uses the OQ worker (assumed server_configs[1]).
     
     candidate_edges: list of tuples (vk, edge_data)
     Returns the chosen edge tuple or None if no valid choice is made.
@@ -224,7 +223,12 @@ def llm_choose_edge( # helper for multi_hop_graph_traverse_llm()
     )
     
     # Send to OQ worker (port 8001)
-    answer = query_llm(prompt, server_url=model_servers[1], max_tokens=5, temperature=0.0)
+    answer = query_llm(
+        prompt,
+        server_url=server_configs[1]["server_url"],
+        max_tokens=5,
+        temperature=0.0,
+    )
     
     # Extract integer choice
     for token in answer.split():
@@ -240,7 +244,7 @@ def llm_choose_edge( # helper for multi_hop_graph_traverse_llm()
 
 def hoprag_traversal_algorithm(
     vj, graph, query_text, visited_passages,
-    model_servers, ccount, next_Cqueue, hop_log, state
+    server_configs, ccount, next_Cqueue, hop_log, state
 ):
     candidates = [
         (vk, graph[vj][vk])
@@ -254,7 +258,7 @@ def hoprag_traversal_algorithm(
         query_text=query_text,
         passage_text=graph.nodes[vj]["text"],
         candidate_edges=candidates,
-        model_servers=model_servers
+        server_configs=server_configs
     )
 
     if chosen is None:
@@ -288,7 +292,7 @@ def hoprag_traversal_algorithm(
 
 def enhanced_traversal_algorithm(
     vj, graph, query_text, visited_passages,
-    model_servers, ccount, next_Cqueue, hop_log, state
+    server_configs, ccount, next_Cqueue, hop_log, state
 ):
     candidates = [
         (vk, graph[vj][vk])
@@ -303,7 +307,7 @@ def enhanced_traversal_algorithm(
         query_text=query_text,
         passage_text=graph.nodes[vj]["text"],
         candidate_edges=candidates,
-        model_servers=model_servers
+        server_configs=server_configs
     )
 
     if chosen is None:
@@ -335,13 +339,12 @@ def enhanced_traversal_algorithm(
     return {chosen_vk}
 
 
-
 def traverse_graph(
     graph: nx.DiGraph,
     query_text: str,
     seed_passages: list,
     n_hops: int,
-    model_servers: list,
+    server_configs: list,
     traveral_alg: Callable  # custom algorithm step (edge + queueing logic)
 ):
     Cqueue = seed_passages[:]
@@ -374,11 +377,11 @@ def traverse_graph(
                 graph=graph,
                 query_text=query_text,
                 visited_passages=visited_passages,
-                model_servers=model_servers,
+                server_configs=server_configs,
                 ccount=ccount,
                 next_Cqueue=next_Cqueue,
                 hop_log=hop_log,
-                state=state
+                state=state,
             )
             visited_passages.update(new_nodes)
 
@@ -474,6 +477,7 @@ def run_traversal(
     passage_emb: np.ndarray,
     passage_index,
     emb_model,
+    server_configs: List[Dict],
     model_servers: List[str],
     output_paths: Dict[str, Path],  # use traversal_output_paths()
     seed_top_k=50,
@@ -521,7 +525,7 @@ def run_traversal(
             query_text=query_text,
             seed_passages=seed_passages,
             n_hops=n_hops,
-            model_servers=model_servers,
+            server_configs=server_configs,
             traveral_alg=traveral_alg
         )
 
@@ -552,6 +556,10 @@ def run_traversal(
 
 
 ### overall metrics
+
+
+# Backwards compatibility for older imports
+run_dev_set = run_traversal
 
 
 def compute_traversal_summary(
@@ -666,12 +674,12 @@ if __name__ == "__main__":
                     passage_emb=passage_emb,
                     passage_index=passage_index,
                     emb_model=bge_model,
-                    model_servers=SERVER_CONFIGS,
+                    server_configs=SERVER_CONFIGS,
                     output_paths=output_paths,
                     seed_top_k=TOP_K_SEED_PASSAGES,
                     alpha=ALPHA,
                     n_hops=NUMBER_HOPS,
-                    traveral_alg=trav_alg
+                    traveral_alg=trav_alg,
                 )
 
                 new_ids = {q["query_id"] for q in remaining_queries}

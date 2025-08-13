@@ -14,8 +14,8 @@ Inputs
     Passage graph whose nodes contain ``text`` and ``query_sim`` attributes.
 ``passage_metadata``, ``passage_emb``, ``passage_index``
     Retrieval artefacts produced by :mod:`src.b_sparse_dense_representations`.
-``model_servers`` : List[str]
-    HTTP endpoints for completion models.
+``server_configs`` : List[Dict]
+    HTTP endpoint configurations for completion models.
 
 
 Outputs
@@ -57,14 +57,14 @@ import os
 import re
 import string
 
+import numpy as np
 import faiss
 import networkx as nx
 from sentence_transformers import SentenceTransformer
 
 from src.utils import load_jsonl
 from src.b_sparse_dense_representations import dataset_rep_paths, load_faiss_index
-from src.utils.new_utils import MODEL_SERVERS
-from src.a2_text_prep import query_llm
+from src.a2_text_prep import query_llm, SERVER_CONFIGS
 from src.d_traversal import (
     select_seed_passages,
     run_dev_set,
@@ -316,7 +316,7 @@ def run_dense_rag_baseline(
     passage_emb: np.ndarray,
     passage_index,
     emb_model,
-    model_servers: List[str],
+    server_configs: List[Dict] = SERVER_CONFIGS,
     output_path="results/dense_rag_results.jsonl",
     seed_top_k=50,
     alpha=0.5
@@ -360,7 +360,7 @@ def run_dense_rag_baseline(
             query_text=query_text,
             passage_ids=seed_passages,
             graph=None,  # don't use graph — will look up text manually below
-            server_url=model_servers[0],
+            server_url=server_configs[0]["server_url"],
             max_tokens=128
         )
 
@@ -400,7 +400,7 @@ def run_pipeline(
     passage_emb: np.ndarray,
     passage_index,
     emb_model,
-    model_servers,
+    server_configs: List[Dict] = SERVER_CONFIGS,
     output_path="results/dev_results.jsonl",
     seed_top_k=50,
     alpha=0.5,
@@ -419,7 +419,7 @@ def run_pipeline(
             passage_emb=passage_emb,
             passage_index=passage_index,
             emb_model=emb_model,
-            model_servers=model_servers,
+            server_configs=server_configs,
             output_path=output_path,
             seed_top_k=seed_top_k,
             alpha=alpha
@@ -432,12 +432,12 @@ def run_pipeline(
             passage_emb=passage_emb,
             passage_index=passage_index,
             emb_model=emb_model,
-            model_servers=model_servers,
+            model_servers=server_configs,
             output_path=output_path,
             seed_top_k=seed_top_k,
             alpha=alpha,
             n_hops=n_hops,
-            traveral_alg=hoprag_traversal_algorithm
+            traveral_alg=hoprag_traversal_algorithm,
         )
     elif mode == "enhanced":
         run_dev_set(
@@ -447,12 +447,12 @@ def run_pipeline(
             passage_emb=passage_emb,
             passage_index=passage_index,
             emb_model=emb_model,
-            model_servers=model_servers,
+            model_servers=server_configs,
             output_path=output_path,
             seed_top_k=seed_top_k,
             alpha=alpha,
             n_hops=n_hops,
-            traveral_alg=enhanced_traversal_algorithm
+            traveral_alg=enhanced_traversal_algorithm,
         )
     else:
         raise ValueError(f"Unknown mode: {mode}")
@@ -495,7 +495,7 @@ if __name__ == "__main__":
 
     # --- Models ---
     emb_model = SentenceTransformer("BAAI/bge-base-en-v1.5")
-    model_servers = MODEL_SERVERS
+    server_configs = SERVER_CONFIGS
     seed_top_k = 50
     alpha = 0.5
     n_hops = 2
@@ -512,7 +512,7 @@ if __name__ == "__main__":
         passage_emb=passage_emb,
         passage_index=passage_index,
         emb_model=emb_model,
-        model_servers=model_servers,
+        server_configs=server_configs,
         output_path=os.path.join(output_base, "dev_dense.jsonl"),
         seed_top_k=seed_top_k,
         alpha=alpha
@@ -527,7 +527,7 @@ if __name__ == "__main__":
         passage_emb=passage_emb,
         passage_index=passage_index,
         emb_model=emb_model,
-        model_servers=model_servers,
+        server_configs=server_configs,
         output_path=os.path.join(output_base, "dev_hoprag.jsonl"),
         seed_top_k=seed_top_k,
         alpha=alpha,
@@ -543,7 +543,7 @@ if __name__ == "__main__":
         passage_emb=passage_emb,
         passage_index=passage_index,
         emb_model=emb_model,
-        model_servers=model_servers,
+        server_configs=server_configs,
         output_path=os.path.join(output_base, "dev_enhanced.jsonl"),
         seed_top_k=seed_top_k,
         alpha=alpha,
