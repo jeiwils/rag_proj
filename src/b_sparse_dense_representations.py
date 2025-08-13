@@ -1,6 +1,9 @@
 
 """
 
+Module Overview
+---------------
+
 Build sparse and dense representations for passages and IQ/OQ items.
 
 
