@@ -112,7 +112,7 @@ import numpy as np
 import faiss
 from typing import List, Dict
 from sentence_transformers import SentenceTransformer
-from .utils import (
+from src.utils import (
     load_jsonl,
     save_jsonl_safely,
     pid_plus_title,

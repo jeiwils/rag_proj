@@ -383,7 +383,7 @@ def build_networkx_graph(
             p["passage_id"],
             text=p.get("text", ""),
             conditioned_score=p.get("conditioned_score", 0.0),
-            keywords=p.get("keywords", []),
+            keywords=p.get("keywords_passage", []),
             vec_id=p.get("vec_id"),
         )
 

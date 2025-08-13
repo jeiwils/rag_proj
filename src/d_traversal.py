@@ -104,7 +104,7 @@ File Schema
 
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Callable
-from src.a2_text_prep import extract_keywords, query_llm, MODEL_SERVERS, load_jsonl
+from src.a2_text_prep import extract_keywords, query_llm, SERVER_CONFIGS, load_jsonl
 from src.b_sparse_dense_representations import (
     faiss_search_topk,
     jaccard_similarity,
@@ -113,15 +113,15 @@ from src.b_sparse_dense_representations import (
     dataset_rep_paths,
 )
 from src.c_graphing import hoprag_graph, enhanced_graph, append_global_result
-import faiss 
-
-traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
-import networkx as nx 
+import faiss
+import networkx as nx
 import os
-from pathlib import Path
 from collections import defaultdict
 import json
 from src.c_graphing import basic_graph_eval
+from pathlib import Path
+
+traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
 
 
 # TRAVERSAL TUNING
@@ -175,7 +175,7 @@ def select_seed_passages(  # helper for run_dev_set()
     for rank, passage_idx in enumerate(idxs):
         p = passage_metadata[passage_idx]
         sim_cos = float(scores[rank])  # FAISS cosine
-        sim_jac = jaccard_similarity(query_keywords, set(p.get("keywords", [])))
+        sim_jac = jaccard_similarity(query_keywords, set(p["keywords_passage"]))
 
 
         sim_hybrid = alpha * sim_cos + (1 - alpha) * sim_jac
@@ -646,7 +646,7 @@ if __name__ == "__main__":
         passage_emb=passage_emb,
         passage_index=passage_index,
         emb_model=bge_model,
-        model_servers=MODEL_SERVERS,
+        model_servers=SERVER_CONFIGS,
         output_paths=output_paths,
         seed_top_k=TOP_K_SEED_PASSAGES,
         alpha=ALPHA,
@@ -674,7 +674,7 @@ if __name__ == "__main__":
         passage_emb=passage_emb,
         passage_index=passage_index,
         emb_model=bge_model,
-        model_servers=MODEL_SERVERS,
+        model_servers=SERVER_CONFIGS,
         output_paths=output_paths,
         seed_top_k=TOP_K_SEED_PASSAGES,
         alpha=ALPHA,
