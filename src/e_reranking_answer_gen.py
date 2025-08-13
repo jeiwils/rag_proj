@@ -466,16 +466,36 @@ def run_pipeline(
 
 
 if __name__ == "__main__":
-    # --- Required objects: define or load them before this block ---
-    # These must be defined earlier in your script or imported:
-    # query_data: List[Dict]
-    # graph: nx.DiGraph
-    # passage_metadata: List[Dict]
-    # passage_emb: np.ndarray
-    # passage_index: FAISS or similar
-    # emb_model: embedding model with `.encode()`
-    # model_servers: List[str]
+    # --- Configuration ---
+    dataset = "hotpotqa"
+    split = "dev"
+    model = "qwen-7b"
+    variant = "baseline"
 
+    # --- Load representations ---
+    rep_paths = dataset_rep_paths(dataset, split)
+    passage_metadata = load_jsonl(rep_paths["passages_jsonl"])
+    passage_emb = np.load(rep_paths["passages_emb"])
+    passage_index = load_faiss_index(rep_paths["passages_index"])
+
+    # --- Load queries and graph ---
+    query_path = os.path.join("data", "processed_datasets", dataset, f"{split}.jsonl")
+    query_data = load_jsonl(query_path)
+
+    graph_path = os.path.join(
+        "data",
+        "graphs",
+        model,
+        dataset,
+        split,
+        variant,
+        f"{dataset}_{split}_graph.gpickle",
+    )
+    graph = nx.read_gpickle(graph_path)
+
+    # --- Models ---
+    emb_model = SentenceTransformer("BAAI/bge-base-en-v1.5")
+    model_servers = MODEL_SERVERS
     seed_top_k = 50
     alpha = 0.5
     n_hops = 2

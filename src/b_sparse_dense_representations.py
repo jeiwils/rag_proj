@@ -118,7 +118,7 @@ from src.utils import (
     pid_plus_title,
     clean_text,
 )
-from pathlib import Path    
+from pathlib import Path
 import re
 import torch
 import os, json, re, spacy
@@ -136,7 +136,20 @@ params = {
     "alpha": ALPHA
 }
 
+_bge_model = None
 
+
+def get_embedding_model():
+    """Load and cache the BGE embedding model."""
+    global _bge_model
+
+    if _bge_model is None:
+        model_name = os.environ.get("BGE_MODEL", "BAAI/bge-base-en-v1.5")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        _bge_model = SentenceTransformer(model_name, device=device)
+        print(f"[BGE] Loaded {model_name} on {device}")
+
+    return _bge_model
 
 def dataset_rep_paths(dataset: str, split: str) -> Dict[str, str]:
     """Return representation file paths for dataset passages only.
@@ -184,6 +197,7 @@ __all__ = [
     "params",
     "dataset_rep_paths",
     "model_rep_paths",
+    "get_embedding_model",
     "build_and_save_faiss_index",
     "load_faiss_index",
     "faiss_search_topk",
@@ -420,10 +434,7 @@ def add_keywords_to_iqoq_jsonl(iqoq_jsonl: str, out_field: str = "keywords"):
 if __name__ == "__main__":
     print(f"[spaCy] Using: {SPACY_MODEL}")
 
-    BGE_MODEL = os.environ.get("BGE_MODEL", "BAAI/bge-base-en-v1.5")
-    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-    bge_model = SentenceTransformer(BGE_MODEL, device=DEVICE)
-    print(f"[BGE] Loaded {BGE_MODEL} on {DEVICE}")
+    bge_model = get_embedding_model()
 
     # Config
     MODELS   = ["qwen-7b", "deepseek-distill-qwen-7b"]

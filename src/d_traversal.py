@@ -109,7 +109,7 @@ from src.b_sparse_dense_representations import (
     extract_keywords,
     faiss_search_topk,
     jaccard_similarity,
-    bge_model,
+    get_embedding_model,
     ALPHA,
     dataset_rep_paths,
 )
@@ -633,6 +633,8 @@ if __name__ == "__main__":
     passage_emb = np.load(paths["passages_emb"])
     passage_index = faiss.read_index(paths["passages_index"])
     query_data = [json.loads(line) for line in open(f"{dataset}_{split}.jsonl")]
+
+    bge_model = get_embedding_model()
 
     ######################################
     # 1. Run baseline (no revisit)
