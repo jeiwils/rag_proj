@@ -104,7 +104,7 @@ def resolve_root(model: str, dataset: str, split: str, variant: str) -> Optional
 def resolve_repr_root(model: str, dataset: str, split: str, variant: str) -> str:
     """Return the root directory for model representations.
 
-    The directory ``data/representations/models/{model}/{dataset}/{split}/{variant}``
+    The directory ``data/representations/{model}/{dataset}/{split}/{variant}``
     is created if it does not already exist and the path is returned.
     """
     root = os.path.join(

@@ -99,7 +99,6 @@ from .utils import (
     save_jsonl_safely,
     pid_plus_title,
     clean_text,
-    resolve_repr_root,
 )
 from pathlib import Path    
 import re
@@ -418,20 +417,19 @@ if __name__ == "__main__":
     for dataset in DATASETS:
         print(f"\n=== DATASET: {dataset} ({SPLIT}) ===")
 
-        dataset_dir = Path(f"data/representations/datasets/{dataset}/{SPLIT}")
+        pass_paths = dataset_rep_paths(dataset, SPLIT)
+        dataset_dir = Path(os.path.dirname(pass_paths["passages_jsonl"]))
         os.makedirs(dataset_dir, exist_ok=True)
 
         passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl"
         questions_jsonl_src = f"data/processed_datasets/{dataset}/{SPLIT}.jsonl"
 
-        passages_jsonl_name  = Path(passages_jsonl_src).name
+        passages_jsonl = Path(pass_paths["passages_jsonl"])
+        passages_npy   = Path(pass_paths["passages_emb"])
+
         questions_jsonl_name = Path(questions_jsonl_src).name
-
-        passages_jsonl  = dataset_dir / passages_jsonl_name
         questions_jsonl = dataset_dir / questions_jsonl_name
-
-        passages_npy  = dataset_dir / passages_jsonl_name.replace(".jsonl", ".emb.npy")
-        questions_npy = dataset_dir / questions_jsonl_name.replace(".jsonl", ".emb.npy")
+        questions_npy   = dataset_dir / questions_jsonl_name.replace(".jsonl", ".emb.npy")
 
 
 
@@ -467,7 +465,7 @@ if __name__ == "__main__":
 
 
         # Passage FAISS
-        index_tag_passages = f"{dataset}_{SPLIT}"
+        index_tag_passages = dataset
         build_and_save_faiss_index(
             embeddings=passages_emb,
             dataset_name=index_tag_passages,
@@ -485,16 +483,15 @@ if __name__ == "__main__":
         print(f"\n=== MODEL: {model} ===")
         for dataset in DATASETS:
                 variant = CURRENT_VARIANT
-                repr_root = resolve_repr_root(
-                    model=model, dataset=dataset, split=SPLIT, variant=CURRENT_VARIANT
-                )
+                paths = model_rep_paths(model, dataset, SPLIT, variant)
+                iqoq_jsonl = paths["iqoq_jsonl"]
+                iqoq_npy = paths["iqoq_emb"]
+                repr_root = os.path.dirname(iqoq_jsonl)
 
-                iqoq_jsonl = os.path.join(repr_root, "iqoq.jsonl")
+
                 if not os.path.exists(iqoq_jsonl):
                     print(f"[warn] missing IQ/OQ file: {iqoq_jsonl}; skipping.")
                     continue
-
-                iqoq_npy = iqoq_jsonl.replace(".jsonl", ".emb.npy")
 
                 if os.path.exists(iqoq_npy):
                     iqoq_emb = np.load(iqoq_npy).astype("float32")
@@ -510,7 +507,7 @@ if __name__ == "__main__":
 
                 add_keywords_to_iqoq_jsonl(iqoq_jsonl)
 
-                index_tag_iqoq = f"{dataset}_{SPLIT}_{model}_{variant}"
+                index_tag_iqoq = dataset
                 build_and_save_faiss_index(
                     embeddings=iqoq_emb,
                     dataset_name=index_tag_iqoq,
@@ -530,21 +527,20 @@ if __name__ == "__main__":
 
 
 
-
 """
 
 
 
 Illustrative layout of representation artifacts written by this module.
 
-Dataset-level outputs live under ``data/representations/datasets/{dataset}/{split}``:
+Dataset-level outputs live under ``data/representations/{dataset}/{split}``:
 
-{ # data/representations/datasets/{dataset}/{split}/{split}_passages.jsonl
+{ # data/representations/{dataset}/{split}/{dataset}_passages.jsonl
   "dataset": "hotpotqa",
   "split": "train",
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
   "text": "Arthur's Magazine (1844–1846)...",
-  "vec_id": 123,                      // row index in {split}_passages.emb.npy
+  "vec_id": 123,                      // row index in {dataset}_passages_emb.npy
   "keywords_text": [
     "arthur_s_magazine", "american", "literary",
     "periodical", "philadelphia", "1844_1846"
@@ -554,17 +550,17 @@ Dataset-level outputs live under ``data/representations/datasets/{dataset}/{spli
 
 
 
-data/representations/datasets/{dataset}/{split}/{split}_passages.emb.npy
+data/representations/{dataset}/{split}/{dataset}_passages_emb.npy
 # shape: (num_passages, 768), dtype float32
 # row i corresponds to the JSONL line with "vec_id": i
 
-data/representations/datasets/{dataset}/{split}/{split}_passages.keywords.jsonl
+data/representations/{dataset}/{split}/{dataset}_passages.keywords.jsonl
 # optional keywords-only view keyed by passage_id
 
-data/representations/datasets/{dataset}/{split}/{dataset}_{split}_faiss_passages.faiss
+data/representations/{dataset}/{split}/{dataset}_faiss_passages.faiss
 
-data/representations/datasets/{dataset}/{split}/{split}.jsonl
-data/representations/datasets/{dataset}/{split}/{split}.emb.npy
+data/representations/{dataset}/{split}/{split}.jsonl
+data/representations/{dataset}/{split}/{split}.emb.npy
 # question metadata and embeddings (with keywords if available)
 
 
@@ -573,9 +569,9 @@ data/representations/datasets/{dataset}/{split}/{split}.emb.npy
 
 
 Model-specific IQ/OQ artifacts live under
-``data/representations/models/{model}/{dataset}/{split}/{variant}``:
+``data/representations/{model}/{dataset}/{split}/{variant}``:
 
-{ # data/representations/models/{model}/{dataset}/{split}/{variant}/iqoq.jsonl
+{ # data/representations/{model}/{dataset}/{split}/{variant}/iqoq.jsonl
   "dataset": "hotpotqa",
   "split": "train",
   "text": "Who founded Arthur's Magazine?",
@@ -583,8 +579,8 @@ Model-specific IQ/OQ artifacts live under
   "keywords": ["arthur_s_magazine", "founded", "who"]
 }
 
-data/representations/models/{model}/{dataset}/{split}/{variant}/iqoq.emb.npy
-{dataset}_{split}_{model}_{variant}_faiss_iqoq.faiss
+data/representations/{model}/{dataset}/{split}/{variant}/iqoq.emb.npy
+data/representations/{model}/{dataset}/{split}/{variant}/{dataset}_faiss_iqoq.faiss
 
 
 
