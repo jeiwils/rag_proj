@@ -1,4 +1,34 @@
 
+"""
+
+Graph traversal helpers for multi-hop retrieval.
+
+This module ties together passage retrieval and graph traversal for
+query-focused exploration of a prebuilt knowledge graph.
+
+Required inputs
+---------------
+query_text: str
+    Natural-language question that seeds the traversal.
+faiss_index: faiss.Index
+    Dense index of passage embeddings used for similarity search.
+graph_jsonl: str or Path
+    JSONL file describing nodes, edges and outgoing questions in the graph.
+
+Outputs
+-------
+traversal_logs: dict
+    Records each hop that was taken. Example log entry::
+
+        {"hop": 1, "from": "p0", "to": "p7", "oq": "What is FAISS?"}
+
+selected_passages: list[str]
+    Ordered list of passage IDs visited during traversal.
+
+    
+"""
+
+
 
 ### end of: 2 sets of traversals+metrics made with the dev query+gold set (is that right? not the train set?)
 # - 1) normal hoprag traversal algorithm (no node revisits)

@@ -1,8 +1,49 @@
 
+"""Build sparse and dense representations for passages and IQ/OQ items.
+
+Inputs
+------
+JSONL files from earlier processing steps are expected under
+``data/models/{model}/{dataset}/{split}/{variant}/*.jsonl``. Each line is a
+JSON object describing either a passage or a question:
+
+    # passage entry
+    {"dataset": "hotpotqa", "split": "train",
+     "passage_id": "5a7a0693__arthur_s_magazine_sent0",
+     "text": "Arthur's Magazine (1844–1846)..."}
+
+    # IQ/OQ entry
+    {"dataset": "hotpotqa", "split": "train",
+     "iqoq_id": "5a7a0693__arthur_s_magazine_sent0_iq0",
+     "text": "Who founded Arthur's Magazine?"}
+
+Outputs
+-------
+Representations are saved to ``data/representations``:
+
+    data/representations/{dataset}/{split}/
+        {dataset}_passages.jsonl
+        {dataset}_passages_emb.npy
+        {dataset}_faiss_passages.faiss
+
+    data/representations/{model}/{dataset}/{split}/{variant}/
+        {dataset}_iqoq.jsonl
+        {dataset}_iqoq_emb.npy
+        {dataset}_faiss_iqoq.faiss
+
+Each JSONL file includes a ``vec_id`` that indexes into its corresponding
+``*.npy`` embedding matrix.
+
+Example output lines::
+
+    {"passage_id": "p0", "text": "...", "vec_id": 0}
+    passages_emb[0] -> [0.1, 0.2, 0.3]
+
+    {"iqoq_id": "p0_iq0", "text": "...", "vec_id": 0}
+    iqoq_emb[0] -> [0.1, 0.2, 0.3]
 
 
-
-# 
+"""
 # 
 # 
 # 
@@ -526,62 +567,3 @@ if __name__ == "__main__":
 
 
 
-
-"""
-
-
-
-Illustrative layout of representation artifacts written by this module.
-
-Dataset-level outputs live under ``data/representations/{dataset}/{split}``:
-
-{ # data/representations/{dataset}/{split}/{dataset}_passages.jsonl
-  "dataset": "hotpotqa",
-  "split": "train",
-  "passage_id": "5a7a0693__arthur_s_magazine_sent0",
-  "text": "Arthur's Magazine (1844–1846)...",
-  "vec_id": 123,                      // row index in {dataset}_passages_emb.npy
-  "keywords_text": [
-    "arthur_s_magazine", "american", "literary",
-    "periodical", "philadelphia", "1844_1846"
-  ]
-}
-
-
-
-
-data/representations/{dataset}/{split}/{dataset}_passages_emb.npy
-# shape: (num_passages, 768), dtype float32
-# row i corresponds to the JSONL line with "vec_id": i
-
-data/representations/{dataset}/{split}/{dataset}_passages.keywords.jsonl
-# optional keywords-only view keyed by passage_id
-
-data/representations/{dataset}/{split}/{dataset}_faiss_passages.faiss
-
-data/representations/{dataset}/{split}/{split}.jsonl
-data/representations/{dataset}/{split}/{split}.emb.npy
-# question metadata and embeddings (with keywords if available)
-
-
-
-
-
-
-Model-specific IQ/OQ artifacts live under
-``data/representations/{model}/{dataset}/{split}/{variant}``:
-
-{ # data/representations/{model}/{dataset}/{split}/{variant}/iqoq.jsonl
-  "dataset": "hotpotqa",
-  "split": "train",
-  "text": "Who founded Arthur's Magazine?",
-  "vec_id": 987,                      // row index in iqoq.emb.npy
-  "keywords": ["arthur_s_magazine", "founded", "who"]
-}
-
-data/representations/{model}/{dataset}/{split}/{variant}/iqoq.emb.npy
-data/representations/{model}/{dataset}/{split}/{variant}/{dataset}_faiss_iqoq.faiss
-
-
-
-"""

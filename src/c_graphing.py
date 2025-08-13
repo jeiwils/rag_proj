@@ -1,5 +1,28 @@
 
+"""
+Build graphs linking original questions (OQ) to inferred questions (IQ).
 
+Inputs:
+    - PASSAGES_PATH: path to passage metadata JSONL.
+    - IQOQ_PATH: path to IQ/OQ metadata JSONL.
+    - passages_emb_path: path to NumPy array of passage embeddings.
+    - iqoq_emb_path: path to NumPy array of IQ/OQ embeddings.
+    - model_paths["iqoq_index"]: path to FAISS index for IQ/OQ embeddings.
+
+Outputs:
+    - Edge JSONL listing highest scoring IQ for each OQ.
+    - ``networkx.DiGraph`` relating passages and question nodes.
+
+Example edge record:
+    {
+        "oq_id": "hotpot_001_sent1_oq1",
+        "oq_parent": "hotpot_001_sent1",
+        "iq_id": "hotpot_002_sent4_iq0",
+        "iq_parent": "hotpot_002_sent4",
+        "sim_hybrid": 0.64
+    }
+    
+"""
 
 ### end of: 2 sets of graphs made with the train passage+iqoq set (is that right? not the dev set?)
 # - 1) standard hoprag

@@ -1,5 +1,48 @@
 
 
+
+
+
+
+
+"""Utilities for passage reranking and answer generation.
+
+Example
+-------
+>>> visited_passages = {"p1", "p2", "p3"}
+>>> graph = nx.DiGraph()
+>>> graph.add_node("p1", text="The capital is Paris", query_sim=0.9)
+>>> graph.add_node("p2", text="France is in Europe", query_sim=0.5)
+>>> graph.add_node("p3", text="Paris has the Louvre", query_sim=0.7)
+>>> ccount = {"p1": 2, "p3": 1}  # visitation counts from traversal
+>>> reranked = rerank_passages_by_helpfulness(
+...     candidate_passages=list(visited_passages),
+...     query_text="What is the capital of France?",
+...     ccount=ccount,
+...     graph=graph,
+...     top_k=2,
+... )
+>>> reranked
+[('p1', 0.95), ('p3', 0.60)]
+>>> answer = ask_llm_with_passages(
+...     query_text="What is the capital of France?",
+...     passage_ids=[pid for pid, _ in reranked],
+...     graph=graph,
+...     server_url="http://localhost:8000",
+... )
+>>> answer
+{'raw_answer': 'The capital of France is Paris',
+ 'normalised_answer': 'paris'}
+
+Helpfulness scores are represented as floats (0.0–1.0) in the second
+element of each tuple returned by :func:`rerank_passages_by_helpfulness`.
+They are computed as the average of query similarity and the normalised
+visit count for each passage.
+"""
+
+
+
+
 ### end of: 3 sets of answers+metrics made with the dev query+gold set (is that right? not the train set?)
 # - 1) dense retrieval only RAG
 # - 2) standard hop-RAG with preceding steps (I don't think there's any actual difference at this point)
@@ -39,11 +82,20 @@ def compute_helpfulness( # helper function for rerank_passages_by_helpfulness()
     vertex_query_sim: float, # similarity between the passage and the query
     ccount: dict
 ) -> float:
+
     """
+    Compute a numeric helpfulness score for a passage.
 
-    what vars does this take? this is for online, llm-interfacing stuff? online, it narrows down the passages processed by the llm in multi_hop_graph_traverse_llm according to their helpfulness? 
-    then the new list is sent to the llm? 
+    Args:
+        vertex_id: Identifier of the passage vertex.
+        vertex_query_sim: Similarity between the passage and the query in ``[0, 1]``.
+        ccount: Mapping of passage IDs to visitation counts during traversal.
 
+    Returns:
+        float: Helpfulness score in ``[0, 1]`` where higher values indicate
+        passages that are both similar to the query and frequently visited.
+        The score is the average of ``vertex_query_sim`` and the normalised
+        visit count (importance).
     """
     total_visits = sum(ccount.values()) or 1
     importance = ccount.get(vertex_id, 0) / total_visits
