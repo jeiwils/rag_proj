@@ -1,103 +1,3 @@
-"""
-
-
-
-
-
-ENTIRE PROJECT FILE STRUCTURE: 
-raw_datasets
--	All raw, uncleaned downloaded datasets 
-prompts
--	All prompts
-
-
-processed_datasets – all just cleaned dataset stuff
--	Data set name / text (train or train_passages, dev or dev_passages)
-
-
-
-models – all file manipulation/generation done by models
--	Model name / data set name / hoprag mode
-metrics 
--	Tests done on independent scripts (checking CS distribution etc) 
-
-
-
-
-
-
-# 
-# with or without updated IQOQ prompts
-# with or without CS-guided IQOQ
-# with or without updated algorithm 
-# timings for iqoq generation - baseline vs enhanced prompt
-# 
-# 
-# 
-
-
-
-# ENTIRE PROJECT STRUCTURE 
-# - build and tune on train set (200 ROWS)
-# - rebuild and test on dev set (500 ROWS)
-
-
-
-
-
-
-
-# TO DO
-# - different folders for the 3 pipelines ??????????????????????????????????????
-# - neo4j for final graph build + test traversal
-
-
-
-"""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-import json
-import os
-from src.utils import (
-    load_jsonl,
-    save_jsonl,
-    append_jsonl,
-    save_jsonl_safely,
-    clean_text,
-    pid_plus_title,
-)
-
-from typing import List, Dict
-
-
-
-
-
-
-
-
-os.makedirs("data/processed_datasets", exist_ok=True)
-
-
-
 
 
 
@@ -107,51 +7,30 @@ os.makedirs("data/processed_datasets", exist_ok=True)
 """
 
 
+Prepare raw multi-hop QA datasets for downstream retrieval and evaluation.
+
+The script reads each dataset's original files, normalizes question text and
+passages, and writes paired question and passage JSONL files. Question files
+store only the IDs of gold passages while the companion `_passages` files hold
+the text of every passage.
+
+Inputs
+------
+data/raw_datasets/hotpotqa/hotpot_train_v1.1.json
+data/raw_datasets/hotpotqa/hotpot_dev_fullwiki_v1.json
+data/raw_datasets/2wikimultihopqa/{split}.json
+data/raw_datasets/musique/musique_ans_v1.0_{split}.jsonl
+
+Outputs
+-------
+data/processed_datasets/hotpotqa/{split}.jsonl
+data/processed_datasets/hotpotqa/{split}_passages.jsonl
+data/processed_datasets/2wikimultihopqa/{split}.jsonl
+data/processed_datasets/2wikimultihopqa/{split}_passages.jsonl
+data/processed_datasets/musique/{split}.jsonl
+data/processed_datasets/musique/{split}_passages.jsonl
 
 
-
-
-
-PURPOSE:
-- 
-
-
-
-
-
-
-
-#   #   #   #   # INPUT: 
-
-
-
-data/raw_datasets/{dataset}
-
-
-- 2wikimultihopqa/{split}
-
-
-- hotpotqa
--- hotpot_dev_fullwiki_v1.json 
--- hotpot_train_v1.1.json
-
-
-- musique
--- musique_ans_v1.0_{split}
-
-
-
-
-
-
-
-#   #   #   #   # OUTPUT: 
-
-
-
-
-data/processed_datasets/{dataset}/{split}.jsonl
-data/processed_datasets/{dataset}/{split}_passages.jsonl
 
 
 
@@ -234,6 +113,91 @@ data/processed_datasets/{dataset}/{split}_passages.jsonl
 
 
 
+# 
+# with or without updated IQOQ prompts
+# with or without CS-guided IQOQ
+# with or without updated algorithm 
+# timings for iqoq generation - baseline vs enhanced prompt
+# 
+# 
+# 
+
+
+
+# ENTIRE PROJECT STRUCTURE 
+# - build and tune on train set (200 ROWS)
+# - rebuild and test on dev set (500 ROWS)
+
+
+
+
+
+
+
+# TO DO
+# - different folders for the 3 pipelines ??????????????????????????????????????
+# - neo4j for final graph build + test traversal
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import json
+import os
+from src.utils import (
+    load_jsonl,
+    save_jsonl,
+    append_jsonl,
+    save_jsonl_safely,
+    clean_text,
+    pid_plus_title,
+)
+
+from typing import List, Dict
+
+
+
+
+
+
+
+
+os.makedirs("data/processed_datasets", exist_ok=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ########## THESE SHOULD ALL ONLY SEND GOLD PASSAGES TO THE {SPLIT} AND ALL PASSAGES TO {SPLIT}_PASSAGES
@@ -291,8 +255,6 @@ def process_hotpotqa(split: str, file_path: str, max_examples: int | None = None
 
 
 
-
-# ==== 2WIKI: include ALL passages + gold_answer inline ====
 # ==== 2WIKI: include ALL passages, but ONLY GOLD IDs in {split}.jsonl ====
 def process_2wikimultihopqa(split: str, file_path: str, max_examples: int | None = None, overwrite: bool = False) -> None:
     with open(file_path, "r", encoding="utf-8") as f:

@@ -1,31 +1,116 @@
 
 """
 
-Graph traversal helpers for multi-hop retrieval.
-
-This module ties together passage retrieval and graph traversal for
-query-focused exploration of a prebuilt knowledge graph.
-
-Required inputs
+Module Overview
 ---------------
-query_text: str
-    Natural-language question that seeds the traversal.
-faiss_index: faiss.Index
-    Dense index of passage embeddings used for similarity search.
-graph_jsonl: str or Path
-    JSONL file describing nodes, edges and outgoing questions in the graph.
+
+Graph traversal helpers for multi-hop retrieval. The utilities coordinate
+passage selection and graph exploration for a given question.
+
+Inputs
+------
+query_text (str)
+    Natural-language query that seeds the traversal.
+faiss_index_path (str or Path)
+    Filesystem path to the FAISS index of passage embeddings.
+graph_jsonl_path (str or Path)
+    Path to the JSONL graph describing nodes, edges and outgoing questions.
 
 Outputs
 -------
-traversal_logs: dict
-    Records each hop that was taken. Example log entry::
-
-        {"hop": 1, "from": "p0", "to": "p7", "oq": "What is FAISS?"}
-
-selected_passages: list[str]
-    Ordered list of passage IDs visited during traversal.
+traversal_logs_path (str or Path)
+    JSON log recording each hop taken, e.g. ``logs/traversal.json``.
+selected_passages_path (str or Path)
+    JSON list of visited passage IDs, e.g. ``logs/selected_passages.json``.
 
     
+
+
+{ # {dataset}_dev_results.jsonl ############ I THINK THIS IS THE WRONG LAYOUT # SHOULD BE DEV_PER_QUERY_RESULTS.JSONL
+    query_id = "hotpot_001",
+    gold_passages = ["hotpot_002_sent4", "hotpot_003_sent2"], ############# for precision, recall, f1
+    visited_passages = ["hotpot_001_sent1", "hotpot_002_sent4", "hotpot_003_sent2"], ############# recall coverage - did we see gold passages before pruning?
+    "precision": 0.666,
+    "recall": 1.0,
+    "f1": 1.0,
+    ccount = {"hotpot_002_sent4": 2, "hotpot_003_sent2": 1}, #### for importance (for helpfulness) - identify high-traffic nodes
+    hop_trace = [ ###### prune n-hops (for graph density, pruning thresholds?)
+        {
+            "hop": 0,
+            "expanded_from": ["hotpot_001_sent1"],
+            "new_passages": ["hotpot_002_sent4"],
+            "edges_chosen": [
+                {
+                    "from": "hotpot_001_sent1",
+                    "to": "hotpot_002_sent4",
+                    "oq_id": "hotpot_001_sent1_oq1",
+                    "iq_id": "hotpot_002_sent4_iq0",
+                    "repeat_visit": False
+                }
+            ],
+            "none_count": 0,
+            "repeat_visit_count": 0
+        },
+        {
+            "hop": 1,
+            "expanded_from": ["hotpot_002_sent4"],
+            "new_passages": ["hotpot_003_sent2"],
+            "edges_chosen": [
+                {
+                    "from": "hotpot_002_sent4",
+                    "to": "hotpot_003_sent2",
+                    "oq_id": "hotpot_002_sent4_oq0",
+                    "iq_id": "hotpot_003_sent2_iq0",
+                    "repeat_visit": False
+                }
+            ],
+            "none_count": 1,
+            "repeat_visit_count": 0
+        }
+    ]
+}
+
+
+
+
+
+{ # {dataset}_dev_global_results.jsonl
+  "total_queries": 100,
+  "graph_eval": {
+    "avg_node_degree": 3.2,
+    "node_degree_variance": 1.9,
+    "gini_degree": 0.35,
+    "top_k_hub_nodes": [
+      {"node": "hotpot_042_sent1", "degree": 15},
+      {"node": "hotpot_089_sent0", "degree": 12}
+    ]
+  },
+  "traversal_eval": {
+    "mean_precision": 0.63,
+    "mean_recall": 0.74,
+    "passage_coverage_all_gold_found": 82,
+    "initial_retrieval_coverage": 58,
+    "avg_hops_before_first_gold": 1.8,
+    "avg_total_hops": 2.4,
+    "avg_repeat_visits": 0.3,
+    "avg_none_count_per_query": 0.8,
+    "max_hop_depth_reached": 3,
+    "hop_depth_counts": [100, 95, 72, 20]
+  },
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 """
 
 
@@ -595,87 +680,5 @@ append_global_result(
 
 
 
-
-
-
-
-
-#
-#
-# { # {dataset}_dev_results.jsonl ############ I THINK THIS IS THE WRONG LAYOUT # SHOULD BE DEV_PER_QUERY_RESULTS.JSONL
-#     query_id = "hotpot_001",
-#     gold_passages = ["hotpot_002_sent4", "hotpot_003_sent2"], ############# for precision, recall, f1
-#     visited_passages = ["hotpot_001_sent1", "hotpot_002_sent4", "hotpot_003_sent2"], ############# recall coverage - did we see gold passages before pruning?
-#     "precision": 0.666,
-#     "recall": 1.0,
-#     "f1": 1.0,
-#     ccount = {"hotpot_002_sent4": 2, "hotpot_003_sent2": 1}, #### for importance (for helpfulness) - identify high-traffic nodes
-#     hop_trace = [ ###### prune n-hops (for graph density, pruning thresholds?)
-#         {
-#             "hop": 0,
-#             "expanded_from": ["hotpot_001_sent1"],
-#             "new_passages": ["hotpot_002_sent4"],
-#             "edges_chosen": [
-#                 {
-#                     "from": "hotpot_001_sent1",
-#                     "to": "hotpot_002_sent4",
-#                     "oq_id": "hotpot_001_sent1_oq1",
-#                     "iq_id": "hotpot_002_sent4_iq0",
-#                     "repeat_visit": False
-#                 }
-#             ],
-#             "none_count": 0,
-#             "repeat_visit_count": 0
-#         },
-#         {
-#             "hop": 1,
-#             "expanded_from": ["hotpot_002_sent4"],
-#             "new_passages": ["hotpot_003_sent2"],
-#             "edges_chosen": [
-#                 {
-#                     "from": "hotpot_002_sent4",
-#                     "to": "hotpot_003_sent2",
-#                     "oq_id": "hotpot_002_sent4_oq0",
-#                     "iq_id": "hotpot_003_sent2_iq0",
-#                     "repeat_visit": False
-#                 }
-#             ],
-#             "none_count": 1,
-#             "repeat_visit_count": 0
-#         }
-#     ]
-# }
-#
-#
-#
-#
-#
-# { # {dataset}_dev_global_results.jsonl
-#   "total_queries": 100,
-#   "graph_eval": {
-#     "avg_node_degree": 3.2,
-#     "node_degree_variance": 1.9,
-#     "gini_degree": 0.35,
-#     "top_k_hub_nodes": [
-#       {"node": "hotpot_042_sent1", "degree": 15},
-#       {"node": "hotpot_089_sent0", "degree": 12}
-#     ]
-#   },
-#   "traversal_eval": {
-#     "mean_precision": 0.63,
-#     "mean_recall": 0.74,
-#     "passage_coverage_all_gold_found": 82,
-#     "initial_retrieval_coverage": 58,
-#     "avg_hops_before_first_gold": 1.8,
-#     "avg_total_hops": 2.4,
-#     "avg_repeat_visits": 0.3,
-#     "avg_none_count_per_query": 0.8,
-#     "max_hop_depth_reached": 3,
-#     "hop_depth_counts": [100, 95, 72, 20]
-#   },
-# }
-#
-#
-#
 
 

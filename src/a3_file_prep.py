@@ -1,4 +1,3 @@
-
 import re
 import os
 import json
@@ -17,48 +16,34 @@ from pathlib import Path
 """
 
 
-#   #   #   #   # INPUT: 
+Clean, merge, and explode model output shards into standardized files.
+
+This stage prepares the question-generation outputs from previous steps for
+downstream representation building. For each dataset/model/variant it:
+
+1. Cleans individual IQ/OQ shard files and optional conditioned-score shards.
+2. Merges the cleaned shards into consolidated files.
+3. Explodes the merged IQ/OQ file into per-passage and per-question records.
+
+Input shards
+------------
+data/models/{model}/{dataset}/{split}/{hoprag_version}/raw/
+    {split}_iqoq_*.jsonl or *_{variant}.jsonl      # IQ/OQ shards
+    *_cs.jsonl                                    # conditioned-score shards
+
+Output files
+------------
+data/models/{model}/{dataset}/{split}/{hoprag_version}/cleaned/
+    iqoq.cleaned.jsonl
+    scored.cleaned.jsonl                          # if score shards were provided
+
+data/models/{model}/{dataset}/{split}/{hoprag_version}/exploded/
+    passages.exploded.jsonl
+    iqoq.exploded.jsonl
 
 
 
 
-NOW I NEED TO UPDATE THIS FOR THE NEW DIRECTORIES!!!
-
-
-
-
-
-
-#   #   #   #   # OUTPUT: 
-
-
-data/models/{model}/{dataset}/{split}/{variant_hoprag}/
-
-
-cleaned/
-  iqoq.cleaned.jsonl
-  scored.cleaned.jsonl            # only if *_cs.jsonl shards exist - SO I HAVE TO CHANGE THIS 
-  {stem}.cleaned.jsonl            # per-shard temp; deleted unless keep_shard_outputs=True
-
-exploded/
-  passages.exploded.jsonl
-  iqoq.exploded.jsonl
-
-debug/
-  cleaning_debug.txt
-
-
-
-
-    
-
-
-
-
-
-
-
-###################### I DON' THINK I ACTUALLY HAVE TO SAVE THESE? WHAT PURPOSE DO THEY SERVE?
 #### MERGED CS
 
 { # train_scored.jsonl
@@ -166,9 +151,9 @@ debug/
 
 
 
-def clean_iqoq(questions: list[str]) -> list[str]: ##################### should I recalculate the number of iqoq after this? - ALREADY DO IT IN CLEAN_FILE BUT i THIK i SHOULD DO IT HERE INSTEAD?
+def clean_iqoq(questions: list[str]) -> list[str]: 
     """
-    to make sure llm returns proper questions
+    Normalize and filter generated IQ/OQ strings.
 
     """
     cleaned = []

@@ -5,7 +5,28 @@
 
 
 
-"""Utilities for passage reranking and answer generation.
+"""Rerank visited passages and generate answers from top-scoring nodes.
+
+This module scores passages collected during graph traversal for their
+helpfulness and queries an LLM endpoint with the most relevant passages to
+produce an answer.
+
+
+
+Inputs
+------
+visited passage IDs : iterable of strings describing the passages explored
+graph : :class:`networkx.DiGraph` containing passage text and similarity
+ccount : mapping of passage IDs to visit counts from traversal
+server_url : string endpoint of the LLM used for answer generation
+
+
+Outputs
+-------
+reranked list : list of ``(passage_id, helpfulness_score)`` tuples
+generated answer : ``{"raw_answer": str, "normalised_answer": str}``
+
+
 
 Example
 -------
@@ -31,13 +52,12 @@ Example
 ...     server_url="http://localhost:8000",
 ... )
 >>> answer
-{'raw_answer': 'The capital of France is Paris',
- 'normalised_answer': 'paris'}
+{'raw_answer': 'The capital of France is Paris', 'normalised_answer': 'paris'}
 
-Helpfulness scores are represented as floats (0.0–1.0) in the second
-element of each tuple returned by :func:`rerank_passages_by_helpfulness`.
-They are computed as the average of query similarity and the normalised
-visit count for each passage.
+Helpfulness scores are represented as floats (0.0–1.0) in the second element
+of each tuple returned by :func:`rerank_passages_by_helpfulness`. They are
+computed as the average of query similarity and the normalised visit count
+for each passage.
 """
 
 

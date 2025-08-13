@@ -1,27 +1,34 @@
+"""Build graphs linking original questions (OQ) to inferred questions (IQ).
 
-"""
-Build graphs linking original questions (OQ) to inferred questions (IQ).
+Inputs
+------
+PASSAGES_PATH : ``data/representations/hotpot/train/hotpot_passages.jsonl``
+    Passage metadata JSONL.
+passages_emb_path : ``data/representations/hotpot/train/hotpot_passages_emb.npy``
+    Passage embeddings.
+IQOQ_PATH : ``data/representations/qwen-7b/hotpot/train/baseline/hotpot_iqoq.jsonl``
+    IQ/OQ metadata JSONL.
+iqoq_emb_path : ``data/representations/qwen-7b/hotpot/train/baseline/hotpot_iqoq_emb.npy``
+    IQ/OQ embeddings.
+model_paths["iqoq_index"] : ``data/representations/qwen-7b/hotpot/train/baseline/hotpot_faiss_iqoq.faiss``
+    FAISS index for IQ/OQ embeddings.
 
-Inputs:
-    - PASSAGES_PATH: path to passage metadata JSONL.
-    - IQOQ_PATH: path to IQ/OQ metadata JSONL.
-    - passages_emb_path: path to NumPy array of passage embeddings.
-    - iqoq_emb_path: path to NumPy array of IQ/OQ embeddings.
-    - model_paths["iqoq_index"]: path to FAISS index for IQ/OQ embeddings.
+Outputs
+-------
+``data/representations/qwen-7b/hotpot/train/baseline/hotpot_edges.jsonl``
+    JSONL listing the highest-scoring IQ for each OQ.
+``networkx.DiGraph``
+    Graph relating passage and question nodes.
 
-Outputs:
-    - Edge JSONL listing highest scoring IQ for each OQ.
-    - ``networkx.DiGraph`` relating passages and question nodes.
-
-Example edge record:
-    {
-        "oq_id": "hotpot_001_sent1_oq1",
-        "oq_parent": "hotpot_001_sent1",
-        "iq_id": "hotpot_002_sent4_iq0",
-        "iq_parent": "hotpot_002_sent4",
-        "sim_hybrid": 0.64
-    }
-    
+Example edge record
+-------------------
+{
+    "oq_id": "hotpot_001_sent1_oq1",
+    "oq_parent": "hotpot_001_sent1",
+    "iq_id": "hotpot_002_sent4_iq0",
+    "iq_parent": "hotpot_002_sent4",
+    "sim_hybrid": 0.64
+}
 """
 
 ### end of: 2 sets of graphs made with the train passage+iqoq set (is that right? not the dev set?)

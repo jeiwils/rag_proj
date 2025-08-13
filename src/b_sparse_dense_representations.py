@@ -1,70 +1,82 @@
 
-"""Build sparse and dense representations for passages and IQ/OQ items.
+"""
+
+Build sparse and dense representations for passages and IQ/OQ items.
+
 
 Inputs
 ------
-JSONL files from earlier processing steps are expected under
-``data/models/{model}/{dataset}/{split}/{variant}/*.jsonl``. Each line is a
-JSON object describing either a passage or a question:
+JSONL files from earlier processing steps are expected from two locations:
 
-    # passage entry
-    {"dataset": "hotpotqa", "split": "train",
-     "passage_id": "5a7a0693__arthur_s_magazine_sent0",
-     "text": "Arthur's Magazine (1844–1846)..."}
+1. **Passage entries** come from:
+   data/processed_datasets/{dataset}/{split}_passages.jsonl
 
-    # IQ/OQ entry
-    {"dataset": "hotpotqa", "split": "train",
-     "iqoq_id": "5a7a0693__arthur_s_magazine_sent0_iq0",
-     "text": "Who founded Arthur's Magazine?"}
+   Each line is a JSON object describing a passage:
+
+       {
+         "dataset": "hotpotqa",
+         "split": "train",
+         "passage_id": "5a7a0693__arthur_s_magazine_sent0",
+         "text": "Arthur's Magazine (1844–1846)..."
+       }
+
+2. **IQ/OQ (incoming/outgoing questions)** come from:
+   data/models/{model}/{dataset}/{split}/{variant}/{dataset}_iqoq.jsonl
+
+   Each line is a JSON object describing an IQ or OQ item:
+
+       {
+         "dataset": "hotpotqa",
+         "split": "train",
+         "iqoq_id": "5a7a0693__arthur_s_magazine_sent0_iq0",
+         "text": "Who founded Arthur's Magazine?"
+       }
+
 
 Outputs
 -------
-Representations are saved to ``data/representations``:
+Vector representations and indexes are saved under the ``data/representations`` directory in two locations:
 
-    data/representations/{dataset}/{split}/
-        {dataset}_passages.jsonl
-        {dataset}_passages_emb.npy
-        {dataset}_faiss_passages.faiss
+1. **Passage outputs** are saved to:
+   data/representations/{dataset}/{split}/
 
-    data/representations/{model}/{dataset}/{split}/{variant}/
-        {dataset}_iqoq.jsonl
-        {dataset}_iqoq_emb.npy
-        {dataset}_faiss_iqoq.faiss
+   Files:
+       - {dataset}_passages.jsonl          # metadata with vec_id
+       - {dataset}_passages_emb.npy        # dense embeddings (NumPy array)
+       - {dataset}_faiss_passages.faiss    # FAISS index for passage retrieval
 
-Each JSONL file includes a ``vec_id`` that indexes into its corresponding
-``*.npy`` embedding matrix.
+2. **IQ/OQ outputs** are saved to:
+   data/representations/{model}/{dataset}/{split}/{variant}/
+
+   Files:
+       - {dataset}_iqoq.jsonl              # metadata with vec_id
+       - {dataset}_iqoq_emb.npy            # dense embeddings (NumPy array)
+       - {dataset}_faiss_iqoq.faiss        # FAISS index for IQ/OQ retrieval
+
+Notes:
+- Each JSONL file includes a ``vec_id`` field that corresponds to the index of that item in the ``.npy`` embedding matrix.
+- The FAISS index is built using inner-product similarity over normalized vectors (cosine similarity).
+
+
 
 Example output lines::
 
-    {"passage_id": "p0", "text": "...", "vec_id": 0}
+    {"passage_id": "p0", 
+    "text": "...", 
+    "vec_id": 0}
+
     passages_emb[0] -> [0.1, 0.2, 0.3]
 
-    {"iqoq_id": "p0_iq0", "text": "...", "vec_id": 0}
+    {"iqoq_id": "p0_iq0", 
+    "text": "...", 
+    "vec_id": 0}
+
     iqoq_emb[0] -> [0.1, 0.2, 0.3]
 
-
+    
 """
-# 
-# 
-# 
-# 
-# 
-# 
-# need to put timer on embeddings
-# I ALREADY HAVE SOME VEC_IDS - i think it's only qwen7b - musique - train - enhacned  - cs 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
+
+
 
 
 
@@ -81,44 +93,6 @@ WRITE UP
 
 """
 
-"""
-
-
-
-
-
-
-
-#   #   #   #   # INPUT: 
-
-
-
-
-
-
-
-
-
-
-
-#   #   #   #   # OUTPUT: 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-"""
 
 
 

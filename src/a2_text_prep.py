@@ -1,69 +1,30 @@
 
 
 
+"""Prepare passage shards and generate conditioned scores and question lists.
 
-#
-# WRITE UP
-# - conditioned score reverts to 0.5 if missing, the 2-4 default hop-rag iqoq ratio
-# - justification for tokens (budget; size of prompt, expected input, expected output - context window)
-# - justification for temperature (deterministic - taken from hopRAG)
-#
+Inputs
+------
+* ``data/processed_datasets/{dataset}/{split}_passages.jsonl`` – source passages
+  with ``passage_id``, ``title`` and ``text`` fields.
 
+Outputs
+-------
+* ``data/models/{model}/{dataset}/{split}/shards/train_passages_shard{N}_{size}.jsonl`` –
+  unannotated passage shards.
+* ``data/models/{model}/{dataset}/{split}/{hoprag_version}/train_passages_shard{N}_{size}_cs.jsonl`` –
+  adds a ``conditioned_score`` for each passage.
+* ``data/models/{model}/{dataset}/{split}/{hoprag_version}/train_passages_shard{N}_{size}_iqoq_{baseline|enhanced}.jsonl`` –
+  stores ``IQs``/``OQs`` lists, ``num_iq``, ``num_oq`` and optional ``cs_used``.
+* Debug text files ``*_cs_debug.txt``, ``*_iqoq_baseline_debug.txt`` and
+  ``*_iqoq_enhanced_debug.txt`` summarizing processing statistics.
 
+  
 
+Example
 
-
-
-
-
-
-"""
-
-
-
-
-INPUT::::
-
-
-data/processed_datasets/{dataset}/{split}_passages.jsonl
-
-
-
-
-
-
-OUTPUT:::::
-
-
-
-
-data/models/{model}/{dataset}/{split}/shards 
-- train_passages_shard{N}_{size}.jsonl                             # train_passages_shard1_7b.jsonl
-
-
-
-data/models/{model}/{dataset}/{split}/{hoprag_version}
-
-== enhanced
-
-- train_passages_shard{N}_{size}_cs.jsonl 
--- + debug
-
-- train_passages_shard{N}_{size}_iqoq_enhanced.jsonl 
--- + debug
-
-== baseline
-
-- train_passages_shard{N}_{size}_iqoq_baseline.jsonl 
--- + debug 
-
-
-
-
-
-
-(1) *_cs.jsonl
-
+## Conditioned score record (`*_cs.jsonl`)
+```json
 {
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
   "title": "Arthur's Magazine",
@@ -73,9 +34,10 @@ data/models/{model}/{dataset}/{split}/{hoprag_version}
   "split": "train",
   "generation_model": "qwen-7b"
 }
+```
 
-(2)  *_iqoq_baseline.jsonl
-
+## Baseline IQ/OQ record (`*_iqoq_baseline.jsonl`)
+```json
 {
   "passage_id": "5a7a0693__first_for_women_sent0",
   "title": "First for Women",
@@ -90,9 +52,10 @@ data/models/{model}/{dataset}/{split}/{hoprag_version}
   "split": "train",
   "generation_model": "qwen-7b"
 }
+```
 
-(3) *_iqoq_enhanced.jsonl
-
+## Enhanced IQ/OQ record (`*_iqoq_enhanced.jsonl`)
+```json
 {
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
   "title": "Arthur's Magazine",
@@ -107,30 +70,29 @@ data/models/{model}/{dataset}/{split}/{hoprag_version}
   "split": "train",
   "generation_model": "qwen-7b"
 }
+```
 
-
-
-
-
-(4) Debug files (txt): *_cs_debug.txt, *iqoq_baseline_debug.txt, *iqoq_enhanced_debug.txt
-Plain text including:
+## Debug files
+Plain text files (`*_cs_debug.txt`, `*_iqoq_baseline_debug.txt`, `*_iqoq_enhanced_debug.txt`) include:
 - Total passages processed
 - Model / dataset / phase
 - Total time taken (seconds)
 - Optional sections listing missing CS / missing IQ / missing OQ (with IDs)
-This script will parse totals, time, and missing counts into a CSV.
-
-
-
-
-
-
-
-
-
 
 
 """
+
+
+
+#
+# WRITE UP
+# - conditioned score reverts to 0.5 if missing, the 2-4 default hop-rag iqoq ratio
+# - justification for tokens (budget; size of prompt, expected input, expected output - context window)
+# - justification for temperature (deterministic - taken from hopRAG)
+#
+
+
+
 
 
 
