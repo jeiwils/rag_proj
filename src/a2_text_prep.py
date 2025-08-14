@@ -239,7 +239,7 @@ def model_size(model: str) -> str:
 
 
 def split_jsonl(path: str, out1: str, out2: str):
-    data = load_jsonl(path)
+    data = list(load_jsonl(path))  # Convert generator to list
     half = len(data) // 2
     save_jsonl(out1, data[:half])
     save_jsonl(out2, data[half:])
@@ -247,7 +247,7 @@ def split_jsonl(path: str, out1: str, out2: str):
 
 
 def split_jsonl_into_four(path, out1, out2, out3, out4):
-    data = load_jsonl(path)
+    data = list(load_jsonl(path))
     total_rows = len(data)
 
     if total_rows == 0:
@@ -276,6 +276,7 @@ def split_jsonl_for_models(path: str, model: str) -> list[str]:
     """
     Split input JSONL into N shards based on model size and write them to:
       data/models/{model}/{dataset}/{split}/shards/{stem}_shard{N}_{size}.jsonl.gz
+
     Returns the shard paths. For 14B we still write a single shard file.
     """
     size = model_size(model)  # '1.5b' | '7b' | '14b'
@@ -284,9 +285,11 @@ def split_jsonl_for_models(path: str, model: str) -> list[str]:
     out_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    stem = Path(path).stem
-    if stem.endswith(".jsonl"):
-        stem = stem[:-len(".jsonl")]
+    stem = Path(path).name.replace(".jsonl.gz", "").replace(".jsonl", "")
+
+    # 💥 Clear out any stale shard files from prior broken runs
+    for f in out_dir.glob(f"{stem}_shard*_{size}.jsonl.gz"):
+        f.unlink()
 
     if size == "1.5b":
         out_paths = [
@@ -308,11 +311,12 @@ def split_jsonl_for_models(path: str, model: str) -> list[str]:
 
     if size == "14b":
         out_path = out_dir / f"{stem}_shard1_{size}.jsonl.gz"
-        if not out_path.exists():
-            save_jsonl(str(out_path), load_jsonl(path))
+        data = list(load_jsonl(path))  # ensure generator is fully consumed before saving
+        save_jsonl(str(out_path), data)
         return [str(out_path)]
 
     raise ValueError(f"Unsupported model size: {size}")
+
 
 
 
