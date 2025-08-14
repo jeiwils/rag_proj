@@ -1,7 +1,5 @@
 
-src/COMPRESS_FILES.py
-+101
--1
+
 
 """Utility script to compress project artifacts.
 
