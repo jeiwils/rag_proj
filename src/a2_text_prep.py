@@ -132,8 +132,6 @@ RESUME = True
 
 
 
-
-# at top with other constants
 CS_GRAMMAR = r'''
 root ::= "CS: 0.00" | "CS: 0.25" | "CS: 0.50" | "CS: 0.75" | "CS: 1.00"
 '''
@@ -142,7 +140,7 @@ root ::= "CS: 0.00" | "CS: 0.25" | "CS: 0.50" | "CS: 0.75" | "CS: 1.00"
 
 MAX_TOKENS = {
     "cs": 200, # 50, 
-    "iqoq_generation": 256,
+    "iqoq_generation": 512, 
     "edge_selection": 64, ################################# to tune
     "answer_generation": 256 ########################### to tune 
 }
@@ -245,8 +243,7 @@ def split_jsonl_into_four(path, out1, out2, out3, out4):
 
 
 
-
-def split_jsonl_for_models(path: str, model: str) -> list[str]:
+def split_jsonl_for_models(path: str, model: str) -> list[str]: ###################################### I WANT TO CHANGE THIS SO THAT IT  ACTUALLY TAKES THE DIRECTORIES - MAYBE MAKE A SEPARATE FUNCTION FOR THE DIRECTORIES
     """
     Split input JSONL into N shards based on model size and write them to:
       data/models/{model}/{dataset}/{split}/shards/{stem}_shard{N}_{size}.jsonl
@@ -254,12 +251,20 @@ def split_jsonl_for_models(path: str, model: str) -> list[str]:
     If RESUME is True and shard files already exist, skip re-splitting.
     """
     size = model_size(model)  # '1.5b' | '7b' | '14b'
-    dataset = Path(path).parent.name
-    split_name = Path(path).stem.split("_")[0]  # 'train' or 'dev'
+
+    # ``path`` has structure ``.../{dataset}/{split}/passages.jsonl``.
+    # Derive dataset and split names from its parents rather than the file
+    # stem to avoid losing the split prefix when naming shards.
+    dataset = Path(path).parent.parent.name  # e.g., 'musique'
+    split_name = Path(path).parent.name      # e.g., 'train' or 'dev'
+
     out_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    stem = Path(path).stem
+    # Prefix the shard filenames with the split so downstream stages expect
+    # ``{split}_passages_shardN_{size}.jsonl`` and derivatives like
+    # ``{split}_passages_shardN_{size}_cs.jsonl``.
+    stem = f"{split_name}_{Path(path).stem}"
 
     if size == "1.5b":
         out_paths = [
@@ -285,12 +290,6 @@ def split_jsonl_for_models(path: str, model: str) -> list[str]:
 
     if size == "14b":
         out_path = out_dir / f"{stem}_shard1_{size}.jsonl"
-        if RESUME and out_path.exists():
-            return [str(out_path)]
-        save_jsonl(str(out_path), load_jsonl(path))
-        return [str(out_path)]
-
-    raise ValueError(f"Unsupported model size: {size}")
 
 
 
@@ -343,7 +342,7 @@ def query_llm(prompt: str, server_url: str, max_tokens: int = 5, temperature: fl
         payload["stop"] = stop
     if grammar:
         payload["grammar"] = grammar
-    resp = requests.post(f"{server_url}/completion", json=payload)
+    resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
     resp.raise_for_status()
     return resp.json().get("content", "").strip()
 
@@ -893,12 +892,12 @@ if __name__ == "__main__":
 
     RESUME = True
 
-    DATASETS = ["musique"] #["musique","2wikimultihopqa", "hotpotqa"]
     ACTIVE_MODEL_NAMES   = ["deepseek-distill-qwen-7b"] #["qwen-1.5b", "qwen-7b", "deepseek-distill-qwen-14b"] #["qwen-1.5b", "qwen-7b", "deepseek-distill-qwen-14b"]
+    DATASETS = ["hotpotqa"] #["musique","2wikimultihopqa", "hotpotqa"]
     SPLIT = "train"             # or "dev"
 
-    RUN_CS        = False        # enhanced scoring step
-    RUN_BASELINE  = False        # hopRAG baseline IQ/OQ
+    RUN_CS        = True        # enhanced scoring step
+    RUN_BASELINE  = True        # hopRAG baseline IQ/OQ
     RUN_ENHANCED  = True        # enhanced IQ/OQ
 
 
