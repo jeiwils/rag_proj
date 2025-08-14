@@ -53,21 +53,36 @@ SERVER_CONFIGS = [
 
 
 
+def existing_ids(path, id_field="passage_id", required_field: str | None = None):
+    """Return IDs from ``path`` when available.
 
-
-def existing_ids(path, id_field="passage_id"):
+    Parameters
+    ----------
+    path:
+        JSONL file to scan.
+    id_field:
+        Name of the identifier field whose values should be collected.
+    required_field:
+        Optional field that must also be present in a line for it to
+        contribute an ID. This is useful when resuming an embedding step:
+        rows that have been written but lack the embedding field (e.g.
+        ``vec_id``) will then be ignored, keeping them eligible for
+        processing.
+    """
     if not Path(path).exists():
         return set()
     done = set()
     with open(path, "rt", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if not line: 
+            if not line:
                 continue
             try:
                 obj = json.loads(line)
                 pid = obj.get(id_field)
-                if pid is not None:
+                if pid is not None and (
+                    required_field is None or obj.get(required_field) is not None
+                ):
                     done.add(pid)
             except Exception:
                 # tolerate a possibly truncated last line ################################################ ?
@@ -89,6 +104,7 @@ def compute_resume_sets(
     get_id: Callable[[Any, int], Hashable],
     phase_label: str,
     id_field: str = "passage_id",
+    required_field: str | None = None,
 ) -> Tuple[Set[Hashable], Set[Hashable]]:
     
     """Return ``(done_ids, shard_ids)`` for a single shard.
@@ -115,6 +131,10 @@ def compute_resume_sets(
         Human-readable label used in log messages.
     id_field:
         Name of the identifier field inside ``out_path`` JSON objects.
+    required_field:
+        Optional field that must exist in a JSON object for the corresponding
+        ID to be considered "done". This allows partially written records to
+        be retried on resume.
 
     Returns
     -------
@@ -127,7 +147,7 @@ def compute_resume_sets(
         return set(), shard_ids
 
     done_all = existing_ids(
-        out_path, id_field=id_field
+        out_path, id_field=id_field, required_field=required_field
     )  # only this shard's file; caller handles other shards
     done_ids = done_all & shard_ids  # defensive intersection
     print(

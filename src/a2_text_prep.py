@@ -8,7 +8,7 @@ This script supports both baseline and enhanced HopRAG workflows using multiple
 LLM servers. Enhanced IQ/OQ generation is guided by conditioned scores.
 
 Key steps include:
-- Splitting `{split}_passages.jsonl` into N shards based on model size.
+- Splitting `passages.jsonl` into N shards based on model size.
 - Generating conditioned scores for each passage.
 - Creating IQ/OQ lists either with fixed or score-based ratios.
 - Writing debug summaries for each shard and phase.
@@ -17,7 +17,7 @@ Key steps include:
 
 Inputs
 ------
-data/processed_datasets/{dataset}/{split}_passages.jsonl
+data/processed_datasets/{dataset}/{split}/passages.jsonl
     Source passages with the following fields:
     - ``passage_id``: unique identifier.
     - ``title``: source article or document title.
@@ -127,6 +127,7 @@ import json
 from src.utils import SERVER_CONFIGS, existing_ids, compute_resume_sets
 
 
+RESUME = True  
 
 
 
@@ -913,7 +914,7 @@ if __name__ == "__main__":
 
 
     for dataset in DATASETS:
-        input_path = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl" #################################################################### 
+        input_path = f"data/processed_datasets/{dataset}/{SPLIT}/passages.jsonl"
 
         for model in ACTIVE_MODEL_NAMES:
             print(f"\n=== {dataset} | {model} ===")

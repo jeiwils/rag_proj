@@ -26,10 +26,10 @@ Inputs
 Outputs
 -------
 
-### data/processed_datasets/{dataset}/
+### data/processed_datasets/{dataset}/{split}/
 
-- {split}.jsonl                                     - processed questions with gold passage IDs.
-- {split}_passages.jsonl                               - corresponding ID passages with text content.
+- questions.jsonl                                     - processed questions with gold passage IDs.
+- passages.jsonl                                      - corresponding passages with text content.
 
 
 
@@ -37,7 +37,7 @@ Outputs
 File Schema
 -----------
 
-### {split}.jsonl
+### questions.jsonl
 
 {
   "question_id": "{question_id}",
@@ -54,12 +54,12 @@ Fields
 - ``split``: dataset split.
 - ``question``: normalized question text.
 - ``gold_answer``: reference answer.
-- ``gold_passages``: list of gold passage IDs, each pointing to a matching entry in ``{split}_passages.jsonl`` in the same directory
+- ``gold_passages``: list of gold passage IDs, each pointing to a matching entry in ``passages.jsonl`` in the same directory
 
 
 
 
-### {split}_passages.jsonl
+### passages.jsonl
 
 {
   "passage_id": "{passage_id}",
@@ -89,9 +89,6 @@ from src.utils import existing_ids, compute_resume_sets
 
 
 
-
-
-
 os.makedirs("data/processed_datasets", exist_ok=True)
 
 
@@ -99,26 +96,10 @@ os.makedirs("data/processed_datasets", exist_ok=True)
 
 
 
+########## THESE SHOULD ALL ONLY SEND GOLD PASSAGES TO QUESTIONS.JSONL AND ALL PASSAGES TO PASSAGES.JSONL
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-########## THESE SHOULD ALL ONLY SEND GOLD PASSAGES TO THE {SPLIT} AND ALL PASSAGES TO {SPLIT}_PASSAGES
-
-
-# ==== HOTPOT: include ALL passages, but ONLY GOLD IDs in {split}.jsonl ====
+# ==== HOTPOT: include ALL passages, but ONLY GOLD IDs in questions.jsonl ====
 def process_hotpotqa(
     split: str,
     file_path: str,
@@ -133,10 +114,10 @@ def process_hotpotqa(
     if isinstance(max_examples, int):
         examples = examples[:max_examples]
 
-    out_dir = "data/processed_datasets/hotpotqa"
+    out_dir = f"data/processed_datasets/hotpotqa/{split}"
     os.makedirs(out_dir, exist_ok=True)
-    qa_path = f"{out_dir}/{split}.jsonl"
-    passages_path = f"{out_dir}/{split}_passages.jsonl"
+    qa_path = f"{out_dir}/questions.jsonl"
+    passages_path = f"{out_dir}/passages.jsonl"
 
     # --- compute resume sets ---
     done_qids, _ = compute_resume_sets(
@@ -208,7 +189,7 @@ def process_hotpotqa(
 
 
 
-# ==== 2WIKI: include ALL passages, but ONLY GOLD IDs in {split}.jsonl ====
+# ==== 2WIKI: include ALL passages, but ONLY GOLD IDs in questions.jsonl ====
 def process_2wikimultihopqa(
     split: str,
     file_path: str,
@@ -223,10 +204,10 @@ def process_2wikimultihopqa(
     if isinstance(max_examples, int):
         examples = examples[:max_examples]
 
-    out_dir = "data/processed_datasets/2wikimultihopqa"
+    out_dir = f"data/processed_datasets/2wikimultihopqa/{split}"
     os.makedirs(out_dir, exist_ok=True)
-    qa_path = f"{out_dir}/{split}.jsonl"
-    passages_path = f"{out_dir}/{split}_passages.jsonl"
+    qa_path = f"{out_dir}/questions.jsonl"
+    passages_path = f"{out_dir}/passages.jsonl"
 
     # --- compute resume sets ---
     done_qids, _ = compute_resume_sets(
@@ -312,10 +293,10 @@ def process_musique(
                 break
             examples.append(json.loads(line))
 
-    out_dir = "data/processed_datasets/musique"
+    out_dir = f"data/processed_datasets/musique/{split}"
     os.makedirs(out_dir, exist_ok=True)
-    qa_path = f"{out_dir}/{split}.jsonl"
-    passages_path = f"{out_dir}/{split}_passages.jsonl"
+    qa_path = f"{out_dir}/questions.jsonl"
+    passages_path = f"{out_dir}/passages.jsonl"
 
     done_qids, _ = compute_resume_sets(
         resume=resume,
@@ -411,7 +392,7 @@ if __name__ == "__main__":
     RESUME = True
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     SPLITS = ["dev"]
-    MAX_EXAMPLES = 200
+    MAX_EXAMPLES = 500
 
     for dataset in DATASETS:
         for split in SPLITS:

@@ -23,7 +23,7 @@ Inputs
 - `passages_emb.npy`, `passages_index.faiss`, `passages.jsonl`
     Dense passage embeddings, FAISS index, and passage metadata (including keywords and IDs).
 
-### data/processed_datasets/{dataset}/{split}.jsonl
+### data/processed_datasets/{dataset}/{split}/questions.jsonl
 
 - Query set (e.g., dev split) with:
     - `question_id`: unique identifier
@@ -108,7 +108,7 @@ Notes
 """
 
 
-from src.utils import get_result_paths, get_traversal_paths
+from src.utils import get_result_paths, get_traversal_paths, append_jsonl
 
 from typing import List, Dict, Optional, Tuple
 
@@ -454,8 +454,7 @@ def run_dense_rag_baseline(
             "method": "dense_rag"
         }
 
-    with open(output_path, "wt", encoding="utf-8") as f:
-        f.write(json.dumps(result, ensure_ascii=False) + "\n")
+        append_jsonl(output_path, result)
 
     print(f"\n[Done] Saved dense RAG results to {output_path}")
 
@@ -553,7 +552,7 @@ if __name__ == "__main__":
             passage_emb = np.load(rep_paths["passages_emb"])["embs_all"]
             passage_index = load_faiss_index(rep_paths["passages_index"])
 
-            query_path = os.path.join("data", "processed_datasets", dataset, f"{split}.jsonl")
+            query_path = os.path.join("data", "processed_datasets", dataset, split, "questions.jsonl")
             query_data = list(load_jsonl(query_path))
 
             for model in MODELS:

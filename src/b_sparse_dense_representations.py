@@ -10,9 +10,9 @@ and index them for efficient retrieval using FAISS. Also extracts sparse keyword
 Inputs
 ------
 
-### data/processed_datasets/{dataset}/
+### data/processed_datasets/{dataset}/{split}/
 
-- {split}_passages.jsonl
+- passages.jsonl
     → Raw passage entries with passage ID and text.
 
 
@@ -58,7 +58,7 @@ Outputs
 File Schema
 -----------
 
-### {split}_passages.jsonl
+### passages.jsonl
 
 {
   "passage_id": "{passage_id}",
@@ -461,6 +461,11 @@ def add_keywords_to_passages_jsonl(
                 union.update(lst)
             r["all_keywords"] = sorted(union)
 
+    with open(passages_jsonl, "wt", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+
 
 
 def add_keywords_to_iqoq_jsonl(
@@ -517,7 +522,7 @@ if __name__ == "__main__":
             dataset_dir = Path(os.path.dirname(pass_paths["passages_jsonl"]))
             os.makedirs(dataset_dir, exist_ok=True)
 
-            passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl"
+            passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}/passages.jsonl"
             passages_jsonl      = pass_paths["passages_jsonl"]
             passages_npy        = pass_paths["passages_emb"]
 
@@ -544,6 +549,7 @@ if __name__ == "__main__":
                     items=pass_items,
                     get_id=lambda x, i: x["passage_id"],
                     phase_label="passage embeddings",
+                    required_field="vec_id",
                 )
                 new_ids = shard_ids - done_ids
                 passages_emb, new_pass_embs = embed_and_save(
@@ -587,6 +593,7 @@ if __name__ == "__main__":
                     items=q_items,
                     get_id=lambda x, i: x["iqoq_id"],
                     phase_label="question embeddings",
+                    required_field="vec_id",
                 )
                 embed_and_save(
                     input_jsonl=questions_jsonl_src,
@@ -635,6 +642,7 @@ if __name__ == "__main__":
                     get_id=lambda x, i: x["iqoq_id"],
                     phase_label="iqoq embeddings",
                     id_field="iqoq_id",
+                    required_field="vec_id",
                 )
                 new_ids = shard_ids - done_ids
                 iqoq_emb, new_iqoq_embs = embed_and_save(

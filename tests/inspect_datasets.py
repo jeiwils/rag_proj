@@ -53,14 +53,14 @@ if __name__ == "__main__":
 
 
 
-    # inspect_json_columns("data/processed_datasets/hotpotqa/train.jsonl")
-    # inspect_json_columns("data/processed_datasets/hotpotqa/train_passages.jsonl")
+    # inspect_json_columns("data/processed_datasets/hotpotqa/train/questions.jsonl")
+    # inspect_json_columns("data/processed_datasets/hotpotqa/train/passages.jsonl")
 
-    # inspect_json_columns("data/processed_datasets/2wikimultihopqa/train.jsonl")
-    # inspect_json_columns("data/processed_datasets/2wikimultihopqa/train_passages.jsonl")
+    # inspect_json_columns("data/processed_datasets/2wikimultihopqa/train/questions.jsonl")
+    # inspect_json_columns("data/processed_datasets/2wikimultihopqa/train/passages.jsonl")
 
-    # inspect_json_columns("data/processed_datasets/musique/train.jsonl")
-    # inspect_json_columns("data/processed_datasets/musique/train_passages.jsonl")
+    # inspect_json_columns("data/processed_datasets/musique/train/questions.jsonl")
+    # inspect_json_columns("data/processed_datasets/musique/train/passages.jsonl")
 
 
     inspect_json_columns("data/raw_datasets/hotpotqa/hotpot_train_v1.1.json")

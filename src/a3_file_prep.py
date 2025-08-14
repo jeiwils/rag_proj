@@ -200,7 +200,7 @@ def clean_baseline(questions):
 
 def clean_file(in_path, out_path, cleaner, resume: bool = False):
     """Clean one shard. Returns a compact summary. No debug files here."""
-    raw = load_jsonl(in_path)
+    raw = list(load_jsonl(in_path)) 
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
 
     done_ids, _ = compute_resume_sets(

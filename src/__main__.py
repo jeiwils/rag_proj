@@ -23,20 +23,26 @@ project-root/
 │   │
 │   ├── processed_datasets/
 │   │   ├── hotpotqa/
-│   │   │   ├── train.jsonl
-│   │   │   ├── train_passages.jsonl
-│   │   │   ├── dev.jsonl
-│   │   │   └── dev_passages.jsonl
+│   │   │   ├── train/
+│   │   │   │   ├── questions.jsonl
+│   │   │   │   └── passages.jsonl
+│   │   │   └── dev/
+│   │   │       ├── questions.jsonl
+│   │   │       └── passages.jsonl
 │   │   ├── 2wikimultihopqa/
-│   │   │   ├── train.jsonl
-│   │   │   ├── train_passages.jsonl
-│   │   │   ├── dev.jsonl
-│   │   │   └── dev_passages.jsonl
+│   │   │   ├── train/
+│   │   │   │   ├── questions.jsonl
+│   │   │   │   └── passages.jsonl
+│   │   │   └── dev/
+│   │   │       ├── questions.jsonl
+│   │   │       └── passages.jsonl
 │   │   └── musique/
-│   │       ├── train.jsonl
-│   │       ├── train_passages.jsonl
-│   │       ├── dev.jsonl
-│   │       └── dev_passages.jsonl
+│   │       ├── train/
+│   │       │   ├── questions.jsonl
+│   │       │   └── passages.jsonl
+│   │       └── dev/
+│   │           ├── questions.jsonl
+│   │           └── passages.jsonl
 │   │
 │   ├── models/
 │   │   └── {model}/{dataset}/{split}/

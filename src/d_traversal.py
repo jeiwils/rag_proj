@@ -100,7 +100,7 @@ File Schema
 # - 2) enhanced hoprag traversal algorithm (allows node revists - no edge revisits)
 
 
-from src.utils import get_result_paths, get_traversal_paths, append_jsonl, load_jsonl
+from src.utils import get_traversal_paths, append_jsonl, load_jsonl
 
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Callable, Set
@@ -109,11 +109,11 @@ from src.utils import SERVER_CONFIGS, compute_resume_sets
 from src.b_sparse_dense_representations import (
     faiss_search_topk,
     jaccard_similarity,
-    bge_model,
     ALPHA,
     dataset_rep_paths,
+    get_embedding_model,
 )
-from src.c_graphing import hoprag_graph, enhanced_graph, append_global_result
+from src.c_graphing import append_global_result
 import faiss
 import networkx as nx
 import os
@@ -627,9 +627,11 @@ if __name__ == "__main__":
     SPLIT = "dev"
 
     variant_cfg = {
-        "baseline": (hoprag_graph, hoprag_traversal_algorithm),
-        "enhanced": (enhanced_graph, enhanced_traversal_algorithm),
+        "baseline": hoprag_traversal_algorithm,
+        "enhanced": enhanced_traversal_algorithm,
     }
+
+    emb_model = get_embedding_model()
 
     for dataset in DATASETS:
         # Load dataset-wide resources once per dataset
@@ -648,7 +650,12 @@ if __name__ == "__main__":
             for variant in VARIANTS:
                 print(f"\n=== Running {variant.upper()} traversal | {dataset} | {model} ===")
 
-                graph_obj, trav_alg = variant_cfg[variant]
+                graph_path = Path(
+                    f"data/graphs/{model}/{dataset}/{SPLIT}/{variant}/{dataset}_{SPLIT}_graph.gpickle"
+                )
+                graph_obj = nx.read_gpickle(graph_path)
+                trav_alg = variant_cfg[variant]
+
                 output_paths = get_traversal_paths(model, dataset, SPLIT, variant)
 
 
@@ -671,7 +678,7 @@ if __name__ == "__main__":
                     passage_metadata=passage_metadata,
                     passage_emb=passage_emb,
                     passage_index=passage_index,
-                    emb_model=bge_model,
+                    emb_model=emb_model,
                     server_configs=SERVER_CONFIGS,
                     model_servers=model_servers,
                     output_paths=output_paths,
