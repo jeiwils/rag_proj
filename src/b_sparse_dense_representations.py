@@ -12,13 +12,13 @@ Inputs
 
 ### data/processed_datasets/{dataset}/
 
-- {split}_passages.jsonl.gz
+- {split}_passages.jsonl
     → Raw passage entries with passage ID and text.
 
 
 ### data/models/{model}/{dataset}/{split}/{variant}/
 
-- exploded/iqoq.exploded.jsonl.gz 
+- exploded/iqoq.exploded.jsonl 
     → Incoming/outgoing questions (one per row), used for embedding questions.
 
 - cleaned/iqoq.cleaned.jsonl
@@ -31,10 +31,10 @@ Outputs
 
 ### data/representations/{dataset}/{split}/{hoprag_version}
 
-- {dataset}_passages.jsonl.gz
+- {dataset}_passages.jsonl
     → Passage metadata with added vec_id.
 
-- {dataset}_passages_emb.npz
+- {dataset}_passages_emb.npy
     → Dense passage embeddings (NumPy array).
 
 - {dataset}_faiss_passages.faiss
@@ -44,10 +44,10 @@ Outputs
 
 ### data/representations/{model}/{dataset}/{split}/{variant}/
 
-- iqoq.cleaned.jsonl.gz
+- iqoq.cleaned.jsonl
     → Updated input file with vec_id added for each IQ/OQ item.
 
-- {dataset}_iqoq_emb.npz
+- {dataset}_iqoq_emb.npy
     → Dense IQ/OQ embeddings (NumPy array).
 
 - {dataset}_faiss_iqoq.faiss
@@ -58,7 +58,7 @@ Outputs
 File Schema
 -----------
 
-### {split}_passages.jsonl.gz
+### {split}_passages.jsonl
 
 {
   "passage_id": "{passage_id}",
@@ -74,7 +74,7 @@ Fields:
 - ``keywords_passage``: extracted named entities via spaCy.
 
 
-### iqoq.cleaned.jsonl.gz
+### iqoq.cleaned.jsonl
 
 {
   "iqoq_id": "{iqoq_id}",
@@ -98,7 +98,7 @@ Notes
 - FAISS indexes are built using inner-product over normalized vectors (cosine similarity).
 - Embeddings are generated using the BAAI bge-base-en-v1.5 SentenceTransformer.
 - Only entities of types like PERSON, ORG, GPE, etc. are retained for keyword features.
-- `vec_id` aligns each row in the `.jsonl` file with the corresponding row in the `.npz` file.
+- `vec_id` aligns each row in the `.jsonl` file with the corresponding row in the `.npy` file.
 
 """
 
@@ -163,8 +163,8 @@ def dataset_rep_paths(dataset: str, split: str) -> Dict[str, str]:
     """
     base = os.path.join("data", "representations", dataset, split)
     return {
-        "passages_jsonl": os.path.join(base, f"{dataset}_passages.jsonl.gz"),
-        "passages_emb": os.path.join(base, f"{dataset}_passages_emb.npz"),
+        "passages_jsonl": os.path.join(base, f"{dataset}_passages.jsonl"),
+        "passages_emb": os.path.join(base, f"{dataset}_passages_emb.npy"),
         "passages_index": os.path.join(base, f"{dataset}_faiss_passages.faiss"),
     }
 
@@ -186,8 +186,8 @@ def model_rep_paths(model: str, dataset: str, split: str, variant: str) -> Dict[
         variant,
     )
     return {
-        "iqoq_jsonl": os.path.join(base, f"{dataset}_iqoq.jsonl.gz"),
-        "iqoq_emb": os.path.join(base, f"{dataset}_iqoq_emb.npz"),
+        "iqoq_jsonl": os.path.join(base, f"{dataset}_iqoq.jsonl"),
+        "iqoq_emb": os.path.join(base, f"{dataset}_iqoq_emb.npy"),
         "iqoq_index": os.path.join(base, f"{dataset}_faiss_iqoq.faiss"),
     }
 
@@ -232,7 +232,7 @@ def embed_and_save(
         raise ValueError("You must provide a valid text_key (e.g., 'text' or 'question').")
 
     data, texts = [], []
-    open_in = gzip.open if str(input_jsonl).endswith(".gz") else open
+    open_in = gzip.open if str(input_jsonl).endswith("") else open
     with open_in(input_jsonl, "rt", encoding="utf-8") as f:
         for line in f:
             entry = json.loads(line)
@@ -273,7 +273,7 @@ def embed_and_save(
     mode = "a" if done_ids else "w"
     dir_path = os.path.dirname(output_jsonl)
     os.makedirs(dir_path or ".", exist_ok=True)
-    open_out = gzip.open if str(output_jsonl).endswith(".gz") else open
+    open_out = gzip.open if str(output_jsonl).endswith("") else open
     with open_out(output_jsonl, mode + "t", encoding="utf-8") as f_out:
         for d in data:
             f_out.write(json.dumps(d) + "\n")
@@ -301,7 +301,7 @@ def build_and_save_faiss_index(
 
     If ``new_vectors`` is provided and an existing index file is found, the new
     vectors are appended to that index. Otherwise, a fresh index is built from
-    ``embeddings``. When ``compress`` is ``True`` an additional ``.faiss.gz``
+    ``embeddings``. When ``compress`` is ``True`` an additional ``.faiss``
     file is written containing a serialised version of the index.
     """
     if not index_type or index_type not in {"passages", "iqoq"}:
@@ -321,7 +321,7 @@ def build_and_save_faiss_index(
     faiss.write_index(index, faiss_path)
     if compress:
         serialized = faiss.serialize_index(index)
-        with gzip.open(faiss_path + ".gz", "wb") as f:
+        with gzip.open(faiss_path + "", "wb") as f:
             f.write(serialized)
     print(f"[FAISS] Saved {index_type} index to {faiss_path} with {index.ntotal} vectors.")
 
@@ -331,8 +331,8 @@ def build_and_save_faiss_index(
 
 def load_faiss_index(path: str):
     """Load a FAISS index from ``path`` supporting optional gzip compression."""
-    gz_path = path if path.endswith(".gz") else path + ".gz"
-    if path.endswith(".gz") or (not os.path.exists(path) and os.path.exists(gz_path)):
+    gz_path = path if path.endswith("") else path + ""
+    if path.endswith("") or (not os.path.exists(path) and os.path.exists(gz_path)):
         with gzip.open(gz_path, "rb") as f:
             index = faiss.deserialize_index(f.read())
         print(f"[FAISS] Loaded {index.ntotal} vectors from {gz_path}")
@@ -428,7 +428,7 @@ def add_keywords_to_passages_jsonl(
     merged_with_iqoq: bool = False,
     only_ids: Set[str] | None = None,
 ):
-    open_fn = gzip.open if passages_jsonl.endswith(".gz") else open
+    open_fn = gzip.open if passages_jsonl.endswith("") else open
     rows = [json.loads(l) for l in open_fn(passages_jsonl, "rt", encoding="utf-8")]
     if only_ids:
         targets = [r for r in rows if r.get("passage_id") in only_ids]
@@ -462,7 +462,7 @@ def add_keywords_to_iqoq_jsonl(
     out_field: str = "keywords",
     only_ids: Set[str] | None = None,
 ):
-    open_fn = gzip.open if iqoq_jsonl.endswith(".gz") else open
+    open_fn = gzip.open if iqoq_jsonl.endswith("") else open
     rows = [json.loads(l) for l in open_fn(iqoq_jsonl, "rt", encoding="utf-8")]
     if only_ids:
         targets = [r for r in rows if r.get("iqoq_id") in only_ids]
@@ -512,13 +512,13 @@ if __name__ == "__main__":
             dataset_dir = Path(os.path.dirname(pass_paths["passages_jsonl"]))
             os.makedirs(dataset_dir, exist_ok=True)
 
-            passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl.gz"
+            passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl"
             passages_jsonl      = pass_paths["passages_jsonl"]
             passages_npy        = pass_paths["passages_emb"]
 
-            questions_jsonl_src = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/exploded/iqoq.exploded.jsonl.gz"
+            questions_jsonl_src = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/exploded/iqoq.exploded.jsonl"
             questions_jsonl     = dataset_dir / Path(questions_jsonl_src).name
-            questions_npy       = dataset_dir / Path(questions_jsonl_src).with_suffix(".emb.npz").name
+            questions_npy       = dataset_dir / Path(questions_jsonl_src).with_suffix(".emb.npy").name
 
             # === PASSAGE EMBEDDINGS ===
             if os.path.exists(passages_npy) and not RESUME:
@@ -602,10 +602,10 @@ if __name__ == "__main__":
         for dataset in DATASETS:
             variant = CURRENT_VARIANT
             hoprag_version = variant
-            iqoq_jsonl = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/cleaned/iqoq.cleaned.jsonl.gz"
+            iqoq_jsonl = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/cleaned/iqoq.cleaned.jsonl"
             repr_root = os.path.join("data", "representations", model, dataset, SPLIT, hoprag_version)
             os.makedirs(repr_root, exist_ok=True)
-            iqoq_npy = os.path.join(repr_root, f"{dataset}_iqoq_emb.npz")
+            iqoq_npy = os.path.join(repr_root, f"{dataset}_iqoq_emb.npy")
 
             # === IQ/OQ EMBEDDINGS ===
             if not os.path.exists(iqoq_jsonl):

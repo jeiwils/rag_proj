@@ -8,7 +8,7 @@ This script supports both baseline and enhanced HopRAG workflows using multiple
 LLM servers. Enhanced IQ/OQ generation is guided by conditioned scores.
 
 Key steps include:
-- Splitting `{split}_passages.jsonl.gz` into N shards based on model size.
+- Splitting `{split}_passages.jsonl` into N shards based on model size.
 - Generating conditioned scores for each passage.
 - Creating IQ/OQ lists either with fixed or score-based ratios.
 - Writing debug summaries for each shard and phase.
@@ -17,7 +17,7 @@ Key steps include:
 
 Inputs
 ------
-data/processed_datasets/{dataset}/{split}_passages.jsonl.gz
+data/processed_datasets/{dataset}/{split}_passages.jsonl
     Source passages with the following fields:
     - ``passage_id``: unique identifier.
     - ``title``: source article or document title.
@@ -30,19 +30,19 @@ Outputs
 Sharded output files written to:
 
 data/models/{model}/{dataset}/{split}/shards/
-    - {split}_passages_shard{N}_{size}.jsonl.gz
+    - {split}_passages_shard{N}_{size}.jsonl
         → Raw input shards split by model size (1.5b → 4 shards, 7b → 2, 14b → 1).
 
 data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/
 
 
-    - {split}_passages_shard{N}_{size}_cs.jsonl.gz
+    - {split}_passages_shard{N}_{size}_cs.jsonl
         → Passages with conditioned scores.
 
-    - {split}_passages_shard{N}_{size}_iqoq_baseline.jsonl.gz
+    - {split}_passages_shard{N}_{size}_iqoq_baseline.jsonl
         → IQ/OQ questions from baseline HopRAG prompts (fixed ratio).
 
-    - {split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl.gz
+    - {split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl
         → IQ/OQ questions generated using conditioned score–based ratios.
 
     - *_cs_debug.txt
@@ -55,7 +55,7 @@ data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/
 Examples
 --------
 
-### _cs.jsonl.gz
+### _cs.jsonl
 
 {
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
@@ -69,7 +69,7 @@ Examples
 
 
 
-### _iqoq_baseline.jsonl.gz
+### _iqoq_baseline.jsonl
 
 {
   "passage_id": "5a7a0693__first_for_women_sent0",
@@ -275,7 +275,7 @@ def split_jsonl_into_four(path, out1, out2, out3, out4):
 def split_jsonl_for_models(path: str, model: str) -> list[str]:
     """
     Split input JSONL into N shards based on model size and write them to:
-      data/models/{model}/{dataset}/{split}/shards/{stem}_shard{N}_{size}.jsonl.gz
+      data/models/{model}/{dataset}/{split}/shards/{stem}_shard{N}_{size}.jsonl
 
     Returns the shard paths. For 14B we still write a single shard file.
     """
@@ -285,32 +285,32 @@ def split_jsonl_for_models(path: str, model: str) -> list[str]:
     out_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    stem = Path(path).name.replace(".jsonl.gz", "").replace(".jsonl", "")
+    stem = Path(path).name.replace(".jsonl", "").replace(".jsonl", "")
 
     # 💥 Clear out any stale shard files from prior broken runs
-    for f in out_dir.glob(f"{stem}_shard*_{size}.jsonl.gz"):
+    for f in out_dir.glob(f"{stem}_shard*_{size}.jsonl"):
         f.unlink()
 
     if size == "1.5b":
         out_paths = [
-            str(out_dir / f"{stem}_shard1_{size}.jsonl.gz"),
-            str(out_dir / f"{stem}_shard2_{size}.jsonl.gz"),
-            str(out_dir / f"{stem}_shard3_{size}.jsonl.gz"),
-            str(out_dir / f"{stem}_shard4_{size}.jsonl.gz"),
+            str(out_dir / f"{stem}_shard1_{size}.jsonl"),
+            str(out_dir / f"{stem}_shard2_{size}.jsonl"),
+            str(out_dir / f"{stem}_shard3_{size}.jsonl"),
+            str(out_dir / f"{stem}_shard4_{size}.jsonl"),
         ]
         split_jsonl_into_four(path, *out_paths)
         return out_paths
 
     if size == "7b":
         out_paths = [
-            str(out_dir / f"{stem}_shard1_{size}.jsonl.gz"),
-            str(out_dir / f"{stem}_shard2_{size}.jsonl.gz"),
+            str(out_dir / f"{stem}_shard1_{size}.jsonl"),
+            str(out_dir / f"{stem}_shard2_{size}.jsonl"),
         ]
         split_jsonl(path, *out_paths)
         return out_paths
 
     if size == "14b":
-        out_path = out_dir / f"{stem}_shard1_{size}.jsonl.gz"
+        out_path = out_dir / f"{stem}_shard1_{size}.jsonl"
         data = list(load_jsonl(path))  # ensure generator is fully consumed before saving
         save_jsonl(str(out_path), data)
         return [str(out_path)]
@@ -403,7 +403,7 @@ def write_debug_file(
     skipped: int = 0,
 ):
     size = model_size(model)
-    shard_stem = Path(shard_path).name.replace(".jsonl.gz", "")
+    shard_stem = Path(shard_path).name.replace(".jsonl", "")
     debug_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards/{hoprag_version}")
     debug_dir.mkdir(parents=True, exist_ok=True)
 
@@ -629,7 +629,7 @@ def existing_ids(path, id_field="passage_id"):
     if not Path(path).exists():
         return set()
     done = set()
-    open_fn = gzip.open if str(path).endswith(".gz") else open
+    open_fn = gzip.open if str(path).endswith("") else open ###################################################### IT DOESN'T NEED TO BE GZIPPED
     with open_fn(path, "rt", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -729,9 +729,9 @@ def process_server_task(config: dict):
     missing_oq: list = []
 
     shard_stem   = Path(input_path).stem
-    scored_tmp   = str(phase_dir / f"{shard_stem}_cs.jsonl.gz")
-    out_baseline = str(phase_dir / f"{shard_stem}_iqoq_baseline.jsonl.gz")
-    out_enhanced = str(phase_dir / f"{shard_stem}_iqoq_enhanced.jsonl.gz")
+    scored_tmp   = str(phase_dir / f"{shard_stem}_cs.jsonl")
+    out_baseline = str(phase_dir / f"{shard_stem}_iqoq_baseline.jsonl")
+    out_enhanced = str(phase_dir / f"{shard_stem}_iqoq_enhanced.jsonl")
 
     # pick phase output for unlink logic
     if task_type == "cs":
@@ -991,7 +991,7 @@ if __name__ == "__main__":
 
 
     for dataset in DATASETS:
-        input_path = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl.gz" #################################################################### 
+        input_path = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl" #################################################################### 
 
         for model in ACTIVE_MODEL_NAMES:
             print(f"\n=== {dataset} | {model} ===")

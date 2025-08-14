@@ -23,20 +23,20 @@ project-root/
 │   │
 │   ├── processed_datasets/
 │   │   ├── hotpotqa/
-│   │   │   ├── train.jsonl.gz
-│   │   │   ├── train_passages.jsonl.gz
-│   │   │   ├── dev.jsonl.gz
-│   │   │   └── dev_passages.jsonl.gz
+│   │   │   ├── train.jsonl
+│   │   │   ├── train_passages.jsonl
+│   │   │   ├── dev.jsonl
+│   │   │   └── dev_passages.jsonl
 │   │   ├── 2wikimultihopqa/
-│   │   │   ├── train.jsonl.gz
-│   │   │   ├── train_passages.jsonl.gz
-│   │   │   ├── dev.jsonl.gz
-│   │   │   └── dev_passages.jsonl.gz
+│   │   │   ├── train.jsonl
+│   │   │   ├── train_passages.jsonl
+│   │   │   ├── dev.jsonl
+│   │   │   └── dev_passages.jsonl
 │   │   └── musique/
-│   │       ├── train.jsonl.gz
-│   │       ├── train_passages.jsonl.gz
-│   │       ├── dev.jsonl.gz
-│   │       └── dev_passages.jsonl.gz
+│   │       ├── train.jsonl
+│   │       ├── train_passages.jsonl
+│   │       ├── dev.jsonl
+│   │       └── dev_passages.jsonl
 │   │
 │   ├── models/
 │   │   └── {model}/{dataset}/{split}/
@@ -51,40 +51,40 @@ project-root/
 │   │       │       └── *_iqoq_enhanced_debug.txt
 │   │       └── {hoprag_version}/
 │   │           ├── cleaned/
-│   │           │   ├── iqoq.cleaned.jsonl.gz
-│   │           │   └── scored.cleaned.jsonl.gz
+│   │           │   ├── iqoq.cleaned.jsonl
+│   │           │   └── scored.cleaned.jsonl
 │   │           ├── exploded/
-│   │           │   ├── iqoq.exploded.jsonl.gz
-│   │           │   └── passages.exploded.jsonl.gz
+│   │           │   ├── iqoq.exploded.jsonl
+│   │           │   └── passages.exploded.jsonl
 │   │           └── debug/
 │   │               └── cleaning_debug.txt
 │   │
 │   ├── representations/
 │   │   ├── {dataset}/{split}/
-│   │   │   ├── {dataset}_passages.jsonl.gz
-│   │   │   ├── {dataset}_passages_emb.npz
+│   │   │   ├── {dataset}_passages.jsonl
+│   │   │   ├── {dataset}_passages_emb.npy
 │   │   │   └── {dataset}_faiss_passages.faiss
 │   │   └── {model}/{dataset}/{split}/{variant}/
-│   │       ├── iqoq.cleaned.jsonl.gz
-│   │       ├── {dataset}_iqoq_emb.npz
+│   │       ├── iqoq.cleaned.jsonl
+│   │       ├── {dataset}_iqoq_emb.npy
 │   │       └── {dataset}_faiss_iqoq.faiss
 │   │
 │   └── graphs/
 │       └── {model}/{dataset}/{split}/{variant}/
 │           ├── {dataset}_{split}_graph.gpickle
-│           ├── {dataset}_{split}_edges.jsonl.gz
-│           ├── {dataset}_{split}_graph_log.jsonl.gz
-│           ├── {dataset}_{split}_graph_results.jsonl.gz
+│           ├── {dataset}_{split}_edges.jsonl
+│           ├── {dataset}_{split}_graph_log.jsonl
+│           ├── {dataset}_{split}_graph_results.jsonl
 │           └── traversal/
-│               ├── per_query_traversal_results.jsonl.gz
-│               ├── final_selected_passages.json.gz
+│               ├── per_query_traversal_results.jsonl
+│               ├── final_selected_passages.json
 │               └── final_traversal_stats.json
 │
 ├── results/
 │   └── {model}/{dataset}/{split}/{variant}/
-│       ├── answer_per_query_{variant}_{split}.jsonl.gz
-│       ├── traversal_per_query_{variant}_{split}.jsonl.gz
-│       ├── all_visited_passages_{variant}_{split}.json.gz
+│       ├── answer_per_query_{variant}_{split}.jsonl
+│       ├── traversal_per_query_{variant}_{split}.jsonl
+│       ├── all_visited_passages_{variant}_{split}.json
 │       └── summary_metrics_{variant}_{split}.json
 │
 ├── src/

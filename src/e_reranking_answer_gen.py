@@ -20,10 +20,10 @@ Inputs
 - `{dataset}_{split}_graph.gpickle`  
     Directed NetworkX graph. Nodes = passages, edges = OQ→IQ links.
 
-- `passages_emb.npz`, `passages_index.faiss`, `passages.jsonl`
+- `passages_emb.npy`, `passages_index.faiss`, `passages.jsonl`
     Dense passage embeddings, FAISS index, and passage metadata (including keywords and IDs).
 
-### data/processed_datasets/{dataset}/{split}.jsonl.gz
+### data/processed_datasets/{dataset}/{split}.jsonl
 
 - Query set (e.g., dev split) with:
     - `question_id`: unique identifier
@@ -36,10 +36,10 @@ Outputs
 
 ### data/graphs/{model}/{dataset}/{split}/{variant}/traversal/
 
-- `per_query_traversal_results.jsonl.gz`  
+- `per_query_traversal_results.jsonl`  
     One entry per query with hop trace, visited nodes, and precision/recall/F1 metrics.
 
-- `visited_passages.json.gz`  
+- `visited_passages.json`  
     Deduplicated union of all passages visited during traversal (used for answer reranking).
 
 - `final_traversal_stats.json`  
@@ -49,7 +49,7 @@ Outputs
 File Schemas
 ------------
 
-### per_query_traversal_results.jsonl.gz
+### per_query_traversal_results.jsonl
 
 Each line contains a dict with the full traversal trace and evaluation:
 
@@ -68,7 +68,7 @@ Each line contains a dict with the full traversal trace and evaluation:
 }
 
 
-### visited_passages.json.gz
+### visited_passages.json
 
 A list of unique passage IDs visited across all queries:
 
@@ -396,7 +396,7 @@ def run_dense_rag_baseline(
         raise ValueError("output_path must be provided to run_dense_rag_baseline")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    open_fn = gzip.open if output_path.endswith(".gz") else open
+    open_fn = gzip.open if output_path.endswith("") else open ################################## DOESN'T NEED TO BE GZIPPED
     with open_fn(output_path, "wt", encoding="utf-8") as f:
         pass  # Clear file before writing
 
@@ -469,7 +469,7 @@ def run_pipeline(
     passage_index,
     emb_model,
     server_configs: List[Dict] = SERVER_CONFIGS,
-    output_path="results/dev_results.jsonl.gz",
+    output_path="results/dev_results.jsonl",
     seed_top_k=50,
     alpha=0.5,
     n_hops=2
@@ -552,7 +552,7 @@ if __name__ == "__main__":
             passage_emb = np.load(rep_paths["passages_emb"])["embs_all"]
             passage_index = load_faiss_index(rep_paths["passages_index"])
 
-            query_path = os.path.join("data", "processed_datasets", dataset, f"{split}.jsonl.gz")
+            query_path = os.path.join("data", "processed_datasets", dataset, f"{split}.jsonl")
             query_data = list(load_jsonl(query_path))
 
             for model in MODELS:
@@ -582,9 +582,9 @@ if __name__ == "__main__":
                         "data", "graphs", model, dataset, split, variant,
                         f"{dataset}_{split}_graph.gpickle"
                     )
-                    if not os.path.exists(graph_path) and os.path.exists(graph_path + ".gz"):
-                        graph_path = graph_path + ".gz"
-                    if graph_path.endswith(".gz"):
+                    if not os.path.exists(graph_path) and os.path.exists(graph_path + ""): ######################################### DOESN'T NEED TO BE GZIPPED
+                        graph_path = graph_path + ""
+                    if graph_path.endswith(""):
                         with gzip.open(graph_path, "rb") as f:
                             graph = nx.read_gpickle(f)
                     else:

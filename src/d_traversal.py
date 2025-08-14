@@ -23,7 +23,7 @@ Inputs
 - `{dataset}_{split}.jsonl`  
     Preprocessed query set, with `question_id`, `question`, and `gold_passages`.
 
-- `passages_emb.npz`, `passages_index.faiss`, `passages.jsonl`
+- `passages_emb.npy`, `passages_index.faiss`, `passages.jsonl`
     Passage embeddings, FAISS index, and metadata from dense/sparse encoder setup.
 
 
@@ -32,10 +32,10 @@ Outputs
 
 ### data/graphs/{model}/{dataset}/{split}/{variant}/traversal/
 
-- `per_query_traversal_results.jsonl.gz'
+- `per_query_traversal_results.jsonl'
     One entry per query with hop trace, visited nodes, and precision/recall/F1.
 
-- `visited_passages.json.gz`  
+- `visited_passages.json`  
     Deduplicated union of all passages visited during traversal (used for answer reranking).
 
 - `final_traversal_stats.json`  
@@ -46,7 +46,7 @@ Outputs
 File Schema
 -----------
 
-### per_query_traversal_results.jsonl.gz
+### per_query_traversal_results.jsonl
 
 {
   "query_id": "{question_id}",
@@ -63,7 +63,7 @@ File Schema
 }
 
 
-### visited_passages.json.gz
+### visited_passages.json
 
 [
   "{passage_id_1}",
@@ -480,8 +480,8 @@ def run_traversal(
     Run LLM-guided multi-hop traversal over a QA query set (e.g., train, dev).
 
     Outputs:
-    - visited_passages.json.gz: ✅ Used downstream (answer generation, reranking)
-    - per_query_traversal_results.jsonl.gz: 🔍 Full per-query trace and metrics
+    - visited_passages.json: ✅ Used downstream (answer generation, reranking)
+    - per_query_traversal_results.jsonl: 🔍 Full per-query trace and metrics
     - traversal_stats.json: 📈 Aggregate traversal metrics across the query set
     """
         

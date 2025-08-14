@@ -27,7 +27,7 @@ Sharded files are located at:
 
 ### data/models/{model}/{dataset}/{split}/shards/
 
-- {split}_passages_shard{N}_{size}.jsonl.gz
+- {split}_passages_shard{N}_{size}.jsonl
     → Raw input shards, split by model size:
         - 1.5B → 4 shards
         - 7B   → 2 shards
@@ -35,13 +35,13 @@ Sharded files are located at:
 
 ### data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/
 
-- {split}_passages_shard{N}_{size}_iqoq_baseline.jsonl.gz
+- {split}_passages_shard{N}_{size}_iqoq_baseline.jsonl
     → IQ/OQ generation (baseline variant, fixed IQ/OQ ratio)
 
-- {split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl.gz
+- {split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl
     → IQ/OQ generation (enhanced variant, CS-guided ratio)
 
-- {split}_passages_shard{N}_{size}_cs.jsonl.gz
+- {split}_passages_shard{N}_{size}_cs.jsonl
     → Conditioned-score values for passages
 
 - *_iqoq_baseline_debug.txt / *_enhanced_debug.txt / *_cs_debug.txt
@@ -53,19 +53,19 @@ Output Structure
 
 ### data/models/{model}/{dataset}/{split}/{hoprag_version}/cleaned/
 
-- iqoq.cleaned.jsonl.gz
+- iqoq.cleaned.jsonl
     → Merged and cleaned IQ/OQ entries for all passages
 
-- scored.cleaned.jsonl.gz
+- scored.cleaned.jsonl
     → Merged conditioned score entries (if available)
 
 
 ### data/models/{model}/{dataset}/{split}/{hoprag_version}/exploded/
 
-- iqoq.exploded.jsonl.gz
+- iqoq.exploded.jsonl
     → One row per IQ/OQ question with minimal metadata
 
-- passages.exploded.jsonl.gz
+- passages.exploded.jsonl
     → One row per passage with optional conditioned score
 
 
@@ -78,7 +78,7 @@ Output Structure
 Schemas
 -------
 
-### cleaned/iqoq.cleaned.jsonl.gz
+### cleaned/iqoq.cleaned.jsonl
 
 {
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
@@ -96,7 +96,7 @@ Schemas
 }
 
 
-### cleaned/scored.cleaned.jsonl.gz
+### cleaned/scored.cleaned.jsonl
 
 {
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
@@ -109,7 +109,7 @@ Schemas
 }
 
 
-### exploded/iqoq.exploded.jsonl.gz
+### exploded/iqoq.exploded.jsonl
 
 {
   "dataset": "hotpotqa",
@@ -123,7 +123,7 @@ Schemas
 }
 
 
-### exploded/passages.exploded.jsonl.gz
+### exploded/passages.exploded.jsonl
 
 {
   "dataset": "hotpotqa",
@@ -453,12 +453,12 @@ def list_inputs(root: str, split: str, variant: str):
     Discover shard input files under `root`, returning IQ/OQ shards and scored shards separately.
 
     - IQ/OQ shards:
-        * `.jsonl` or `.jsonl.gz` files that either end with `_{variant}.jsonl`/`_{variant}.jsonl.gz`
-          (e.g., *_baseline.jsonl.gz) or start with `{split}_iqoq_`.
+        * `.jsonl` or `.jsonl` files that either end with `_{variant}.jsonl`/`_{variant}.jsonl`
+          (e.g., *_baseline.jsonl) or start with `{split}_iqoq_`.
         * Excludes cleaned/debug files.
 
     - Scored shards:
-        * `.jsonl` or `.jsonl.gz` files that end with `_cs.jsonl`/`_cs.jsonl.gz`.
+        * `.jsonl` or `.jsonl` files that end with `_cs.jsonl`/`_cs.jsonl`.
         * Excludes cleaned/debug files.
 
     Args:
@@ -470,7 +470,7 @@ def list_inputs(root: str, split: str, variant: str):
         dict with:
             {
               "iqoq":   [<paths to IQ/OQ shard files>],
-              "scored": [<paths to *_cs.jsonl.gz files>]
+              "scored": [<paths to *_cs.jsonl files>]
             }
         If root does not exist, both lists are empty.
     """
@@ -479,16 +479,16 @@ def list_inputs(root: str, split: str, variant: str):
         return {"iqoq": [], "scored": []}
 
     for name in os.listdir(root):
-        if not name.endswith(".jsonl.gz"):
+        if not name.endswith(".jsonl"):
             continue
-        if ".cleaned." in name or name.endswith("_iqoq_debug.jsonl.gz"):
+        if ".cleaned." in name or name.endswith("_iqoq_debug.jsonl"):
             continue
 
         full = os.path.join(root, name)
 
-        if name.endswith("_cs.jsonl") or name.endswith("_cs.jsonl.gz"):
+        if name.endswith("_cs.jsonl") or name.endswith("_cs.jsonl"):
             scored.append(full)
-        elif name.endswith(f"_{variant}.jsonl") or name.endswith(f"_{variant}.jsonl.gz") or name.startswith(f"{split}_iqoq_"):
+        elif name.endswith(f"_{variant}.jsonl") or name.endswith(f"_{variant}.jsonl") or name.startswith(f"{split}_iqoq_"):
             iqoq.append(full)
 
     return {"iqoq": sorted(iqoq), "scored": sorted(scored)}
@@ -565,22 +565,22 @@ def process_job(dataset: str, model: str, variant: str, split: str,
 
 
 
-    # CLEAN shards → cleaned/{stem}.cleaned.jsonl.gz (variant suffix dropped for simplicity)
+    # CLEAN shards → cleaned/{stem}.cleaned.jsonl (variant suffix dropped for simplicity)
     if run_clean and iqoq_inputs:
         for p in iqoq_inputs:
             stem = Path(p).stem
-            out_clean = cleaned_dir / f"{stem}.cleaned.jsonl.gz"
+            out_clean = cleaned_dir / f"{stem}.cleaned.jsonl"
             summary = clean_file(p, str(out_clean), cleaner, resume=resume)
             summaries.append(summary)
             cleaned_paths.append(str(out_clean))
 
-    # MERGE cleaned IQ/OQ → cleaned/iqoq.cleaned.jsonl.gz   (NEW name)
-    merged_iqoq = cleaned_dir / "iqoq.cleaned.jsonl.gz"
+    # MERGE cleaned IQ/OQ → cleaned/iqoq.cleaned.jsonl   (NEW name)
+    merged_iqoq = cleaned_dir / "iqoq.cleaned.jsonl"
     if run_merge and cleaned_paths:
         merge_jsonl_files(cleaned_paths, str(merged_iqoq), dedup_key="passage_id", resume=resume)
 
-    # MERGE scored shards (accepts *_cs.jsonl.gz) → cleaned/scored.cleaned.jsonl.gz
-    merged_scored = cleaned_dir / "scored.cleaned.jsonl.gz"
+    # MERGE scored shards (accepts *_cs.jsonl) → cleaned/scored.cleaned.jsonl
+    merged_scored = cleaned_dir / "scored.cleaned.jsonl"
     if run_merge and scored_inputs:
         merge_jsonl_files(scored_inputs, str(merged_scored), dedup_key="passage_id", resume=resume)
         print(f"[scores] merged → {merged_scored}")
@@ -593,10 +593,10 @@ def process_job(dataset: str, model: str, variant: str, split: str,
 
 
 
-    # EXPLODE (from merged_iqoq) → exploded/passages.exploded.jsonl.gz and exploded/iqoq.exploded.jsonl.gz
+    # EXPLODE (from merged_iqoq) → exploded/passages.exploded.jsonl and exploded/iqoq.exploded.jsonl
     if run_explode and merged_iqoq.exists():
-        passages_out = exploded_dir / "passages.exploded.jsonl.gz"
-        iqoq_out    = exploded_dir / "iqoq.exploded.jsonl.gz"
+        passages_out = exploded_dir / "passages.exploded.jsonl"
+        iqoq_out    = exploded_dir / "iqoq.exploded.jsonl"
         explode_passages(str(merged_iqoq), str(passages_out), resume=resume)
         explode_iqoq(str(merged_iqoq), str(iqoq_out), resume=resume)
 

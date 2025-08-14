@@ -28,8 +28,8 @@ Outputs
 
 ### data/processed_datasets/{dataset}/
 
-- {split}.jsonl.gz                                       - processed questions with gold passage IDs.
-- {split}_passages.jsonl.gz                               - corresponding ID passages with text content.
+- {split}.jsonl                                     - processed questions with gold passage IDs.
+- {split}_passages.jsonl                               - corresponding ID passages with text content.
 
 
 
@@ -37,7 +37,7 @@ Outputs
 File Schema
 -----------
 
-### {split}.jsonl.gz
+### {split}.jsonl
 
 {
   "question_id": "{question_id}",
@@ -54,12 +54,12 @@ Fields
 - ``split``: dataset split.
 - ``question``: normalized question text.
 - ``gold_answer``: reference answer.
-- ``gold_passages``: list of gold passage IDs, each pointing to a matching entry in ``{split}_passages.jsonl.gz`` in the same directory
+- ``gold_passages``: list of gold passage IDs, each pointing to a matching entry in ``{split}_passages.jsonl`` in the same directory
 
 
 
 
-### {split}_passages.jsonl.gz
+### {split}_passages.jsonl
 
 {
   "passage_id": "{passage_id}",
@@ -136,8 +136,8 @@ def process_hotpotqa(
 
     out_dir = "data/processed_datasets/hotpotqa"
     os.makedirs(out_dir, exist_ok=True)
-    qa_path = f"{out_dir}/{split}.jsonl.gz"
-    passages_path = f"{out_dir}/{split}_passages.jsonl.gz"
+    qa_path = f"{out_dir}/{split}.jsonl"
+    passages_path = f"{out_dir}/{split}_passages.jsonl"
 
     # --- compute resume sets ---
     done_qids, _ = compute_resume_sets(
@@ -226,8 +226,8 @@ def process_2wikimultihopqa(
 
     out_dir = "data/processed_datasets/2wikimultihopqa"
     os.makedirs(out_dir, exist_ok=True)
-    qa_path = f"{out_dir}/{split}.jsonl.gz"
-    passages_path = f"{out_dir}/{split}_passages.jsonl.gz"
+    qa_path = f"{out_dir}/{split}.jsonl"
+    passages_path = f"{out_dir}/{split}_passages.jsonl"
 
     # --- compute resume sets ---
     done_qids, _ = compute_resume_sets(
@@ -315,8 +315,8 @@ def process_musique(
 
     out_dir = "data/processed_datasets/musique"
     os.makedirs(out_dir, exist_ok=True)
-    qa_path = f"{out_dir}/{split}.jsonl.gz"
-    passages_path = f"{out_dir}/{split}_passages.jsonl.gz"
+    qa_path = f"{out_dir}/{split}.jsonl"
+    passages_path = f"{out_dir}/{split}_passages.jsonl"
 
     done_qids, _ = compute_resume_sets(
         resume=resume,

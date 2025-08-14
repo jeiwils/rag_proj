@@ -17,19 +17,19 @@ Inputs
 
 ### `data/representations/{dataset}/{split}/`
 
-- `{dataset}_passages.jsonl.gz`  
+- `{dataset}_passages.jsonl`  
   – Passage metadata including passage ID, text, vector index, and keywords.
 
-- `{dataset}_passages_emb.npz`
+- `{dataset}_passages_emb.npy`
   – Dense passage embeddings (`NumPy` array aligned with `vec_id` field).
 
 
 ### `data/representations/{model}/{dataset}/{split}/{variant}/`
 
-- `iqoq.cleaned.jsonl.gz`  
+- `iqoq.cleaned.jsonl`  
   – Cleaned IQ/OQ items with `vec_id`, `type` (OQ/IQ), `parent_passage_id`, and `keywords`.
 
-- `{dataset}_iqoq_emb.npz`
+- `{dataset}_iqoq_emb.npy`
   – Dense IQ/OQ embeddings (`NumPy` array aligned with `vec_id` field).
 
 - `{dataset}_faiss_iqoq.faiss`  
@@ -42,16 +42,16 @@ Outputs
 
 ### `data/graphs/{model}/{dataset}/{split}/{variant}/`
 
-- `{dataset}_{split}_edges.jsonl.gz`  
+- `{dataset}_{split}_edges.jsonl`  
   – Top hybrid-scoring OQ→IQ edge per query with similarity scores.
 
 - `{dataset}_{split}_graph.gpickle`  
   – Directed `NetworkX` graph: passages as nodes, OQ→IQ as edges.
 
-- `{dataset}_{split}_graph_log.jsonl.gz`  
+- `{dataset}_{split}_graph_log.jsonl`  
   – Global summary with average degree, Gini coefficient, and top-k hubs.
 
-- `{dataset}_{split}_graph_results.jsonl.gz`  
+- `{dataset}_{split}_graph_results.jsonl`  
   – Detailed diagnostics: edge similarity stats, degree distributions, components, etc.
 
 
@@ -59,7 +59,7 @@ Outputs
 File Schema
 -----------
 
-### `{dataset}_{split}_edges.jsonl.gz`
+### `{dataset}_{split}_edges.jsonl`
 
 {
   "oq_id": "hotpot_001_sent1_oq1",
@@ -80,7 +80,7 @@ File Schema
 
 
 
-#### `{dataset}_{split}_graph.gpickle.gz`
+#### `{dataset}_{split}_graph.gpickle`
 
 Node:
 {
@@ -101,7 +101,7 @@ Edge:
 }
 
 
-### {dataset}_{split}_graph_log.jsonl.gz
+### {dataset}_{split}_graph_log.jsonl
 
 {
   "timestamp": "2025-08-13T14:22:31",
@@ -118,7 +118,7 @@ Edge:
   "mode": "standard_pipeline",
   "dataset": "hotpot",
   "split": "train",
-  "edges_file": "data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_edges.jsonl".gz,
+  "edges_file": "data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_edges.jsonl",
   "params": {
     "top_k": 50,
     "sim_threshold": 0.65
@@ -249,8 +249,8 @@ def graph_output_paths(
     model: str, dataset: str, split: str, variant: str, compressed: bool = False
 ) -> dict:
     base = Path("data") / "graphs" / model / dataset / split / variant
-    json_ext = ".jsonl.gz" if compressed else ".jsonl"
-    gpickle_ext = ".gpickle.gz" if compressed else ".gpickle"
+    json_ext = ".jsonl" if compressed else ".jsonl"
+    gpickle_ext = ".gpickle" if compressed else ".gpickle"
     return {
         "edges": base / f"{dataset}_{split}_edges{json_ext}",
         "graph_gpickle": base / f"{dataset}_{split}_graph{gpickle_ext}",
@@ -456,7 +456,7 @@ def append_global_result(
     extra_metadata: Optional[Dict] = None
 ):
     """
-    Append a structured global result entry to {dataset}_dev_global_results.jsonl.gz
+    Append a structured global result entry to {dataset}_dev_global_results.jsonl
     Sections can be partial: graph_eval, traversal_eval, and/or answer_eval.
     """
     result = {
@@ -551,7 +551,7 @@ def graph_stats(
     if save_path:
         dir_path = os.path.dirname(save_path)
         os.makedirs(dir_path or ".", exist_ok=True)
-        open_fn = gzip.open if save_path.endswith(".gz") else open
+        open_fn = gzip.open if save_path.endswith("") else open
         with open_fn(save_path, "at", encoding="utf-8") as f:
             f.write(json.dumps(stats, ensure_ascii=False) + "\n")
 
@@ -596,7 +596,7 @@ def run_graph_pipeline(
       4) build_networkx_graph(passages, edges)
       5) basic_graph_eval + append_global_result
       6) graph_stats -> append detailed stats jsonl
-    Set ``compressed=True`` to write ``.jsonl.gz`` and ``.gpickle.gz`` outputs
+    Set ``compressed=True`` to write ``.jsonl`` and ``.gpickle`` outputs
     and an additional compressed FAISS index.
     """
     # ---------- 1) Load metadata + embeddings ----------
@@ -690,11 +690,11 @@ def run_graph_pipeline(
     graph_gpickle = str(graph_paths["graph_gpickle"]) ############## why the replaces???
     graph_graphml = (
         str(graph_paths["graph_gpickle"])
-        .replace(".gpickle.gz", ".graphml")
+        .replace(".gpickle", ".graphml")
         .replace(".gpickle", ".graphml")
     )
     if save_graph:
-        if graph_gpickle.endswith(".gz"):
+        if graph_gpickle.endswith(""):
             with gzip.open(graph_gpickle, "wb") as f:
                 nx.write_gpickle(G, f)
         else:
