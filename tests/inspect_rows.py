@@ -10,14 +10,14 @@ def count_jsonl(path):
 
 
 
-print(count_jsonl("data/processed_datasets/hotpotqa/train/questions.jsonl"))
-print(count_jsonl("data/processed_datasets/hotpotqa/train/passages.jsonl"))
+print(count_jsonl("data/processed_datasets/hotpotqa/dev/questions.jsonl"))
+print(count_jsonl("data/processed_datasets/hotpotqa/dev/passages.jsonl"))
 
-print(count_jsonl("data/processed_datasets/2wikimultihopqa/train/questions.jsonl"))
-print(count_jsonl("data/processed_datasets/2wikimultihopqa/train/passages.jsonl"))
+print(count_jsonl("data/processed_datasets/2wikimultihopqa/dev/questions.jsonl"))
+print(count_jsonl("data/processed_datasets/2wikimultihopqa/dev/passages.jsonl"))
 
-print(count_jsonl("data/processed_datasets/musique/train/questions.jsonl"))
-print(count_jsonl("data/processed_datasets/musique/train/passages.jsonl"))
+print(count_jsonl("data/processed_datasets/musique/dev/questions.jsonl"))
+print(count_jsonl("data/processed_datasets/musique/dev/passages.jsonl"))
 
 
 
