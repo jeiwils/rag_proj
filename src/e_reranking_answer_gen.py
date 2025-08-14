@@ -108,7 +108,6 @@ Notes
 """
 
 
-
 from src.utils import get_result_paths, get_traversal_paths
 
 from typing import List, Dict, Optional, Tuple
@@ -128,7 +127,8 @@ from sentence_transformers import SentenceTransformer
 
 from src.utils import load_jsonl
 from src.b_sparse_dense_representations import dataset_rep_paths, load_faiss_index
-from src.a2_text_prep import query_llm, SERVER_CONFIGS
+from src.a2_text_prep import query_llm
+from src.utils import SERVER_CONFIGS
 from src.d_traversal import (
     select_seed_passages,
     run_dev_set,
@@ -173,7 +173,9 @@ def compute_helpfulness( # helper function for rerank_passages_by_helpfulness()
     importance = ccount.get(vertex_id, 0) / total_visits
 
     # HopRAG helpfulness formula: (SIM + IMP) / 2
-    helpfulness = 0.5 * (vertex_query_sim + importance) # similarity between the passage and the query
+    helpfulness = 0.5 * (
+        vertex_query_sim + importance
+        ) # similarity between the passage and the query
     return helpfulness
 
 
@@ -453,7 +455,7 @@ def run_dense_rag_baseline(
         }
 
     with open(output_path, "wt", encoding="utf-8") as f:
-            f.write(json.dumps(result, ensure_ascii=False) + "\n")
+        f.write(json.dumps(result, ensure_ascii=False) + "\n")
 
     print(f"\n[Done] Saved dense RAG results to {output_path}")
 

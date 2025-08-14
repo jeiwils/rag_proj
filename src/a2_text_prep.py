@@ -124,38 +124,11 @@ from tqdm import tqdm
 from typing import Callable, List, Dict
 import time
 import json
+from src.utils import SERVER_CONFIGS, existing_ids, compute_resume_sets
 
 
 
 
-
-SERVER_CONFIGS = [ 
-    # 1.5B models (4 servers for all datasets)
-    {"server_url": "http://localhost:8000", "model": "qwen-1.5b"},
-    {"server_url": "http://localhost:8001", "model": "qwen-1.5b"},
-    {"server_url": "http://localhost:8002", "model": "qwen-1.5b"},
-    {"server_url": "http://localhost:8003", "model": "qwen-1.5b"},
-
-    # 7B models (2 servers for all datasets)
-    {"server_url": "http://localhost:8004", "model": "qwen-7b"},
-    {"server_url": "http://localhost:8005", "model": "qwen-7b"},
-
-    # 14B models (1 server for all datasets)
-    {"server_url": "http://localhost:8006", "model": "qwen-14b"},
-    
-    # Deepseek-distill-qwen models (4 servers for all datasets)
-    {"server_url": "http://localhost:8007", "model": "deepseek-distill-qwen-1.5b"},
-    {"server_url": "http://localhost:8008", "model": "deepseek-distill-qwen-1.5b"},
-    {"server_url": "http://localhost:8009", "model": "deepseek-distill-qwen-1.5b"},
-    {"server_url": "http://localhost:8010", "model": "deepseek-distill-qwen-1.5b"},
-
-    # Deepseek-distill-qwen 7B models (2 servers for all datasets)
-    {"server_url": "http://localhost:8011", "model": "deepseek-distill-qwen-7b"},
-    {"server_url": "http://localhost:8012", "model": "deepseek-distill-qwen-7b"},
-
-    # Deepseek-distill-qwen 14B models (1 server for all datasets)
-    {"server_url": "http://localhost:8013", "model": "deepseek-distill-qwen-14b"},
-]
 
 
 
@@ -627,87 +600,6 @@ def generate_iqoq(
 
 
 
-def existing_ids(path, id_field="passage_id"):
-    if not Path(path).exists():
-        return set()
-    done = set()
-    with open(path, "rt", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line: 
-                continue
-            try:
-                obj = json.loads(line)
-                pid = obj.get(id_field)
-                if pid is not None:
-                    done.add(pid)
-            except Exception:
-                # tolerate a possibly truncated last line ################################################ ?
-                continue
-    return done
-
-
-
-
-
-
-from typing import Iterable, Callable, Hashable, Tuple, Set, Any
-
-def compute_resume_sets(
-    *,
-    resume: bool,
-    out_path: str,
-    items: Iterable[Any],
-    get_id: Callable[[Any, int], Hashable],
-    phase_label: str,
-    id_field: str = "passage_id",
-) -> Tuple[Set[Hashable], Set[Hashable]]:
-    
-    """Return ``(done_ids, shard_ids)`` for a single shard.
-
-    When ``resume`` is ``True``, :func:`existing_ids` reads ``out_path`` and the
-    function prints a message describing how many items are skipped for *this*
-    shard. Pipelines that split work across multiple shards should call this
-    function separately for each shard's output file – resumption is per shard
-    only. The ``items`` iterable is fully consumed to build ``shard_ids``; pass a
-    list or other re-iterable sequence if it will be reused later.
-
-    Parameters
-    ----------
-    resume:
-        Whether to check ``out_path`` and report existing IDs.
-    out_path:
-        JSONL file produced by the current shard.
-    items:
-        Input sequence for the shard.
-    get_id:
-        Callable extracting an identifier from ``items`` with signature
-        ``(item, index) -> Hashable``.
-    phase_label:
-        Human-readable label used in log messages.
-    id_field:
-        Name of the identifier field inside ``out_path`` JSON objects.
-
-    Returns
-    -------
-    Tuple[Set[Hashable], Set[Hashable]]
-        ``done_ids``: IDs already present in ``out_path`` for this shard.
-        ``shard_ids``: IDs for all items in the shard.
-    """
-    shard_ids = {get_id(x, i) for i, x in enumerate(items)}
-    if not resume:
-        return set(), shard_ids
-
-    done_all = existing_ids(
-        out_path, id_field=id_field
-    )  # only this shard's file; caller handles other shards
-    done_ids = done_all & shard_ids  # defensive intersection
-    print(
-        f"[resume] {phase_label}: {len(done_ids)}/{len(shard_ids)} already present in this shard – skipping those"
-    )
-    return done_ids, shard_ids
-
-
 
 
 
@@ -999,16 +891,18 @@ if __name__ == "__main__":
 
 
     RESUME = True
-    DATASETS = ["musique","2wikimultihopqa", "hotpotqa"]
-    ACTIVE_MODEL_NAMES   = ["qwen-7b"]
 
-    RUN_CS        = False        # enhanced scoring step
+    DATASETS = ["2wikimultihopqa"] #["musique","2wikimultihopqa", "hotpotqa"]
+    ACTIVE_MODEL_NAMES   = ["qwen-7b"]
+    SPLIT = "train"             # or "dev"
+
+    RUN_CS        = True        # enhanced scoring step
     RUN_BASELINE  = True        # hopRAG baseline IQ/OQ
     RUN_ENHANCED  = True        # enhanced IQ/OQ
 
 
 
-    SPLIT = "train"             # or "dev"
+
 
     # --- per-phase skip rules (dataset, model) ---
     SKIP_CS        = set()
@@ -1113,7 +1007,6 @@ if __name__ == "__main__":
 
 
 __all__ = [
-    "SERVER_CONFIGS",
     "get_server_urls",
     "model_size",
     "split_jsonl",
@@ -1125,8 +1018,6 @@ __all__ = [
     "get_conditioned_score",
     "iqoq_ratio",
     "generate_iqoq",
-    "existing_ids",
-    "compute_resume_sets",
     "process_server_task",
     "load_jsonl",
     "save_jsonl",

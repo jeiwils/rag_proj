@@ -100,12 +100,12 @@ File Schema
 # - 2) enhanced hoprag traversal algorithm (allows node revists - no edge revisits)
 
 
-
-from src.utils import get_result_paths, get_traversal_paths, append_jsonl
+from src.utils import get_result_paths, get_traversal_paths, append_jsonl, load_jsonl
 
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Callable, Set
-from src.a2_text_prep import extract_keywords, query_llm, SERVER_CONFIGS, load_jsonl, compute_resume_sets
+from src.a2_text_prep import extract_keywords, query_llm
+from src.utils import SERVER_CONFIGS, compute_resume_sets
 from src.b_sparse_dense_representations import (
     faiss_search_topk,
     jaccard_similarity,

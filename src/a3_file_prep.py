@@ -141,7 +141,7 @@ import re
 import os
 import json
 import time
-from src.a2_text_prep import SERVER_CONFIGS, compute_resume_sets, existing_ids
+from src.utils import SERVER_CONFIGS, compute_resume_sets, existing_ids
 from src.utils import load_jsonl, save_jsonl, append_jsonl, resolve_root, FOLDERS_BY_VARIANT
 from pathlib import Path
 

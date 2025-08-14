@@ -12,6 +12,141 @@ from typing import Dict, Iterator, List, Optional
 import logging
 
 
+
+
+
+
+
+
+
+
+
+SERVER_CONFIGS = [ 
+    # 1.5B models (4 servers for all datasets)
+    {"server_url": "http://localhost:8000", "model": "qwen-1.5b"},
+    {"server_url": "http://localhost:8001", "model": "qwen-1.5b"},
+    {"server_url": "http://localhost:8002", "model": "qwen-1.5b"},
+    {"server_url": "http://localhost:8003", "model": "qwen-1.5b"},
+
+    # 7B models (2 servers for all datasets)
+    {"server_url": "http://localhost:8004", "model": "qwen-7b"},
+    {"server_url": "http://localhost:8005", "model": "qwen-7b"},
+
+    # 14B models (1 server for all datasets)
+    {"server_url": "http://localhost:8006", "model": "qwen-14b"},
+    
+    # Deepseek-distill-qwen models (4 servers for all datasets)
+    {"server_url": "http://localhost:8007", "model": "deepseek-distill-qwen-1.5b"},
+    {"server_url": "http://localhost:8008", "model": "deepseek-distill-qwen-1.5b"},
+    {"server_url": "http://localhost:8009", "model": "deepseek-distill-qwen-1.5b"},
+    {"server_url": "http://localhost:8010", "model": "deepseek-distill-qwen-1.5b"},
+
+    # Deepseek-distill-qwen 7B models (2 servers for all datasets)
+    {"server_url": "http://localhost:8011", "model": "deepseek-distill-qwen-7b"},
+    {"server_url": "http://localhost:8012", "model": "deepseek-distill-qwen-7b"},
+
+    # Deepseek-distill-qwen 14B models (1 server for all datasets)
+    {"server_url": "http://localhost:8013", "model": "deepseek-distill-qwen-14b"},
+]
+
+
+
+
+
+
+
+def existing_ids(path, id_field="passage_id"):
+    if not Path(path).exists():
+        return set()
+    done = set()
+    with open(path, "rt", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line: 
+                continue
+            try:
+                obj = json.loads(line)
+                pid = obj.get(id_field)
+                if pid is not None:
+                    done.add(pid)
+            except Exception:
+                # tolerate a possibly truncated last line ################################################ ?
+                continue
+    return done
+
+
+
+
+
+
+from typing import Iterable, Callable, Hashable, Tuple, Set, Any
+
+def compute_resume_sets(
+    *,
+    resume: bool,
+    out_path: str,
+    items: Iterable[Any],
+    get_id: Callable[[Any, int], Hashable],
+    phase_label: str,
+    id_field: str = "passage_id",
+) -> Tuple[Set[Hashable], Set[Hashable]]:
+    
+    """Return ``(done_ids, shard_ids)`` for a single shard.
+
+    When ``resume`` is ``True``, :func:`existing_ids` reads ``out_path`` and the
+    function prints a message describing how many items are skipped for *this*
+    shard. Pipelines that split work across multiple shards should call this
+    function separately for each shard's output file – resumption is per shard
+    only. The ``items`` iterable is fully consumed to build ``shard_ids``; pass a
+    list or other re-iterable sequence if it will be reused later.
+
+    Parameters
+    ----------
+    resume:
+        Whether to check ``out_path`` and report existing IDs.
+    out_path:
+        JSONL file produced by the current shard.
+    items:
+        Input sequence for the shard.
+    get_id:
+        Callable extracting an identifier from ``items`` with signature
+        ``(item, index) -> Hashable``.
+    phase_label:
+        Human-readable label used in log messages.
+    id_field:
+        Name of the identifier field inside ``out_path`` JSON objects.
+
+    Returns
+    -------
+    Tuple[Set[Hashable], Set[Hashable]]
+        ``done_ids``: IDs already present in ``out_path`` for this shard.
+        ``shard_ids``: IDs for all items in the shard.
+    """
+    shard_ids = {get_id(x, i) for i, x in enumerate(items)}
+    if not resume:
+        return set(), shard_ids
+
+    done_all = existing_ids(
+        out_path, id_field=id_field
+    )  # only this shard's file; caller handles other shards
+    done_ids = done_all & shard_ids  # defensive intersection
+    print(
+        f"[resume] {phase_label}: {len(done_ids)}/{len(shard_ids)} already present in this shard – skipping those"
+    )
+    return done_ids, shard_ids
+
+
+
+
+
+
+
+
+
+
+
+
+
 # ---------------------------------------------------------------------------
 # JSONL and general file I/O
 # ---------------------------------------------------------------------------
@@ -91,12 +226,49 @@ def clean_text(text: str) -> str:
 # Identifier helpers
 # ---------------------------------------------------------------------------
 
+
+
 def pid_plus_title(qid: str, title: str, sent_idx: int) -> str:
-    """Create a safe passage identifier using question id and title."""
+    """Create a safe passage identifier using question id and title.
+
+    The title is normalised by converting to lowercase and replacing any
+    non-alphanumeric characters with underscores.  If the provided title is
+    empty or sanitisation results in an empty string, ``"no_title"`` is used
+    instead.
+
+    Parameters
+    ----------
+    qid:
+        The base identifier, typically the question or passage id.
+    title:
+        Title text associated with the passage.
+    sent_idx:
+        Sentence index within the passage.
+
+    Returns
+    -------
+    str
+        A combined identifier ``"{qid}__{safe}_sent{sent_idx}"``.
+    """
     if not title:
         safe = "no_title"
+    else:
+        # Replace any non-word characters with underscores and collapse
+        # repeated underscores.  ``\w`` matches alphanumerics and ``_``.
+        safe = re.sub(r"[^0-9A-Za-z]+", "_", title.lower()).strip("_")
+        if not safe:
+            safe = "no_title"
+    return f"{qid}__{safe}_sent{sent_idx}"
 
-def resolve_root(model: str, dataset: str, split: str, variant: str) -> Optional:
+
+# Maps public variant names to potential directory names on disk.  The first
+# entry for each variant is considered the canonical folder name.
+FOLDERS_BY_VARIANT: Dict[str, List[str]] = {
+    "baseline": ["baseline_hoprag", "baseline"],
+    "enhanced": ["enhanced_hoprag", "enhanced"],
+}
+
+def resolve_root(model: str, dataset: str, split: str, variant: str) -> Optional[str]:
     """
     Searches under ``data/models/{model}/{dataset}/{split}`` for the first
     directory listed in ``FOLDERS_BY_VARIANT[variant]`` that exists and returns

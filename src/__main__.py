@@ -131,7 +131,7 @@ import os
 from pathlib import Path
 from typing import Dict, Iterable, List
 
-from .a2_text_prep import SERVER_CONFIGS, compute_resume_sets
+from .utils import SERVER_CONFIGS, compute_resume_sets
 
 from .e_reranking_answer_gen import run_pipeline
 from .utils import load_jsonl

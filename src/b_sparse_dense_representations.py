@@ -123,7 +123,7 @@ import re
 import torch
 import os, json, re, spacy
 from typing import Iterable, Set
-from src.a2_text_prep import existing_ids, compute_resume_sets
+from src.utils import existing_ids, compute_resume_sets
 
 
 SIM_THRESHOLD = 0.65
@@ -576,7 +576,6 @@ if __name__ == "__main__":
                     text_key="text",
                     id_field="iqoq_id",
                     done_ids=done_q,
-                    id_field="iqoq_id",
                 )
 
     # -------------------------------

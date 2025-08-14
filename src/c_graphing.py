@@ -210,7 +210,7 @@ from src.b_sparse_dense_representations import (
 )
 
 from src.utils import load_jsonl, save_jsonl, append_jsonl
-from src.a2_text_prep import compute_resume_sets
+from src.utils import compute_resume_sets
 import gzip
 
 

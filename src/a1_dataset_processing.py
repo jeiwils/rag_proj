@@ -82,8 +82,7 @@ import json
 import os
 from typing import List, Dict
 from src.utils import append_jsonl, clean_text, pid_plus_title
-from src.a2_text_prep import existing_ids, compute_resume_sets
-
+from src.utils import existing_ids, compute_resume_sets
 
 
 
