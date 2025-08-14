@@ -12,16 +12,16 @@ Inputs
 
 ### data/processed_datasets/{dataset}/
 
-- {split}_passages.jsonl  
+- {split}_passages.jsonl.gz
     → Raw passage entries with passage ID and text.
 
 
 ### data/models/{model}/{dataset}/{split}/{variant}/
 
-- exploded/iqoq.exploded.jsonl  
+- exploded/iqoq.exploded.jsonl.gz 
     → Incoming/outgoing questions (one per row), used for embedding questions.
 
-- cleaned/iqoq.cleaned.jsonl  
+- cleaned/iqoq.cleaned.jsonl
     → Cleaned IQ/OQ entries, used for indexing and keyword extraction.
 
 
@@ -31,26 +31,26 @@ Outputs
 
 ### data/representations/{dataset}/{split}/{hoprag_version}
 
-- {dataset}_passages.jsonl  
+- {dataset}_passages.jsonl.gz
     → Passage metadata with added vec_id.
 
-- {dataset}_passages_emb.npy  
+- {dataset}_passages_emb.npz
     → Dense passage embeddings (NumPy array).
 
-- {dataset}_faiss_passages.faiss  
+- {dataset}_faiss_passages.faiss
     → FAISS index over passage vectors.
 
 
 
 ### data/representations/{model}/{dataset}/{split}/{variant}/
 
-- iqoq.cleaned.jsonl  
+- iqoq.cleaned.jsonl.gz
     → Updated input file with vec_id added for each IQ/OQ item.
 
-- {dataset}_iqoq_emb.npy  
+- {dataset}_iqoq_emb.npz
     → Dense IQ/OQ embeddings (NumPy array).
 
-- {dataset}_faiss_iqoq.faiss  
+- {dataset}_faiss_iqoq.faiss
     → FAISS index over IQ/OQ vectors.
 
 
@@ -58,7 +58,7 @@ Outputs
 File Schema
 -----------
 
-### {split}_passages.jsonl
+### {split}_passages.jsonl.gz
 
 {
   "passage_id": "{passage_id}",
@@ -74,7 +74,7 @@ Fields:
 - ``keywords_passage``: extracted named entities via spaCy.
 
 
-### iqoq.cleaned.jsonl
+### iqoq.cleaned.jsonl.gz
 
 {
   "iqoq_id": "{iqoq_id}",
@@ -98,7 +98,7 @@ Notes
 - FAISS indexes are built using inner-product over normalized vectors (cosine similarity).
 - Embeddings are generated using the BAAI bge-base-en-v1.5 SentenceTransformer.
 - Only entities of types like PERSON, ORG, GPE, etc. are retained for keyword features.
-- `vec_id` aligns each row in the `.jsonl` file with the corresponding row in the `.npy` file.
+- `vec_id` aligns each row in the `.jsonl` file with the corresponding row in the `.npz` file.
 
 """
 
@@ -121,7 +121,7 @@ from src.utils import (
 from pathlib import Path
 import re
 import torch
-import os, json, re, spacy
+import os, json, re, spacy, gzip
 from typing import Iterable, Set
 from src.a2_text_prep import existing_ids, compute_resume_sets
 
@@ -163,8 +163,8 @@ def dataset_rep_paths(dataset: str, split: str) -> Dict[str, str]:
     """
     base = os.path.join("data", "representations", dataset, split)
     return {
-        "passages_jsonl": os.path.join(base, f"{dataset}_passages.jsonl"),
-        "passages_emb": os.path.join(base, f"{dataset}_passages_emb.npy"),
+        "passages_jsonl": os.path.join(base, f"{dataset}_passages.jsonl.gz"),
+        "passages_emb": os.path.join(base, f"{dataset}_passages_emb.npz"),
         "passages_index": os.path.join(base, f"{dataset}_faiss_passages.faiss"),
     }
 
@@ -186,8 +186,8 @@ def model_rep_paths(model: str, dataset: str, split: str, variant: str) -> Dict[
         variant,
     )
     return {
-        "iqoq_jsonl": os.path.join(base, f"{dataset}_iqoq.jsonl"),
-        "iqoq_emb": os.path.join(base, f"{dataset}_iqoq_emb.npy"),
+        "iqoq_jsonl": os.path.join(base, f"{dataset}_iqoq.jsonl.gz"),
+        "iqoq_emb": os.path.join(base, f"{dataset}_iqoq_emb.npz"),
         "iqoq_index": os.path.join(base, f"{dataset}_faiss_iqoq.faiss"),
     }
 
@@ -232,7 +232,8 @@ def embed_and_save(
         raise ValueError("You must provide a valid text_key (e.g., 'text' or 'question').")
 
     data, texts = [], []
-    with open(input_jsonl, "r", encoding="utf-8") as f:
+    open_in = gzip.open if str(input_jsonl).endswith(".gz") else open
+    with open_in(input_jsonl, "rt", encoding="utf-8") as f:
         for line in f:
             entry = json.loads(line)
             if done_ids and entry.get(id_field) in done_ids:
@@ -269,7 +270,8 @@ def embed_and_save(
     np.savez_compressed(output_npy, embs_all=embs_all)
 
     mode = "a" if done_ids else "w"
-    with open(output_jsonl, mode, encoding="utf-8") as f_out:
+    open_out = gzip.open if str(output_jsonl).endswith(".gz") else open
+    with open_out(output_jsonl, mode + "t", encoding="utf-8") as f_out:
         for d in data:
             f_out.write(json.dumps(d) + "\n")
 
@@ -290,12 +292,14 @@ def build_and_save_faiss_index(
     index_type: str,
     output_dir: str = ".",
     new_vectors: np.ndarray | None = None,
+    compress: bool = True,
 ):
     """Build or update a FAISS cosine-similarity index.
 
     If ``new_vectors`` is provided and an existing index file is found, the new
     vectors are appended to that index. Otherwise, a fresh index is built from
-    ``embeddings``.
+    ``embeddings``. When ``compress`` is ``True`` an additional ``.faiss.gz``
+    file is written containing a serialised version of the index.
     """
     if not index_type or index_type not in {"passages", "iqoq"}:
         raise ValueError(
@@ -312,43 +316,33 @@ def build_and_save_faiss_index(
         index.add(embeddings)
 
     faiss.write_index(index, faiss_path)
+    if compress:
+        serialized = faiss.serialize_index(index)
+        with gzip.open(faiss_path + ".gz", "wb") as f:
+            f.write(serialized)
     print(f"[FAISS] Saved {index_type} index to {faiss_path} with {index.ntotal} vectors.")
 
-def load_faiss_index(path: str):
-    index = faiss.read_index(path)
-    print(f"[FAISS] Loaded {index.ntotal} vectors from {path}")
-    return index
-
-
-
-def faiss_search_topk(query_emb: np.ndarray, index, top_k: int = 50):
-    """
-    retrieves top-k most similar items from .faiss file
-
-    uses vec_id_int
-    """
-    scores, idx = index.search(query_emb, top_k)
-    return idx[0], scores[0]
 
 
 
 
 def load_faiss_index(path: str):
-    index = faiss.read_index(path)
-    print(f"[FAISS] Loaded {index.ntotal} vectors from {path}")
+    """Load a FAISS index from ``path`` supporting optional gzip compression."""
+    gz_path = path if path.endswith(".gz") else path + ".gz"
+    if path.endswith(".gz") or (not os.path.exists(path) and os.path.exists(gz_path)):
+        with gzip.open(gz_path, "rb") as f:
+            index = faiss.deserialize_index(f.read())
+        print(f"[FAISS] Loaded {index.ntotal} vectors from {gz_path}")
+    else:
+        index = faiss.read_index(path)
+        print(f"[FAISS] Loaded {index.ntotal} vectors from {path}")
     return index
 
 
-
 def faiss_search_topk(query_emb: np.ndarray, index, top_k: int = 50):
-    """
-    retrieves top-k most similar items from .faiss file
-
-    uses vec_id_int
-    """
+    """Retrieve ``top_k`` most similar items from a FAISS index."""
     scores, idx = index.search(query_emb, top_k)
     return idx[0], scores[0]
-
 
 
 
@@ -431,7 +425,8 @@ def add_keywords_to_passages_jsonl(
     merged_with_iqoq: bool = False,
     only_ids: Set[str] | None = None,
 ):
-    rows = [json.loads(l) for l in open(passages_jsonl, "r", encoding="utf-8")]
+    open_fn = gzip.open if passages_jsonl.endswith(".gz") else open
+    rows = [json.loads(l) for l in open_fn(passages_jsonl, "rt", encoding="utf-8")]
     if only_ids:
         targets = [r for r in rows if r.get("passage_id") in only_ids]
     else:
@@ -462,7 +457,8 @@ def add_keywords_to_passages_jsonl(
 
 
 def add_keywords_to_iqoq_jsonl(iqoq_jsonl: str, out_field: str = "keywords"):
-    rows  = [json.loads(l) for l in open(iqoq_jsonl, "r", encoding="utf-8")]
+    open_fn = gzip.open if iqoq_jsonl.endswith(".gz") else open
+    rows  = [json.loads(l) for l in open_fn(iqoq_jsonl, "rt", encoding="utf-8")]
     texts = [r.get("text", "") for r in rows]  # <-- raw text
 
     for r, doc in zip(rows, nlp.pipe(texts, batch_size=128, n_process=1)):
@@ -507,13 +503,13 @@ if __name__ == "__main__":
             dataset_dir = Path(os.path.dirname(pass_paths["passages_jsonl"]))
             os.makedirs(dataset_dir, exist_ok=True)
 
-            passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl"
+            passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl.gz"
             passages_jsonl      = pass_paths["passages_jsonl"]
             passages_npy        = pass_paths["passages_emb"]
 
-            questions_jsonl_src = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/exploded/iqoq.exploded.jsonl"
+            questions_jsonl_src = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/exploded/iqoq.exploded.jsonl.gz"
             questions_jsonl     = dataset_dir / Path(questions_jsonl_src).name
-            questions_npy       = dataset_dir / Path(questions_jsonl_src).with_suffix(".emb.npy").name
+            questions_npy       = dataset_dir / Path(questions_jsonl_src).with_suffix(".emb.npz").name
 
             # === PASSAGE EMBEDDINGS ===
             if os.path.exists(passages_npy) and not RESUME:
@@ -597,10 +593,10 @@ if __name__ == "__main__":
         for dataset in DATASETS:
             variant = CURRENT_VARIANT
             hoprag_version = variant
-            iqoq_jsonl = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/cleaned/iqoq.cleaned.jsonl"
+            iqoq_jsonl = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/cleaned/iqoq.cleaned.jsonl.gz"
             repr_root = os.path.join("data", "representations", model, dataset, SPLIT, hoprag_version)
             os.makedirs(repr_root, exist_ok=True)
-            iqoq_npy = os.path.join(repr_root, f"{dataset}_iqoq_emb.npy")
+            iqoq_npy = os.path.join(repr_root, f"{dataset}_iqoq_emb.npz")
 
             # === IQ/OQ EMBEDDINGS ===
             if not os.path.exists(iqoq_jsonl):

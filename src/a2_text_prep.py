@@ -8,7 +8,7 @@ This script supports both baseline and enhanced HopRAG workflows using multiple
 LLM servers. Enhanced IQ/OQ generation is guided by conditioned scores.
 
 Key steps include:
-- Splitting `{split}_passages.jsonl` into N shards based on model size.
+- Splitting `{split}_passages.jsonl.gz` into N shards based on model size.
 - Generating conditioned scores for each passage.
 - Creating IQ/OQ lists either with fixed or score-based ratios.
 - Writing debug summaries for each shard and phase.
@@ -17,7 +17,7 @@ Key steps include:
 
 Inputs
 ------
-data/processed_datasets/{dataset}/{split}_passages.jsonl
+data/processed_datasets/{dataset}/{split}_passages.jsonl.gz
     Source passages with the following fields:
     - ``passage_id``: unique identifier.
     - ``title``: source article or document title.
@@ -30,19 +30,19 @@ Outputs
 Sharded output files written to:
 
 data/models/{model}/{dataset}/{split}/shards/
-    - {split}_passages_shard{N}_{size}.jsonl
+    - {split}_passages_shard{N}_{size}.jsonl.gz
         → Raw input shards split by model size (1.5b → 4 shards, 7b → 2, 14b → 1).
 
 data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/
 
 
-    - {split}_passages_shard{N}_{size}_cs.jsonl
+    - {split}_passages_shard{N}_{size}_cs.jsonl.gz
         → Passages with conditioned scores.
 
-    - {split}_passages_shard{N}_{size}_iqoq_baseline.jsonl
+    - {split}_passages_shard{N}_{size}_iqoq_baseline.jsonl.gz
         → IQ/OQ questions from baseline HopRAG prompts (fixed ratio).
 
-    - {split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl
+    - {split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl.gz
         → IQ/OQ questions generated using conditioned score–based ratios.
 
     - *_cs_debug.txt
@@ -55,7 +55,7 @@ data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/
 Examples
 --------
 
-### _cs.jsonl 
+### _cs.jsonl.gz
 
 {
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
@@ -69,7 +69,7 @@ Examples
 
 
 
-### _iqoq_baseline.jsonl
+### _iqoq_baseline.jsonl.gz
 
 {
   "passage_id": "5a7a0693__first_for_women_sent0",
@@ -275,37 +275,39 @@ def split_jsonl_into_four(path, out1, out2, out3, out4):
 def split_jsonl_for_models(path: str, model: str) -> list[str]:
     """
     Split input JSONL into N shards based on model size and write them to:
-      data/models/{model}/{dataset}/{split}/shards/{stem}_shard{N}_{size}.jsonl
+      data/models/{model}/{dataset}/{split}/shards/{stem}_shard{N}_{size}.jsonl.gz
     Returns the shard paths. For 14B we still write a single shard file.
     """
     size = model_size(model)  # '1.5b' | '7b' | '14b'
     dataset = Path(path).parent.name
-    split_name = Path(path).stem.split("_")[0]  # 'train' or 'dev' 
+    split_name = Path(path).stem.split("_")[0]  # 'train' or 'dev'
     out_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     stem = Path(path).stem
+    if stem.endswith(".jsonl"):
+        stem = stem[:-len(".jsonl")]
 
     if size == "1.5b":
         out_paths = [
-            str(out_dir / f"{stem}_shard1_{size}.jsonl"),
-            str(out_dir / f"{stem}_shard2_{size}.jsonl"),
-            str(out_dir / f"{stem}_shard3_{size}.jsonl"),
-            str(out_dir / f"{stem}_shard4_{size}.jsonl"),
+            str(out_dir / f"{stem}_shard1_{size}.jsonl.gz"),
+            str(out_dir / f"{stem}_shard2_{size}.jsonl.gz"),
+            str(out_dir / f"{stem}_shard3_{size}.jsonl.gz"),
+            str(out_dir / f"{stem}_shard4_{size}.jsonl.gz"),
         ]
         split_jsonl_into_four(path, *out_paths)
         return out_paths
 
     if size == "7b":
         out_paths = [
-            str(out_dir / f"{stem}_shard1_{size}.jsonl"),
-            str(out_dir / f"{stem}_shard2_{size}.jsonl"),
+            str(out_dir / f"{stem}_shard1_{size}.jsonl.gz"),
+            str(out_dir / f"{stem}_shard2_{size}.jsonl.gz"),
         ]
         split_jsonl(path, *out_paths)
         return out_paths
 
     if size == "14b":
-        out_path = out_dir / f"{stem}_shard1_{size}.jsonl"
+        out_path = out_dir / f"{stem}_shard1_{size}.jsonl.gz"
         if not out_path.exists():
             save_jsonl(str(out_path), load_jsonl(path))
         return [str(out_path)]
@@ -722,9 +724,9 @@ def process_server_task(config: dict):
     missing_oq: list = []
 
     shard_stem   = Path(input_path).stem
-    scored_tmp   = str(phase_dir / f"{shard_stem}_cs.jsonl")
-    out_baseline = str(phase_dir / f"{shard_stem}_iqoq_baseline.jsonl")
-    out_enhanced = str(phase_dir / f"{shard_stem}_iqoq_enhanced.jsonl")
+    scored_tmp   = str(phase_dir / f"{shard_stem}_cs.jsonl.gz")
+    out_baseline = str(phase_dir / f"{shard_stem}_iqoq_baseline.jsonl.gz")
+    out_enhanced = str(phase_dir / f"{shard_stem}_iqoq_enhanced.jsonl.gz")
 
     # pick phase output for unlink logic
     if task_type == "cs":
@@ -984,7 +986,7 @@ if __name__ == "__main__":
 
 
     for dataset in DATASETS:
-        input_path = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl" #################################################################### 
+        input_path = f"data/processed_datasets/{dataset}/{SPLIT}_passages.jsonl.gz" #################################################################### 
 
         for model in ACTIVE_MODEL_NAMES:
             print(f"\n=== {dataset} | {model} ===")

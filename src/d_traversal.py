@@ -23,7 +23,7 @@ Inputs
 - `{dataset}_{split}.jsonl`  
     Preprocessed query set, with `question_id`, `question`, and `gold_passages`.
 
-- `passages_emb.npy`, `passages_index.faiss`, `passages.jsonl`  
+- `passages_emb.npz`, `passages_index.faiss`, `passages.jsonl`
     Passage embeddings, FAISS index, and metadata from dense/sparse encoder setup.
 
 

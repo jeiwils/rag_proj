@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import gzip
 import json
 import os
 import re
@@ -15,22 +14,19 @@ from typing import Dict, List, Optional
 
 def load_jsonl(path: str) -> List[Dict]:
     """Load a JSONL file into a list of dictionaries."""
-    open_fn = gzip.open if path.endswith(".gz") else open
-    with open_fn(path, "rt", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return [json.loads(line) for line in f]
 
 def save_jsonl(path: str, data: List[Dict]) -> None:
     """Write a list of dictionaries to a JSONL file."""
-    open_fn = gzip.open if path.endswith(".gz") else open
-    with open_fn(path, "wt", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8") as f:
         for item in data:
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
 def append_jsonl(path: str, obj: Dict) -> None:
     """Append a single JSON serialisable object to a JSONL file."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    open_fn = gzip.open if path.endswith(".gz") else open
-    with open_fn(path, "at", encoding="utf-8") as f:
+    with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
 
 def _next_version_path(path: str) -> str:
@@ -49,8 +45,7 @@ def save_jsonl_safely(path: str, data: List[Dict], overwrite: bool = False) -> s
     out_path = path
     if os.path.exists(path) and not overwrite:
         out_path = _next_version_path(path)
-    open_fn = gzip.open if out_path.endswith(".gz") else open
-    with open_fn(out_path, "wt", encoding="utf-8") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         for item in data:
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
     return out_path

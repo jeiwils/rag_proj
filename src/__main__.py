@@ -66,14 +66,14 @@ project-root/
 │   │   ├── {dataset}/
 │   │   │   └── {split}/
 │   │   │       ├── {dataset}_passages.jsonl
-│   │   │       ├── {dataset}_passages_emb.npy
+│   │   │       ├── {dataset}_passages_emb.npz
 │   │   │       └── {dataset}_faiss_passages.faiss
 │   │   └── {model}/
 │   │       └── {dataset}/
 │   │           └── {split}/
 │   │               └── {variant}/
 │   │                   ├── iqoq.cleaned.jsonl  # ← updated with vec_id and keywords
-│   │                   ├── {dataset}_iqoq_emb.npy
+│   │                   ├── {dataset}_iqoq_emb.npz
 │   │                   └── {dataset}_faiss_iqoq.faiss
 │
 │   ├── graphs/
