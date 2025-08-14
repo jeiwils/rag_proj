@@ -101,7 +101,7 @@ File Schema
 
 
 
-from src.utils import get_result_paths, get_traversal_paths
+from src.utils import get_result_paths, get_traversal_paths, append_jsonl
 
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Callable, Set
@@ -429,7 +429,7 @@ def compute_hop_metrics(
 
 
 
-def save_per_query_result( # helper for run_dev_set()
+def save_traversal_result( # helper for run_dev_set()
     query_id,
     gold_passages,
     visited_passages,
@@ -454,9 +454,7 @@ def save_per_query_result( # helper for run_dev_set()
         "traversal_algorithm": traveral_alg.__name__
     }
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with gzip.open(output_path, "at", encoding="utf-8") as f:
-        f.write(json.dumps(result_entry) + "\n")
+    append_jsonl(str(output_path), result_entry)
 
 
 
@@ -525,7 +523,7 @@ def run_traversal(
         print(f"[Traversal] Visited {len(visited_passages)} passages (None={stats['none_count']}, Repeat={stats['repeat_visit_count']})")
 
         # --- Save per-query JSONL ---
-        save_per_query_result(
+        save_traversal_result(
             query_id=query_id,
             gold_passages=gold_passages,
             visited_passages=visited_passages,
@@ -636,7 +634,7 @@ if __name__ == "__main__":
     for dataset in DATASETS:
         # Load dataset-wide resources once per dataset
         paths = dataset_rep_paths(dataset, SPLIT)
-        passage_metadata = load_jsonl(paths["passages_jsonl"])
+        passage_metadata = list(load_jsonl(paths["passages_jsonl"]))
         passage_emb = np.load(paths["passages_emb"])["embs_all"]
         passage_index = faiss.read_index(paths["passages_index"])
         query_data_full = [json.loads(line) for line in open(f"{dataset}_{SPLIT}.jsonl")]

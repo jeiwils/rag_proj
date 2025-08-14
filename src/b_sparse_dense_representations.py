@@ -261,8 +261,9 @@ def embed_and_save(
     for i, entry in enumerate(data):
         entry["vec_id"] = i + vec_offset
 
-    os.makedirs(os.path.dirname(output_npy), exist_ok=True)
-    if  done_ids and os.path.exists(output_npy):
+    dir_path = os.path.dirname(output_npy)
+    os.makedirs(dir_path or ".", exist_ok=True)
+    if done_ids and os.path.exists(output_npy):
         existing = np.load(output_npy)["embs_all"].astype("float32")
         embs_all = np.vstack([existing, new_embs])
     else:
@@ -270,6 +271,8 @@ def embed_and_save(
     np.savez_compressed(output_npy, embs_all=embs_all)
 
     mode = "a" if done_ids else "w"
+    dir_path = os.path.dirname(output_jsonl)
+    os.makedirs(dir_path or ".", exist_ok=True)
     open_out = gzip.open if str(output_jsonl).endswith(".gz") else open
     with open_out(output_jsonl, mode + "t", encoding="utf-8") as f_out:
         for d in data:

@@ -7,17 +7,21 @@ import json
 import os
 import re
 import unicodedata
-from typing import Dict, List, Optional
+from typing import Dict, Iterator, List, Optional
+
+import tempfile
+import shutil
 
 # ---------------------------------------------------------------------------
 # JSONL and general file I/O
 # ---------------------------------------------------------------------------
 
-def load_jsonl(path: str) -> List[Dict]:
-    """Load a JSONL file into a list of dictionaries."""
+def load_jsonl(path: str) -> Iterator[Dict]:
+    """Yield objects from a JSONL file one by one."""
     open_fn = gzip.open if path.endswith(".gz") else open
     with open_fn(path, "rt", encoding="utf-8") as f:
-        return [json.loads(line) for line in f]
+        for line in f:
+            yield json.loads(line)
 
 def save_jsonl(path: str, data: List[Dict]) -> None:
     """Write a list of dictionaries to a JSONL file."""
@@ -26,12 +30,31 @@ def save_jsonl(path: str, data: List[Dict]) -> None:
         for item in data:
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
+
+def _append_jsonl_gz(path: str, obj: Dict) -> None:
+    """Append ``obj`` to a gzipped JSONL file via decompress → append → recompress."""
+    fd, tmp_path = tempfile.mkstemp(suffix=".jsonl")
+    os.close(fd)
+    try:
+        if os.path.exists(path):
+            with gzip.open(path, "rt", encoding="utf-8") as gz, open(tmp_path, "wt", encoding="utf-8") as tmp:
+                shutil.copyfileobj(gz, tmp)
+        with open(tmp_path, "at", encoding="utf-8") as tmp:
+            tmp.write(json.dumps(obj, ensure_ascii=False) + "\n")
+        with open(tmp_path, "rt", encoding="utf-8") as tmp, gzip.open(path, "wt", encoding="utf-8") as gz:
+            shutil.copyfileobj(tmp, gz)
+    finally:
+        os.remove(tmp_path)
+
+
 def append_jsonl(path: str, obj: Dict) -> None:
     """Append a single JSON serialisable object to a JSONL file."""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    open_fn = gzip.open if path.endswith(".gz") else open
-    with open_fn(path, "at", encoding="utf-8") as f:
-        f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    if path.endswith(".gz"):
+        _append_jsonl_gz(path, obj)
+    else:
+        with open(path, "at", encoding="utf-8") as f:
+            f.write(json.dumps(obj, ensure_ascii=False) + "\n")
 
 def _next_version_path(path: str) -> str:
     """If ``path`` exists, return ``path`` with an incremented ``.vN`` suffix."""
@@ -45,7 +68,8 @@ def _next_version_path(path: str) -> str:
 
 def save_jsonl_safely(path: str, data: List[Dict], overwrite: bool = False) -> str:
     """Write JSONL data, versioning the filename if it already exists."""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    dir_path = os.path.dirname(path)
+    os.makedirs(dir_path or ".", exist_ok=True)
     out_path = path
     if os.path.exists(path) and not overwrite:
         out_path = _next_version_path(path)

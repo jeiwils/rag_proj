@@ -1,92 +1,113 @@
 """
-
 Module Overview
 ---------------
-Run and evaluate multi-hop question answering pipelines using dense retrieval,
-standard HopRAG, or enhanced HopRAG.
+Run multi-hop traversal over a QA dataset using LLM-guided graph expansion.
 
-This module ranks retrieved passages by *helpfulness* (based on query similarity
-and graph visit frequency), queries an LLM using the top-ranked passages, and
-evaluates predictions against gold answers. It supports dense-only and graph-based
-retrieval strategies and saves structured results by model, dataset, and variant.
+This script performs seeded retrieval for each question, then expands through
+a directed graph of OQ→IQ edges using a local LLM to guide traversal. Results 
+are saved per query and summarized globally.
 
+It supports both baseline traversal (no node revisits) and enhanced traversal 
+(allowing node revisits but not edge revisits). Outputs are stored *inside the 
+graph variant directory* alongside the graph structure and edge logs.
 
 
 Inputs
 ------
 
-### data/processed_datasets/{dataset}/
-
-- {split}.jsonl.gz                          - QA query entries with question ID, text, and gold answer.
-
-
-
 ### data/graphs/{model}/{dataset}/{split}/{variant}/
 
-- {dataset}_{split}_graph.gpickle(.gz)     - Graph of passages with text and precomputed query similarity.
+- `{dataset}_{split}_graph.gpickle`  
+    Directed NetworkX graph. Nodes = passages, edges = OQ→IQ links.
 
+- `passages_emb.npz`, `passages_index.faiss`, `passages.jsonl`
+    Dense passage embeddings, FAISS index, and passage metadata (including keywords and IDs).
 
+### data/processed_datasets/{dataset}/{split}.jsonl.gz
 
-### data/representations/{dataset}/{split}/
-
-- passages.jsonl                            - Metadata for all passages.
-- passages_emb.npz                          - Dense passage embeddings.
-- passages_index.faiss                      - FAISS index for dense+Jaccard hybrid retrieval.
-
+- Query set (e.g., dev split) with:
+    - `question_id`: unique identifier
+    - `question`: question text
+    - `gold_passages`: list of passage IDs with relevant information
 
 
 Outputs
 -------
 
-### results/{model}/{dataset}/{split}/{variant}/
+### data/graphs/{model}/{dataset}/{split}/{variant}/traversal/
 
-- answer_per_query_{variant}_{split}.jsonl.gz
-    Final LLM-generated QA answers per query, with EM/F1 scores and retrieved passages.
+- `per_query_traversal_results.jsonl.gz`  
+    One entry per query with hop trace, visited nodes, and precision/recall/F1 metrics.
 
-- traversal_per_query_{variant}_{split}.jsonl.gz
-    Full traversal trace per query, including hops, edge choices, and visit counts.
+- `visited_passages.json.gz`  
+    Deduplicated union of all passages visited during traversal (used for answer reranking).
 
-- all_visited_passages_{variant}_{split}.json.gz
-    Deduplicated list of all passage IDs visited during traversal.
-
-- summary_metrics_{variant}_{split}.json
-    Aggregate EM/F1 scores and run-level statistics for this variant.
+- `final_traversal_stats.json`  
+    Aggregate metrics across the full query set (e.g., mean precision, recall, hop stats).
 
 
+File Schemas
+------------
 
+### per_query_traversal_results.jsonl.gz
 
-File Schema
------------
-
-### dev_{mode}.jsonl.gz
-
-Each line corresponds to a single QA query:
+Each line contains a dict with the full traversal trace and evaluation:
 
 {
-  "query_id": "{question_id}",
-  "question": "{question_text}",
-  "gold_answer": "{reference_answer}",
-  "predicted_answer": "{raw_generated_answer}",
-  "normalised_pred": "{normalized_prediction}",
-  "normalised_gold": "{normalized_gold}",
-  "retrieved_passages": ["{passage_id_1}", "{passage_id_2}", "..."],
-  "EM": 1,
-  "F1": 1.0,
-  "method": "{dense_rag | hoprag | enhanced}"
+  "query_id": str,
+  "gold_passages": List[str],
+  "visited_passages": List[str],
+  "visit_counts": Dict[str, int],
+  "hop_trace": List[Dict],
+  "final_metrics": {
+    "precision": float,
+    "recall": float,
+    "f1": float
+  },
+  "traversal_algorithm": str
 }
 
-Fields
-- ``query_id``: unique question identifier.
-- ``question``: original question text.
-- ``gold_answer``: reference answer string.
-- ``predicted_answer``: raw output from LLM.
-- ``normalised_pred`` / ``normalised_gold``: lowercased and punctuation-free versions for evaluation.
-- ``retrieved_passages``: top-ranked passage IDs used to generate the answer.
-- ``EM``: exact match score.
-- ``F1``: token-level F1 score.
-- ``method``: name of the pipeline used to generate the prediction.
 
+### visited_passages.json.gz
+
+A list of unique passage IDs visited across all queries:
+
+[
+  "passage_id_1",
+  "passage_id_2",
+  ...
+]
+
+
+### final_traversal_stats.json
+
+Aggregated summary across all queries:
+
+{
+  "mean_precision": float,
+  "mean_recall": float,
+  "passage_coverage_all_gold_found": int,
+  "initial_retrieval_coverage": int,
+  "avg_hops_before_first_gold": "TODO",
+  "avg_total_hops": float,
+  "avg_repeat_visits": float,
+  "avg_none_count_per_query": float,
+  "max_hop_depth_reached": int,
+  "hop_depth_counts": List[int]
+}
+
+
+Notes
+-----
+
+- Traversals are run on the `dev` split, not `train`.
+- `baseline` = no revisits to previously visited passages.
+- `enhanced` = allows passage revisits but avoids revisiting the same edge.
+- All outputs are saved in:
+  `data/graphs/{model}/{dataset}/{split}/{variant}/traversal/`
 """
+
+
 
 from src.utils import get_result_paths, get_traversal_paths
 
@@ -527,12 +548,12 @@ if __name__ == "__main__":
         for split in SPLITS:
             # --- Load data for this dataset + split ---
             rep_paths = dataset_rep_paths(dataset, split)
-            passage_metadata = load_jsonl(rep_paths["passages_jsonl"])
+            passage_metadata = list(load_jsonl(rep_paths["passages_jsonl"]))
             passage_emb = np.load(rep_paths["passages_emb"])["embs_all"]
             passage_index = load_faiss_index(rep_paths["passages_index"])
 
             query_path = os.path.join("data", "processed_datasets", dataset, f"{split}.jsonl.gz")
-            query_data = load_jsonl(query_path)
+            query_data = list(load_jsonl(query_path))
 
             for model in MODELS:
                 # --- Run DENSE baseline ---

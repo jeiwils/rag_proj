@@ -261,7 +261,7 @@ def merge_jsonl_files(in_paths, out_path, dedup_key=None, resume: bool = False):
     seen = set()
     out = []
     for p in in_paths:
-        rows = load_jsonl(p)
+        rows = list(load_jsonl(p))
         done_ids, _ = compute_resume_sets(
             resume=resume,
             out_path=out_path,
@@ -367,7 +367,7 @@ def explode_iqoq(master_path: str, output_path: str, resume: bool = False):
     Input: CLEANED, merged file per variant
     Output: one row per IQ/OQ with core metadata (no keywords).
     """
-    data = load_jsonl(master_path)
+    data = list(load_jsonl(master_path))
     items: list[str] = []
     for e in data:
         pid = e["passage_id"]

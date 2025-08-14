@@ -476,8 +476,8 @@ def append_global_result(
     if extra_metadata:
         result.update(extra_metadata)
 
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    open_fn = gzip.open if save_path.endswith(".gz") else open
+    dir_path = os.path.dirname(save_path)
+    os.makedirs(dir_path or ".", exist_ok=True)
     append_jsonl(save_path, result)
 
     return result
@@ -549,7 +549,8 @@ def graph_stats(
     print(json.dumps(stats, indent=2))
 
     if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        dir_path = os.path.dirname(save_path)
+        os.makedirs(dir_path or ".", exist_ok=True)
         open_fn = gzip.open if save_path.endswith(".gz") else open
         with open_fn(save_path, "at", encoding="utf-8") as f:
             f.write(json.dumps(stats, ensure_ascii=False) + "\n")
@@ -605,7 +606,7 @@ def run_graph_pipeline(
     q_path = iqoq_file if iqoq_file else model_paths["iqoq_jsonl"]
 
     passages_md = load_jsonl(p_path)
-    iqoq_md = load_jsonl(q_path)
+    iqoq_md = list(load_jsonl(q_path))
 
     passages_emb = np.load(pass_paths["passages_emb"])["embs_all"]
     iqoq_emb = np.load(model_paths["iqoq_emb"])["embs_all"]
@@ -629,7 +630,7 @@ def run_graph_pipeline(
         phase_label="edges",
         id_field="oq_id",
     )
-    existing_edges = load_jsonl(edges_out) if resume and os.path.exists(edges_out) else []
+    existing_edges = list(load_jsonl(edges_out)) if resume and os.path.exists(edges_out) else []
     oq_to_process = [q for q in oq_items if q["iqoq_id"] not in done_ids]
 
     new_edges = build_edges(

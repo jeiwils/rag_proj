@@ -1,5 +1,4 @@
 """
-
 project-root/
 │
 ├── data/
@@ -24,91 +23,91 @@ project-root/
 │   │
 │   ├── processed_datasets/
 │   │   ├── hotpotqa/
-│   │   │   ├── train.jsonl
-│   │   │   ├── train_passages.jsonl
-│   │   │   ├── dev.jsonl
-│   │   │   └── dev_passages.jsonl
+│   │   │   ├── train.jsonl.gz
+│   │   │   ├── train_passages.jsonl.gz
+│   │   │   ├── dev.jsonl.gz
+│   │   │   └── dev_passages.jsonl.gz
 │   │   ├── 2wikimultihopqa/
-│   │   │   ├── train.jsonl
-│   │   │   ├── train_passages.jsonl
-│   │   │   ├── dev.jsonl
-│   │   │   └── dev_passages.jsonl
+│   │   │   ├── train.jsonl.gz
+│   │   │   ├── train_passages.jsonl.gz
+│   │   │   ├── dev.jsonl.gz
+│   │   │   └── dev_passages.jsonl.gz
 │   │   └── musique/
-│   │       ├── train.jsonl
-│   │       ├── train_passages.jsonl
-│   │       ├── dev.jsonl
-│   │       └── dev_passages.jsonl
-│
+│   │       ├── train.jsonl.gz
+│   │       ├── train_passages.jsonl.gz
+│   │       ├── dev.jsonl.gz
+│   │       └── dev_passages.jsonl.gz
+│   │
 │   ├── models/
-│   │   └── {model}/
-│   │       └── {dataset}/
-│   │           └── {split}/
-│   │               ├── shards/
-│   │               │   ├── {split}_passages_shard{N}_{size}.jsonl
-│   │               │   └── {hoprag_version}/
-│   │               │       ├── {split}_passages_shard{N}_{size}_cs.jsonl
-│   │               │       ├── {split}_passages_shard{N}_{size}_iqoq_baseline.jsonl
-│   │               │       ├── {split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl
-│   │               │       ├── *_cs_debug.txt
-│   │               │       ├── *_iqoq_baseline_debug.txt
-│   │               │       └── *_iqoq_enhanced_debug.txt
-│   │               ├── {hoprag_version}/
-│   │               │   ├── cleaned/
-│   │               │   │   ├── iqoq.cleaned.jsonl
-│   │               │   │   └── scored.cleaned.jsonl
-│   │               │   ├── exploded/
-│   │               │   │   ├── iqoq.exploded.jsonl
-│   │               │   │   └── passages.exploded.jsonl
-│   │               │   └── debug/
-│   │               │       └── cleaning_debug.txt
-│
+│   │   └── {model}/{dataset}/{split}/
+│   │       ├── shards/
+│   │       │   ├── {split}_passages_shard{N}_{size}.jsonl
+│   │       │   └── {hoprag_version}/
+│   │       │       ├── {split}_passages_shard{N}_{size}_cs.jsonl
+│   │       │       ├── {split}_passages_shard{N}_{size}_iqoq_baseline.jsonl
+│   │       │       ├── {split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl
+│   │       │       ├── *_cs_debug.txt
+│   │       │       ├── *_iqoq_baseline_debug.txt
+│   │       │       └── *_iqoq_enhanced_debug.txt
+│   │       └── {hoprag_version}/
+│   │           ├── cleaned/
+│   │           │   ├── iqoq.cleaned.jsonl.gz
+│   │           │   └── scored.cleaned.jsonl.gz
+│   │           ├── exploded/
+│   │           │   ├── iqoq.exploded.jsonl.gz
+│   │           │   └── passages.exploded.jsonl.gz
+│   │           └── debug/
+│   │               └── cleaning_debug.txt
+│   │
 │   ├── representations/
-│   │   ├── {dataset}/
-│   │   │   └── {split}/
-│   │   │       ├── {dataset}_passages.jsonl
-│   │   │       ├── {dataset}_passages_emb.npz
-│   │   │       └── {dataset}_faiss_passages.faiss
-│   │   └── {model}/
-│   │       └── {dataset}/
-│   │           └── {split}/
-│   │               └── {variant}/
-│   │                   ├── iqoq.cleaned.jsonl  # ← updated with vec_id and keywords
-│   │                   ├── {dataset}_iqoq_emb.npz
-│   │                   └── {dataset}_faiss_iqoq.faiss
-│
-│   ├── graphs/
-│   │   └── {model}/
-│   │       └── {dataset}/
-│   │           └── {split}/
-│   │               └── {variant}/
-│   │                   ├── {dataset}_{split}_graph.gpickle
-│   │                   ├── {dataset}_{split}_edges.jsonl
-│   │                   ├── {dataset}_{split}_graph_log.jsonl
-│   │                   ├── {dataset}_{split}_graph_results.jsonl
-│   │                   └── traversal/
-│   │                       ├── per_query_traversal_results.jsonl.gz
-│   │                       ├── final_selected_passages.json.gz
-│   │                       └── final_traversal_stats.json
+│   │   ├── {dataset}/{split}/
+│   │   │   ├── {dataset}_passages.jsonl.gz
+│   │   │   ├── {dataset}_passages_emb.npz
+│   │   │   └── {dataset}_faiss_passages.faiss
+│   │   └── {model}/{dataset}/{split}/{variant}/
+│   │       ├── iqoq.cleaned.jsonl.gz
+│   │       ├── {dataset}_iqoq_emb.npz
+│   │       └── {dataset}_faiss_iqoq.faiss
+│   │
+│   └── graphs/
+│       └── {model}/{dataset}/{split}/{variant}/
+│           ├── {dataset}_{split}_graph.gpickle
+│           ├── {dataset}_{split}_edges.jsonl.gz
+│           ├── {dataset}_{split}_graph_log.jsonl.gz
+│           ├── {dataset}_{split}_graph_results.jsonl.gz
+│           └── traversal/
+│               ├── per_query_traversal_results.jsonl.gz
+│               ├── final_selected_passages.json.gz
+│               └── final_traversal_stats.json
 │
 ├── results/
-│   ├── dev_dense.jsonl               # ← dense baseline
-│   ├── dev_hoprag.jsonl              # ← standard hopRAG
-│   ├── dev_enhanced.jsonl            # ← enhanced hopRAG
-│   └── (optional) dev_results.jsonl  # ← can be renamed depending on use
+│   └── {model}/{dataset}/{split}/{variant}/
+│       ├── answer_per_query_{variant}_{split}.jsonl.gz
+│       ├── traversal_per_query_{variant}_{split}.jsonl.gz
+│       ├── all_visited_passages_{variant}_{split}.json.gz
+│       └── summary_metrics_{variant}_{split}.json
 │
 ├── src/
-│   ├── a2_text_prep.py               # preprocessing utils
+│   ├── a1_dataset_processing.py
+│   ├── a2_text_prep.py
+│   ├── a3_file_prep.py
 │   ├── b_sparse_dense_representations.py
 │   ├── c_graphing.py
 │   ├── d_traversal.py
-│   └── e_answering.py
+│   ├── e_reranking_answer_gen.py
+│   ├── COMPRESS_FILES.py
+│   ├── utils.py
+│   └── __main__.py
 │
-├── scripts/
-│   └── run_all.py (or your entrypoint script)
+├── tests/
+│   ├── inspect_datasets.py
+│   ├── inspect_outputs.py
+│   ├── inspect_passage_ids.py
+│   ├── inspect_rows.py
+│   └── test.py
 │
-└── README.md
-
-
+├── requirements.txt
+└── .gitignore
 
 
 
@@ -130,7 +129,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Iterable, List
 
 from .a2_text_prep import SERVER_CONFIGS, compute_resume_sets
 
@@ -138,7 +137,7 @@ from .e_reranking_answer_gen import run_pipeline
 from .utils import load_jsonl
 
 
-def load_queries(dataset: str, split: str) -> List[Dict]:
+def load_queries(dataset: str, split: str) -> Iterable[Dict]:
     """Load a dataset split from ``data/`` if it exists.
 
     The function searches two common locations:
@@ -172,7 +171,7 @@ if __name__ == "__main__":
         for model in MODELS:
             for variant in VARIANTS:
                 for split in SPLIT:
-                    queries = load_queries(dataset, split)
+                    queries = list(load_queries(dataset, split))
 
                     # Ensure an output directory exists per combination
                     out_dir = Path("results") / dataset / split / model
