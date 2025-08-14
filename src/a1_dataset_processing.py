@@ -81,9 +81,13 @@ Fields
 import json
 import os
 from typing import List, Dict
-from src.utils import append_jsonl, clean_text, pid_plus_title, compute_resume_sets
-
-
+from src.utils import (
+    append_jsonl,
+    clean_text,
+    pid_plus_title,
+    compute_resume_sets,
+    processed_dataset_paths,
+)
 
 
 
@@ -110,10 +114,9 @@ def process_hotpotqa(
     if isinstance(max_examples, int):
         examples = examples[:max_examples]
 
-    out_dir = f"data/processed_datasets/hotpotqa/{split}"
-    os.makedirs(out_dir, exist_ok=True)
-    qa_path = f"{out_dir}/questions.jsonl"
-    passages_path = f"{out_dir}/passages.jsonl"
+    paths = processed_dataset_paths("hotpotqa", split)
+    qa_path = str(paths["questions"])
+    passages_path = str(paths["passages"])
 
     # --- compute resume sets ---
     done_qids, _ = compute_resume_sets(
@@ -200,10 +203,9 @@ def process_2wikimultihopqa(
     if isinstance(max_examples, int):
         examples = examples[:max_examples]
 
-    out_dir = f"data/processed_datasets/2wikimultihopqa/{split}"
-    os.makedirs(out_dir, exist_ok=True)
-    qa_path = f"{out_dir}/questions.jsonl"
-    passages_path = f"{out_dir}/passages.jsonl"
+    paths = processed_dataset_paths("2wikimultihopqa", split)
+    qa_path = str(paths["questions"])
+    passages_path = str(paths["passages"])
 
     # --- compute resume sets ---
     done_qids, _ = compute_resume_sets(
@@ -289,10 +291,9 @@ def process_musique(
                 break
             examples.append(json.loads(line))
 
-    out_dir = f"data/processed_datasets/musique/{split}"
-    os.makedirs(out_dir, exist_ok=True)
-    qa_path = f"{out_dir}/questions.jsonl"
-    passages_path = f"{out_dir}/passages.jsonl"
+    paths = processed_dataset_paths("musique", split)
+    qa_path = str(paths["questions"])
+    passages_path = str(paths["passages"])
 
     done_qids, _ = compute_resume_sets(
         resume=resume,

@@ -331,6 +331,51 @@ def get_traversal_paths(model, dataset, split, variant):
     }
 
 
+def processed_dataset_paths(dataset: str, split: str) -> Dict[str, Path]:
+    """Return standard paths for processed dataset files.
+
+    Creates ``data/processed_datasets/{dataset}/{split}/`` if necessary and
+    returns paths for ``questions.jsonl`` and ``passages.jsonl``.
+    """
+    base = Path(f"data/processed_datasets/{dataset}/{split}")
+    base.mkdir(parents=True, exist_ok=True)
+    return {
+        "base": base,
+        "questions": base / "questions.jsonl",
+        "passages": base / "passages.jsonl",
+    }
+
+
+def model_shard_dir(model: str, dataset: str, split: str) -> Path:
+    """Return directory for model-specific shards.
+
+    The directory follows ``data/models/{model}/{dataset}/{split}/shards`` and
+    is created if it does not already exist.
+    """
+    base = Path(f"data/models/{model}/{dataset}/{split}/shards")
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def model_shard_paths(model: str, dataset: str, split: str, stem: str, size: str) -> List[Path]:
+    """Return shard file paths for a given model size.
+
+    Parameters
+    ----------
+    model, dataset, split:
+        Identify the model dataset split.
+    stem:
+        Base filename (typically input JSONL stem).
+    size:
+        Model size string (``"1.5b"``, ``"7b"`` or ``"14b"``).
+    """
+    out_dir = model_shard_dir(model, dataset, split)
+    counts = {"1.5b": 4, "7b": 2, "14b": 1}
+    n_shards = counts.get(size)
+    if n_shards is None:
+        raise ValueError(f"Unsupported model size: {size}")
+    return [out_dir / f"{stem}_shard{i}_{size}.jsonl" for i in range(1, n_shards + 1)]
+
 
 
 
@@ -345,4 +390,9 @@ __all__ = [
     "pid_plus_title",
     "FOLDERS_BY_VARIANT",
     "resolve_root",
+    "get_result_paths",
+    "get_traversal_paths",
+    "processed_dataset_paths",
+    "model_shard_dir",
+    "model_shard_paths",
 ]

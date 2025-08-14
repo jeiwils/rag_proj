@@ -119,7 +119,14 @@ from pathlib import Path
 import re
 import requests
 from multiprocessing import Process
-from src.utils import load_jsonl, save_jsonl, append_jsonl
+from src.utils import (
+    load_jsonl,
+    save_jsonl,
+    append_jsonl,
+    model_shard_dir,
+    model_shard_paths,
+    processed_dataset_paths,
+)
 from tqdm import tqdm
 from typing import Callable, List, Dict
 import time
@@ -243,53 +250,30 @@ def split_jsonl_into_four(path, out1, out2, out3, out4):
 
 
 
-def split_jsonl_for_models(path: str, model: str) -> list[str]: ###################################### I WANT TO CHANGE THIS SO THAT IT  ACTUALLY TAKES THE DIRECTORIES - MAYBE MAKE A SEPARATE FUNCTION FOR THE DIRECTORIES
+def split_jsonl_for_models(path: str, model: str) -> list[str]:
+    """Split input JSONL into shards based on model size.
+
+    Shards are placed under ``data/models/{model}/{dataset}/{split}/shards``.
     """
-    Split input JSONL into N shards based on model size and write them to:
-      data/models/{model}/{dataset}/{split}/shards/{stem}_shard{N}_{size}.jsonl
+    size = model_size(model)
+    dataset = Path(path).parent.name
+    split_name = Path(path).stem.split("_")[0]
+    stem = Path(path).stem
+    out_paths = model_shard_paths(model, dataset, split_name, stem, size)
 
-    If RESUME is True and shard files already exist, skip re-splitting.
-    """
-    size = model_size(model)  # '1.5b' | '7b' | '14b'
-
-    # ``path`` has structure ``.../{dataset}/{split}/passages.jsonl``.
-    # Derive dataset and split names from its parents rather than the file
-    # stem to avoid losing the split prefix when naming shards.
-    dataset = Path(path).parent.parent.name  # e.g., 'musique'
-    split_name = Path(path).parent.name      # e.g., 'train' or 'dev'
-
-    out_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards")
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    # Prefix the shard filenames with the split so downstream stages expect
-    # ``{split}_passages_shardN_{size}.jsonl`` and derivatives like
-    # ``{split}_passages_shardN_{size}_cs.jsonl``.
-    stem = f"{split_name}_{Path(path).stem}"
+    if RESUME and all(p.exists() for p in out_paths):
+        return [str(p) for p in out_paths]
 
     if size == "1.5b":
-        out_paths = [
-            out_dir / f"{stem}_shard1_{size}.jsonl",
-            out_dir / f"{stem}_shard2_{size}.jsonl",
-            out_dir / f"{stem}_shard3_{size}.jsonl",
-            out_dir / f"{stem}_shard4_{size}.jsonl",
-        ]
-        if RESUME and all(p.exists() for p in out_paths):
-            return [str(p) for p in out_paths]
         split_jsonl_into_four(path, *(str(p) for p in out_paths))
-        return [str(p) for p in out_paths]
-
-    if size == "7b":
-        out_paths = [
-            out_dir / f"{stem}_shard1_{size}.jsonl",
-            out_dir / f"{stem}_shard2_{size}.jsonl",
-        ]
-        if RESUME and all(p.exists() for p in out_paths):
-            return [str(p) for p in out_paths]
+    elif size == "7b":
         split_jsonl(path, *(str(p) for p in out_paths))
-        return [str(p) for p in out_paths]
+    elif size == "14b":
+        save_jsonl(str(out_paths[0]), load_jsonl(path))
+    else:
+        raise ValueError(f"Unsupported model size: {size}")
 
-    if size == "14b":
-        out_path = out_dir / f"{stem}_shard1_{size}.jsonl"
+    return [str(p) for p in out_paths]
 
 
 
@@ -379,7 +363,7 @@ def write_debug_file(
 ):
     size = model_size(model)
     shard_stem = Path(shard_path).name.replace(".jsonl", "")
-    debug_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards/{hoprag_version}")
+    debug_dir = model_shard_dir(model, dataset, split_name) / hoprag_version
     debug_dir.mkdir(parents=True, exist_ok=True)
 
     if task_type == "cs":
@@ -632,7 +616,7 @@ def process_server_task(config: dict):
     resume     = bool(config.get("resume", False))
 
     # outputs live under .../{dataset}/{split}/{hoprag_version}
-    phase_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards/{hoprag_version}")
+    phase_dir = model_shard_dir(model, dataset, split_name) / hoprag_version
     phase_dir.mkdir(parents=True, exist_ok=True)
 
     t0 = time.time()
@@ -913,7 +897,7 @@ if __name__ == "__main__":
 
 
     for dataset in DATASETS:
-        input_path = f"data/processed_datasets/{dataset}/{SPLIT}/passages.jsonl"
+        input_path = str(processed_dataset_paths(dataset, SPLIT)["passages"])
 
         for model in ACTIVE_MODEL_NAMES:
             print(f"\n=== {dataset} | {model} ===")

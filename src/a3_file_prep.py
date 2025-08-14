@@ -142,7 +142,14 @@ import os
 import json
 import time
 from src.utils import SERVER_CONFIGS, compute_resume_sets, existing_ids
-from src.utils import load_jsonl, save_jsonl, append_jsonl, resolve_root, FOLDERS_BY_VARIANT
+from src.utils import (
+    load_jsonl,
+    save_jsonl,
+    append_jsonl,
+    resolve_root,
+    FOLDERS_BY_VARIANT,
+    model_shard_dir,
+)
 from pathlib import Path
 
 
@@ -534,7 +541,7 @@ def process_job(dataset: str, model: str, variant: str, split: str,
     root = Path(base)
 
     # prefer .../raw as input if it exists, otherwise the variant folder itself
-    search_dir = root / "shards" / hoprag_version
+    search_dir = model_shard_dir(model, dataset, split) / hoprag_version
     if not search_dir.is_dir():
         print(f"[warn] no shard inputs for {dataset} | {model} | {variant} in {search_dir}")
         return

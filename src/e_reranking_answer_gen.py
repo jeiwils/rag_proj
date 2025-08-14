@@ -111,7 +111,12 @@ Notes
 """
 
 
-from src.utils import get_result_paths, get_traversal_paths, append_jsonl
+from src.utils import (
+    get_result_paths,
+    get_traversal_paths,
+    append_jsonl,
+    processed_dataset_paths,
+)
 
 from typing import List, Dict, Optional, Tuple
 
@@ -555,7 +560,7 @@ if __name__ == "__main__":
             passage_emb = np.load(rep_paths["passages_emb"])["embs_all"]
             passage_index = load_faiss_index(rep_paths["passages_index"])
 
-            query_path = os.path.join("data", "processed_datasets", dataset, split, "questions.jsonl")
+            query_path = str(processed_dataset_paths(dataset, split)["questions"])
             query_data = list(load_jsonl(query_path))
 
             for model in MODELS:

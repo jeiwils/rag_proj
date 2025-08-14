@@ -117,6 +117,7 @@ from src.utils import (
     save_jsonl_safely,
     pid_plus_title,
     clean_text,
+    processed_dataset_paths,
 )
 from pathlib import Path
 import re
@@ -505,7 +506,7 @@ if __name__ == "__main__":
                 dataset_dir = Path(os.path.dirname(pass_paths["passages_jsonl"]))
                 os.makedirs(dataset_dir, exist_ok=True)
 
-                passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}/passages.jsonl"
+                passages_jsonl_src  = str(processed_dataset_paths(dataset, SPLIT)["passages"])
                 passages_jsonl      = pass_paths["passages_jsonl"]
                 passages_npy        = pass_paths["passages_emb"]
 
