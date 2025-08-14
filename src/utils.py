@@ -231,6 +231,9 @@ def clean_text(text: str) -> str:
 def pid_plus_title(qid: str, title: str, sent_idx: int) -> str:
     """Create a safe passage identifier using question id and title.
 
+
+    only used with 2wikimulihop and hotpotqa - musique already has a unique identifier for each passage
+
     The title is normalised by converting to lowercase and replacing any
     non-alphanumeric characters with underscores.  If the provided title is
     empty or sanitisation results in an empty string, ``"no_title"`` is used

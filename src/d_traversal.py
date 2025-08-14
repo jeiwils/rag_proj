@@ -161,7 +161,7 @@ def select_seed_passages(  # helper for run_dev_set()
     query_keywords = set(extract_keywords(query_text)) # this is extracting them from the query only, which hasn't been processed yet, right? 
 
     # Step 1: FAISS search
-    idxs, scores = faiss_search_topk(query_emb.reshape(1, -1), passage_index, seed_top_k=seed_top_k)
+    idxs, scores = faiss_search_topk(query_emb.reshape(1, -1), passage_index, top_k=seed_top_k)
 
     # Step 2: Score and filter
     selected = []
@@ -469,8 +469,8 @@ def run_traversal(
     passage_index,
     emb_model,
     server_configs: List[Dict],
-    model_servers: List[str],
     output_paths: Dict[str, Path],  # use traversal_output_paths()
+    model_servers: Optional[List[str]] = None,
     seed_top_k=50,
     alpha=0.5,
     n_hops=2,
@@ -640,6 +640,11 @@ if __name__ == "__main__":
         query_data_full = [json.loads(line) for line in open(f"{dataset}_{SPLIT}.jsonl")]
 
         for model in MODELS:
+
+            model_servers = [
+                cfg["server_url"] for cfg in SERVER_CONFIGS if cfg["model"] == model
+            ]
+
             for variant in VARIANTS:
                 print(f"\n=== Running {variant.upper()} traversal | {dataset} | {model} ===")
 
@@ -668,6 +673,7 @@ if __name__ == "__main__":
                     passage_index=passage_index,
                     emb_model=bge_model,
                     server_configs=SERVER_CONFIGS,
+                    model_servers=model_servers,
                     output_paths=output_paths,
                     seed_top_k=TOP_K_SEED_PASSAGES,
                     alpha=ALPHA,

@@ -240,13 +240,35 @@ def embed_and_save(
             texts.append(entry[text_key])
             data.append(entry)
 
+    existing_embs = None
+    vec_offset = 0
+    if os.path.exists(output_npy):
+        existing_embs = np.load(output_npy)["embs_all"].astype("float32")
+        vec_offset = existing_embs.shape[0]
+        if os.path.exists(output_jsonl):
+            with open(output_jsonl, "rt", encoding="utf-8") as f_old:
+                idx = -1
+                for idx, line in enumerate(f_old):
+                    if json.loads(line).get("vec_id") != idx:
+                        raise AssertionError(
+                            f"vec_id mismatch at line {idx} in {output_jsonl}"
+                        )
+                if vec_offset != idx + 1:
+                    raise AssertionError(
+                        f"Embedding count {vec_offset} does not match JSONL entries {idx + 1}"
+                    )
+
     if not data:
-        if os.path.exists(output_npy):
-            embs_all = np.load(output_npy)["embs_all"].astype("float32")
+        if existing_embs is not None:
+            embs_all = existing_embs
         else:
-            embs_all = np.empty((0, model.get_sentence_embedding_dimension()), dtype="float32")
+            embs_all = np.empty(
+                (0, model.get_sentence_embedding_dimension()), dtype="float32"
+            )
         print(f"[Embeddings] No new items for {input_jsonl}; skipping.")
-        return embs_all, np.empty((0, embs_all.shape[1] if embs_all.size else 0), dtype="float32")
+        return embs_all, np.empty(
+            (0, embs_all.shape[1] if embs_all.size else 0), dtype="float32"
+        )
 
     new_embs = model.encode(
         texts,
@@ -256,20 +278,18 @@ def embed_and_save(
         show_progress_bar=True,
     ).astype("float32")
 
-    vec_offset = len(done_ids) if done_ids else 0
     for i, entry in enumerate(data):
         entry["vec_id"] = i + vec_offset
 
     dir_path = os.path.dirname(output_npy)
     os.makedirs(dir_path or ".", exist_ok=True)
-    if done_ids and os.path.exists(output_npy):
-        existing = np.load(output_npy)["embs_all"].astype("float32")
-        embs_all = np.vstack([existing, new_embs])
+    if existing_embs is not None:
+        embs_all = np.vstack([existing_embs, new_embs])
     else:
         embs_all = new_embs
     np.savez_compressed(output_npy, embs_all=embs_all)
 
-    mode = "a" if done_ids else "w"
+    mode = "a" if vec_offset > 0 else "w"
     dir_path = os.path.dirname(output_jsonl)
     os.makedirs(dir_path or ".", exist_ok=True)
     with open(output_jsonl, mode + "t", encoding="utf-8") as f_out:
