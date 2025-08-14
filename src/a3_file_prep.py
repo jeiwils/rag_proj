@@ -141,7 +141,7 @@ import re
 import os
 import json
 import time
-from src.a2_text_prep import SERVER_CONFIGS, compute_resume_sets
+from src.a2_text_prep import SERVER_CONFIGS, compute_resume_sets, existing_ids
 from src.utils import load_jsonl, save_jsonl, append_jsonl, resolve_root, FOLDERS_BY_VARIANT
 from pathlib import Path
 
@@ -257,36 +257,33 @@ def clean_file(in_path, out_path, cleaner, resume: bool = False):
 
 
 def merge_jsonl_files(in_paths, out_path, dedup_key=None, resume: bool = False):
+    """Merge multiple JSONL files, optionally deduplicating by ``dedup_key``.
+
+    If ``resume`` is ``True``, existing IDs in ``out_path`` are loaded once and
+    compared against the union of IDs from all shard inputs. Only the missing
+    records are written, allowing interrupted runs to resume without reprocessing
+    previously merged entries.
+    """
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-    seen = set()
-    out = []
+
+    # Collect rows from all shards keyed by their identifier. The dict preserves
+    # insertion order so the earliest occurrence of a duplicate is kept.
+    rows_by_id = {}
     for p in in_paths:
-        rows = list(load_jsonl(p))
-        done_ids, _ = compute_resume_sets(
-            resume=resume,
-            out_path=out_path,
-            items=rows,
-            get_id=lambda r, i: r.get(dedup_key, f"idx:{i}") if dedup_key else f"idx:{i}",
-            phase_label="merge",
-            id_field=dedup_key
-        )
-        for i, row in enumerate(rows):
-            k = row.get(dedup_key, f"idx:{i}") if dedup_key else f"idx:{i}"
-            if resume and k in done_ids:
-                print(f"[resume] merge skipping {k}")
-                continue
-            if dedup_key and k in seen:
-                continue
-            if dedup_key:
-                seen.add(k)
-            out.append(row)
-    if resume:
-        for row in out:
-            append_jsonl(out_path, row)
-    else:
-        save_jsonl(out_path, out)
+        for i, row in enumerate(load_jsonl(p)):
+                k = row.get(dedup_key, f"idx:{i}") if dedup_key else f"idx:{i}"
+                if k not in rows_by_id:
+                    rows_by_id[k] = row
 
+    shard_ids = set(rows_by_id.keys())
+    existing = existing_ids(out_path, id_field=dedup_key) if resume else set()
+    pending_ids = shard_ids - existing if resume else shard_ids
 
+    mode = "a" if resume else "w"
+    with open(out_path, mode + "t", encoding="utf-8") as f:
+        for k, row in rows_by_id.items():
+            if k in pending_ids:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 

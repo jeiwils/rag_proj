@@ -277,7 +277,7 @@ def split_jsonl_for_models(path: str, model: str) -> list[str]:
     Split input JSONL into N shards based on model size and write them to:
       data/models/{model}/{dataset}/{split}/shards/{stem}_shard{N}_{size}.jsonl
 
-    Returns the shard paths. For 14B we still write a single shard file.
+    If RESUME is True and shard files already exist, skip re-splitting.
     """
     size = model_size(model)  # '1.5b' | '7b' | '14b'
     dataset = Path(path).parent.name
@@ -285,37 +285,39 @@ def split_jsonl_for_models(path: str, model: str) -> list[str]:
     out_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    stem = Path(path).name.replace(".jsonl", "").replace(".jsonl", "")
-
-    # 💥 Clear out any stale shard files from prior broken runs
-    for f in out_dir.glob(f"{stem}_shard*_{size}.jsonl"):
-        f.unlink()
+    stem = Path(path).stem
 
     if size == "1.5b":
         out_paths = [
-            str(out_dir / f"{stem}_shard1_{size}.jsonl"),
-            str(out_dir / f"{stem}_shard2_{size}.jsonl"),
-            str(out_dir / f"{stem}_shard3_{size}.jsonl"),
-            str(out_dir / f"{stem}_shard4_{size}.jsonl"),
+            out_dir / f"{stem}_shard1_{size}.jsonl",
+            out_dir / f"{stem}_shard2_{size}.jsonl",
+            out_dir / f"{stem}_shard3_{size}.jsonl",
+            out_dir / f"{stem}_shard4_{size}.jsonl",
         ]
-        split_jsonl_into_four(path, *out_paths)
-        return out_paths
+        if RESUME and all(p.exists() for p in out_paths):
+            return [str(p) for p in out_paths]
+        split_jsonl_into_four(path, *(str(p) for p in out_paths))
+        return [str(p) for p in out_paths]
 
     if size == "7b":
         out_paths = [
-            str(out_dir / f"{stem}_shard1_{size}.jsonl"),
-            str(out_dir / f"{stem}_shard2_{size}.jsonl"),
+            out_dir / f"{stem}_shard1_{size}.jsonl",
+            out_dir / f"{stem}_shard2_{size}.jsonl",
         ]
-        split_jsonl(path, *out_paths)
-        return out_paths
+        if RESUME and all(p.exists() for p in out_paths):
+            return [str(p) for p in out_paths]
+        split_jsonl(path, *(str(p) for p in out_paths))
+        return [str(p) for p in out_paths]
 
     if size == "14b":
         out_path = out_dir / f"{stem}_shard1_{size}.jsonl"
-        data = list(load_jsonl(path))  # ensure generator is fully consumed before saving
-        save_jsonl(str(out_path), data)
+        if RESUME and out_path.exists():
+            return [str(out_path)]
+        save_jsonl(str(out_path), load_jsonl(path))
         return [str(out_path)]
 
     raise ValueError(f"Unsupported model size: {size}")
+
 
 
 
@@ -660,18 +662,45 @@ def compute_resume_sets(
     phase_label: str,
     id_field: str = "passage_id",
 ) -> Tuple[Set[Hashable], Set[Hashable]]:
-    """
-    Returns (done_ids, shard_ids) for the current shard/phase and prints an accurate
-    per-shard resume message if resume=True.
+    
+    """Return ``(done_ids, shard_ids)`` for a single shard.
 
-    - shard_ids: IDs present in this shard's input sequence (items)
-    - done_ids:  IDs already written to this shard's *output* file (out_path), intersected with shard_ids
+    When ``resume`` is ``True``, :func:`existing_ids` reads ``out_path`` and the
+    function prints a message describing how many items are skipped for *this*
+    shard. Pipelines that split work across multiple shards should call this
+    function separately for each shard's output file – resumption is per shard
+    only. The ``items`` iterable is fully consumed to build ``shard_ids``; pass a
+    list or other re-iterable sequence if it will be reused later.
+
+    Parameters
+    ----------
+    resume:
+        Whether to check ``out_path`` and report existing IDs.
+    out_path:
+        JSONL file produced by the current shard.
+    items:
+        Input sequence for the shard.
+    get_id:
+        Callable extracting an identifier from ``items`` with signature
+        ``(item, index) -> Hashable``.
+    phase_label:
+        Human-readable label used in log messages.
+    id_field:
+        Name of the identifier field inside ``out_path`` JSON objects.
+
+    Returns
+    -------
+    Tuple[Set[Hashable], Set[Hashable]]
+        ``done_ids``: IDs already present in ``out_path`` for this shard.
+        ``shard_ids``: IDs for all items in the shard.
     """
     shard_ids = {get_id(x, i) for i, x in enumerate(items)}
     if not resume:
         return set(), shard_ids
 
-    done_all = existing_ids(out_path, id_field=id_field)  # only this shard's file
+    done_all = existing_ids(
+        out_path, id_field=id_field
+    )  # only this shard's file; caller handles other shards
     done_ids = done_all & shard_ids  # defensive intersection
     print(
         f"[resume] {phase_label}: {len(done_ids)}/{len(shard_ids)} already present in this shard – skipping those"
@@ -970,10 +999,10 @@ if __name__ == "__main__":
 
 
     RESUME = True
-    DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
+    DATASETS = ["musique","2wikimultihopqa", "hotpotqa"]
     ACTIVE_MODEL_NAMES   = ["qwen-7b"]
 
-    RUN_CS        = True        # enhanced scoring step
+    RUN_CS        = False        # enhanced scoring step
     RUN_BASELINE  = True        # hopRAG baseline IQ/OQ
     RUN_ENHANCED  = True        # enhanced IQ/OQ
 
