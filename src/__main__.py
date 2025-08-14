@@ -66,11 +66,11 @@ project-root/
 │   │               └── cleaning_debug.txt
 │   │
 │   ├── representations/
-│   │   ├── {dataset}/{split}/
+│   │   ├── datasets/{dataset}/{split}/
 │   │   │   ├── {dataset}_passages.jsonl
 │   │   │   ├── {dataset}_passages_emb.npy
 │   │   │   └── {dataset}_faiss_passages.faiss
-│   │   └── {model}/{dataset}/{split}/{variant}/
+│   │   └── models/{model}/{dataset}/{split}/{variant}/
 │   │       ├── iqoq.cleaned.jsonl
 │   │       ├── {dataset}_iqoq_emb.npy
 │   │       └── {dataset}_faiss_iqoq.faiss

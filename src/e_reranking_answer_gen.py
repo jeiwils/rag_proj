@@ -17,10 +17,14 @@ Inputs
 
 ### data/graphs/{model}/{dataset}/{split}/{variant}/
 
-- `{dataset}_{split}_graph.gpickle`  
+- `{dataset}_{split}_graph.gpickle`
     Directed NetworkX graph. Nodes = passages, edges = OQ→IQ links.
 
-- `passages_emb.npy`, `passages_index.faiss`, `passages.jsonl`
+### WILL THIS ALSO NEED INPUT FROM THE ACTUAL EDGES AND NODES.jsonl? ################################## 
+
+### data/representations/datasets/{dataset}/{split}/
+
+- `{dataset}_passages_emb.npy`, `{dataset}_faiss_passages.faiss`, `{dataset}_passages.jsonl`
     Dense passage embeddings, FAISS index, and passage metadata (including keywords and IDs).
 
 ### data/processed_datasets/{dataset}/{split}/questions.jsonl
@@ -29,7 +33,6 @@ Inputs
     - `question_id`: unique identifier
     - `question`: question text
     - `gold_passages`: list of passage IDs with relevant information
-
 
 Outputs
 -------

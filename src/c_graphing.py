@@ -15,7 +15,7 @@ and logs diagnostic summaries for structural and similarity-based evaluation.
 Inputs
 ------
 
-### `data/representations/{dataset}/{split}/`
+### `data/representations/datasets/{dataset}/{split}/`
 
 - `{dataset}_passages.jsonl`  
   – Passage metadata including passage ID, text, vector index, and keywords.
@@ -24,7 +24,7 @@ Inputs
   – Dense passage embeddings (`NumPy` array aligned with `vec_id` field).
 
 
-### `data/representations/{model}/{dataset}/{split}/{variant}/`
+### `data/representations/models/{model}/{dataset}/{split}/{variant}/`
 
 - `iqoq.cleaned.jsonl`  
   – Cleaned IQ/OQ items with `vec_id`, `type` (OQ/IQ), `parent_passage_id`, and `keywords`.
@@ -213,6 +213,8 @@ from src.utils import load_jsonl, save_jsonl, append_jsonl
 from src.utils import compute_resume_sets
 import gzip
 
+from pathlib import Path
+
 
 DATASET = "hotpot"
 SPLIT = "train"
@@ -227,13 +229,6 @@ iqoq_paths = model_rep_paths(MODEL, DATASET, SPLIT, VARIANT)
 IQOQ_PATH = iqoq_paths["iqoq_jsonl"]
 iqoq_emb_path = iqoq_paths["iqoq_emb"]
 
-DATASET = "hotpot"
-SPLIT = "train"
-paths = dataset_rep_paths(DATASET, SPLIT)
-PASSAGES_PATH = paths["passages_jsonl"]
-IQOQ_PATH = paths["iqoq_jsonl"]
-passages_emb_path = paths["passages_emb"]
-iqoq_emb_path = paths["iqoq_emb"]
 
 
 
@@ -241,9 +236,6 @@ iqoq_emb_path = paths["iqoq_emb"]
 
 
 
-
-
-from pathlib import Path
 
 
 def graph_output_paths(

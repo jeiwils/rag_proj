@@ -893,12 +893,12 @@ if __name__ == "__main__":
 
     RESUME = True
 
-    DATASETS = ["2wikimultihopqa"] #["musique","2wikimultihopqa", "hotpotqa"]
-    ACTIVE_MODEL_NAMES   = ["qwen-7b"]
+    DATASETS = ["musique"] #["musique","2wikimultihopqa", "hotpotqa"]
+    ACTIVE_MODEL_NAMES   = ["deepseek-distill-qwen-7b"] #["qwen-1.5b", "qwen-7b", "deepseek-distill-qwen-14b"] #["qwen-1.5b", "qwen-7b", "deepseek-distill-qwen-14b"]
     SPLIT = "train"             # or "dev"
 
-    RUN_CS        = True        # enhanced scoring step
-    RUN_BASELINE  = True        # hopRAG baseline IQ/OQ
+    RUN_CS        = False        # enhanced scoring step
+    RUN_BASELINE  = False        # hopRAG baseline IQ/OQ
     RUN_ENHANCED  = True        # enhanced IQ/OQ
 
 

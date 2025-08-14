@@ -29,7 +29,7 @@ Inputs
 Outputs
 -------
 
-### data/representations/{dataset}/{split}/{hoprag_version}
+### data/representations/datasets/{dataset}/{split}/
 
 - {dataset}_passages.jsonl
     → Passage metadata with added vec_id.
@@ -42,7 +42,7 @@ Outputs
 
 
 
-### data/representations/{model}/{dataset}/{split}/{variant}/
+### data/representations/models/{model}/{dataset}/{split}/{variant}/
 
 - iqoq.cleaned.jsonl
     → Updated input file with vec_id added for each IQ/OQ item.
@@ -601,7 +601,15 @@ if __name__ == "__main__":
             print(f"\n=== IQ/OQ EMBEDDING + INDEX: {model} | VARIANT: {variant} ===")
             for dataset in DATASETS:
                 iqoq_jsonl = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/cleaned/iqoq.cleaned.jsonl"
-                repr_root = os.path.join("data", "representations", model, dataset, SPLIT, hoprag_version)
+                repr_root = os.path.join(
+                    "data",
+                    "representations",
+                    "models",
+                    model,
+                    dataset,
+                    SPLIT,
+                    variant,
+                )
                 os.makedirs(repr_root, exist_ok=True)
                 iqoq_npy = os.path.join(repr_root, f"{dataset}_iqoq_emb.npy")
 
