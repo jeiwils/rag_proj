@@ -316,21 +316,50 @@ def run_multiprocess(
 
 
 
-def query_llm(prompt: str, server_url: str, max_tokens: int = 5, temperature: float = 0.0, stop=None, grammar=None) -> str:
-    payload = {
-        "prompt": prompt,
-        "temperature": temperature,
-        "n_predict": max_tokens,
-    }
-    if stop:
-        payload["stop"] = stop
-    if grammar:
-        payload["grammar"] = grammar
+# def query_llm(prompt: str, server_url: str, max_tokens: int = 5, temperature: float = 0.0, stop=None, grammar=None) -> str:
+#     payload = {
+#         "prompt": prompt,
+#         "temperature": temperature,
+#         "n_predict": max_tokens,
+#     }
+#     if stop:
+#         payload["stop"] = stop
+#     if grammar:
+#         payload["grammar"] = grammar
+#     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
+#     resp.raise_for_status()
+#     return resp.json().get("content", "").strip()
+
+
+def query_llm(
+    prompt: str,
+    server_url: str,
+    max_tokens: int = 5,
+    temperature: float = 0.0,
+    stop=None,
+    grammar=None,
+    messages=None  # ✅ NEW
+) -> str:
+    if messages:
+        payload = {
+            "messages": messages,
+            "temperature": temperature,
+            "n_predict": max_tokens
+        }
+    else:
+        payload = {
+            "prompt": prompt,
+            "temperature": temperature,
+            "n_predict": max_tokens
+        }
+        if stop:
+            payload["stop"] = stop
+        if grammar:
+            payload["grammar"] = grammar
+
     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
     resp.raise_for_status()
     return resp.json().get("content", "").strip()
-
-
 
 
 

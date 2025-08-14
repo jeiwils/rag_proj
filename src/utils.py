@@ -9,10 +9,15 @@ import re
 import unicodedata
 from typing import Dict, Iterator, List, Optional
 
+
+from typing import Iterable, Callable, Hashable, Tuple, Set, Any
+
 import logging
 
 
 
+
+from pathlib import Path
 
 
 
@@ -92,9 +97,6 @@ def existing_ids(path, id_field="passage_id", required_field: str | None = None)
 
 
 
-
-
-from typing import Iterable, Callable, Hashable, Tuple, Set, Any
 
 def compute_resume_sets(
     *,
@@ -310,8 +312,6 @@ def resolve_root(model: str, dataset: str, split: str, variant: str) -> Optional
 
 
 
-
-from pathlib import Path
 
 def get_result_paths(model, dataset, split, variant):
     base = Path(f"results/{model}/{dataset}/{split}/{variant}")
