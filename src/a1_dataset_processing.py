@@ -226,8 +226,8 @@ def process_2wikimultihopqa(
 
     out_dir = "data/processed_datasets/2wikimultihopqa"
     os.makedirs(out_dir, exist_ok=True)
-    qa_path = f"{out_dir}/{split}.jsonl.qz"
-    passages_path = f"{out_dir}/{split}_passages.jsonl.qz"
+    qa_path = f"{out_dir}/{split}.jsonl.gz"
+    passages_path = f"{out_dir}/{split}_passages.jsonl.gz"
 
     # --- compute resume sets ---
     done_qids, _ = compute_resume_sets(
@@ -315,8 +315,8 @@ def process_musique(
 
     out_dir = "data/processed_datasets/musique"
     os.makedirs(out_dir, exist_ok=True)
-    qa_path = f"{out_dir}/{split}.jsonl.qz"
-    passages_path = f"{out_dir}/{split}_passages.jsonl.qz"
+    qa_path = f"{out_dir}/{split}.jsonl.gz"
+    passages_path = f"{out_dir}/{split}_passages.jsonl.gz"
 
     done_qids, _ = compute_resume_sets(
         resume=resume,

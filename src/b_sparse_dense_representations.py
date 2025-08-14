@@ -457,14 +457,20 @@ def add_keywords_to_passages_jsonl(
 
 
 
-
-
-def add_keywords_to_iqoq_jsonl(iqoq_jsonl: str, out_field: str = "keywords"):
+def add_keywords_to_iqoq_jsonl(
+    iqoq_jsonl: str,
+    out_field: str = "keywords",
+    only_ids: Set[str] | None = None,
+):
     open_fn = gzip.open if iqoq_jsonl.endswith(".gz") else open
-    rows  = [json.loads(l) for l in open_fn(iqoq_jsonl, "rt", encoding="utf-8")]
-    texts = [r.get("text", "") for r in rows]  # <-- raw text
+    rows = [json.loads(l) for l in open_fn(iqoq_jsonl, "rt", encoding="utf-8")]
+    if only_ids:
+        targets = [r for r in rows if r.get("iqoq_id") in only_ids]
+    else:
+        targets = rows
+    texts = [r.get("text", "") for r in targets]  # <-- raw text
 
-    for r, doc in zip(rows, nlp.pipe(texts, batch_size=128, n_process=1)):
+    for r, doc in zip(targets, nlp.pipe(texts, batch_size=128, n_process=1)):
         kws = {
             normalise_text(ent.text)
             for ent in doc.ents
@@ -472,7 +478,7 @@ def add_keywords_to_iqoq_jsonl(iqoq_jsonl: str, out_field: str = "keywords"):
         }
         r[out_field] = sorted(kws)
 
-    with open(iqoq_jsonl, "w", encoding="utf-8") as f:
+    with open_fn(iqoq_jsonl, "wt", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 

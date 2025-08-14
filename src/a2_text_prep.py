@@ -399,7 +399,7 @@ def write_debug_file(
     skipped: int = 0,
 ):
     size = model_size(model)
-    shard_stem = Path(shard_path).stem
+    shard_stem = Path(shard_path).name.replace(".jsonl.gz", "")
     debug_dir = Path(f"data/models/{model}/{dataset}/{split_name}/shards/{hoprag_version}")
     debug_dir.mkdir(parents=True, exist_ok=True)
 

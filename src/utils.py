@@ -11,17 +11,37 @@ from typing import Dict, Iterator, List, Optional
 
 import tempfile
 import shutil
+import logging 
+
+
 
 # ---------------------------------------------------------------------------
 # JSONL and general file I/O
 # ---------------------------------------------------------------------------
 
-def load_jsonl(path: str) -> Iterator[Dict]:
-    """Yield objects from a JSONL file one by one."""
+def load_jsonl(path: str, log_skipped: bool = False) -> Iterator[Dict]:
+    """Yield objects from a JSONL file one by one.
+
+    Lines that are empty or fail to parse as JSON are skipped. If
+    ``log_skipped`` is ``True``, the number of skipped lines is logged at
+    debug level.
+    """
     open_fn = gzip.open if path.endswith(".gz") else open
+    skipped = 0
     with open_fn(path, "rt", encoding="utf-8") as f:
-        for line in f:
-            yield json.loads(line)
+        for line_no, line in enumerate(f, start=1):
+            line = line.strip()
+            if not line:
+                skipped += 1
+                continue
+            try:
+                yield json.loads(line)
+            except json.JSONDecodeError:
+                skipped += 1
+                if log_skipped:
+                    logging.debug("Skipping malformed JSON on line %d in %s", line_no, path)
+    if log_skipped and skipped:
+        logging.debug("Skipped %d empty or malformed lines in %s", skipped, path)
 
 def save_jsonl(path: str, data: List[Dict]) -> None:
     """Write a list of dictionaries to a JSONL file."""
