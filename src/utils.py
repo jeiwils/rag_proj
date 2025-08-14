@@ -109,6 +109,35 @@ def resolve_root(model: str, dataset: str, split: str, variant: str) -> Optional
 
 
 
+
+
+
+
+from pathlib import Path
+
+def get_result_paths(model, dataset, split, variant):
+    base = Path(f"results/{model}/{dataset}/{split}/{variant}")
+    return {
+        "base": base,
+        "answers": base / f"answer_per_query_{variant}_{split}.jsonl.gz",
+        "summary": base / f"summary_metrics_{variant}_{split}.json",
+    }
+
+def get_traversal_paths(model, dataset, split, variant):
+    base = Path(f"data/graphs/{model}/{dataset}/{split}/{variant}/traversal")
+    return {
+        "base": base,
+        "results": base / f"traversal_per_query_{variant}_{split}.jsonl.gz",
+        "visited_passages": base / f"all_visited_passages_{variant}_{split}.json.gz",
+        "stats": base / f"summary_metrics_{variant}_{split}.json",
+    }
+
+
+
+
+
+
+
 __all__ = [
     "load_jsonl",
     "save_jsonl",

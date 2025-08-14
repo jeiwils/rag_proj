@@ -35,8 +35,8 @@ Outputs
 - `per_query_traversal_results.jsonl.gz'
     One entry per query with hop trace, visited nodes, and precision/recall/F1.
 
-- `final_selected_passages.json.gz`  
-    Deduplicated set of all passages visited during traversal (used for answering).
+- `visited_passages.json.gz`  
+    Deduplicated union of all passages visited during traversal (used for answer reranking).
 
 - `final_traversal_stats.json`  
     Aggregate metrics across the full query set (e.g., mean precision, recall, hop stats).
@@ -63,7 +63,7 @@ File Schema
 }
 
 
-### final_selected_passages.json.gz
+### visited_passages.json.gz
 
 [
   "{passage_id_1}",
@@ -101,6 +101,7 @@ File Schema
 
 
 
+from src.utils import get_result_paths, get_traversal_paths
 
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Callable, Set
@@ -131,16 +132,7 @@ TOP_K_SEED_PASSAGES = 50
 NUMBER_HOPS = 2
 
 
-def traversal_output_paths(model, dataset, split, variant):
-    base_dir = Path(f"data/graphs/{model}/{dataset}/{split}/{variant}/traversal")
-    base_dir.mkdir(parents=True, exist_ok=True)
 
-    return {
-        "dir": base_dir,
-        "results": base_dir / "per_query_traversal_results.jsonl.gz",
-        "stats": base_dir / "final_traversal_stats.json",  # <-- updated here
-        "final_selected_passages": base_dir / "final_selected_passages.json.gz"
-    }
 
 
 
@@ -490,7 +482,7 @@ def run_traversal(
     Run LLM-guided multi-hop traversal over a QA query set (e.g., train, dev).
 
     Outputs:
-    - final_selected_passages.json.gz: ✅ Used downstream (answer generation, reranking)
+    - visited_passages.json.gz: ✅ Used downstream (answer generation, reranking)
     - per_query_traversal_results.jsonl.gz: 🔍 Full per-query trace and metrics
     - traversal_stats.json: 📈 Aggregate traversal metrics across the query set
     """
@@ -550,7 +542,7 @@ def run_traversal(
         all_selected_passages.update(visited_passages)
 
     # --- Save selected_passages.json ---
-    with gzip.open(output_paths["final_selected_passages"], "wt", encoding="utf-8") as f:
+    with gzip.open(output_paths["visited_passages"], "wt", encoding="utf-8") as f:
         json.dump(sorted(all_selected_passages), f, indent=2)
 
 
@@ -654,7 +646,8 @@ if __name__ == "__main__":
                 print(f"\n=== Running {variant.upper()} traversal | {dataset} | {model} ===")
 
                 graph_obj, trav_alg = variant_cfg[variant]
-                output_paths = traversal_output_paths(model, dataset, SPLIT, variant)
+                output_paths = get_traversal_paths(model, dataset, SPLIT, variant)
+
 
                 done_ids, _ = compute_resume_sets(
                     resume=RESUME,
