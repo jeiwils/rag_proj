@@ -81,8 +81,7 @@ Fields
 import json
 import os
 from typing import List, Dict
-from src.utils import append_jsonl, clean_text, pid_plus_title
-from src.utils import existing_ids, compute_resume_sets
+from src.utils import append_jsonl, clean_text, pid_plus_title, compute_resume_sets
 
 
 
@@ -94,9 +93,6 @@ os.makedirs("data/processed_datasets", exist_ok=True)
 
 
 
-
-
-########## THESE SHOULD ALL ONLY SEND GOLD PASSAGES TO QUESTIONS.JSONL AND ALL PASSAGES TO PASSAGES.JSONL
 
 
 # ==== HOTPOT: include ALL passages, but ONLY GOLD IDs in questions.jsonl ====

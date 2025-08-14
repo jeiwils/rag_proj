@@ -137,7 +137,7 @@ params = {
 }
 
 RESUME = True
-SPLIT = os.environ.get("SPLIT", "train")
+
 _bge_model = None
 
 
@@ -154,43 +154,22 @@ def get_embedding_model():
     return _bge_model
 
 def dataset_rep_paths(dataset: str, split: str) -> Dict[str, str]:
-    """Return representation file paths for dataset passages only.
-
-    Passages are stored under ``data/representations/{dataset}/{split}`` and
-    include JSONL metadata, NumPy embeddings, and a FAISS index. IQ/OQ items
-    are stored separately in the model-specific directories (see
-    :func:`model_rep_paths`).
-    """
-    base = os.path.join("data", "representations", dataset, split)
+    """Return paths for model-agnostic dataset-level passage representations."""
+    base = os.path.join("data", "representations", "datasets", dataset, split)
     return {
         "passages_jsonl": os.path.join(base, f"{dataset}_passages.jsonl"),
         "passages_emb": os.path.join(base, f"{dataset}_passages_emb.npy"),
         "passages_index": os.path.join(base, f"{dataset}_faiss_passages.faiss"),
     }
 
-
 def model_rep_paths(model: str, dataset: str, split: str, variant: str) -> Dict[str, str]:
-    """Return representation paths for model-specific IQ/OQ items.
-
-    IQ/OQ representations are stored under
-    ``data/representations/{model}/{dataset}/{split}/{variant}`` and include
-    JSONL metadata, NumPy embeddings and a FAISS index. Passages live in the
-    dataset-level directories (see :func:`dataset_rep_paths`).
-    """
-    base = os.path.join(
-        "data",
-        "representations",
-        model,
-        dataset,
-        split,
-        variant,
-    )
+    """Return paths for model-specific IQ/OQ representations."""
+    base = os.path.join("data", "representations", "models", model, dataset, split, variant)
     return {
         "iqoq_jsonl": os.path.join(base, f"{dataset}_iqoq.jsonl"),
         "iqoq_emb": os.path.join(base, f"{dataset}_iqoq_emb.npy"),
         "iqoq_index": os.path.join(base, f"{dataset}_faiss_iqoq.faiss"),
     }
-
 
 __all__ = [
     "SIM_THRESHOLD",
@@ -494,6 +473,10 @@ def add_keywords_to_iqoq_jsonl(
 
 
 
+
+
+
+
 if __name__ == "__main__":
     print(f"[spaCy] Using: {SPACY_MODEL}")
 
@@ -505,170 +488,173 @@ if __name__ == "__main__":
     # Config
     MODELS   = ["qwen-7b", "deepseek-distill-qwen-7b"]
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-
-    CURRENT_VARIANT = "enhanced"
+    VARIANTS = ["baseline", "enhanced"]
+    SPLIT = "train"
 
     # -------------------------------
     # Phase A: Passages + Questions (Dataset-only)
     # -------------------------------
-    for model in MODELS:
-        for dataset in DATASETS:
-            print(f"\n=== DATASET: {dataset} ({SPLIT}) | MODEL: {model} ===")
+    for variant in VARIANTS:
+        hoprag_version = f"{variant}_hoprag"
+        for model in MODELS:
+            for dataset in DATASETS:
+                print(f"\n=== DATASET: {dataset} ({SPLIT}) | MODEL: {model} | VARIANT: {variant} ===")
 
-            # File paths
-            variant = CURRENT_VARIANT
-            hoprag_version = variant  # same thing
-            pass_paths = dataset_rep_paths(dataset, SPLIT)
-            dataset_dir = Path(os.path.dirname(pass_paths["passages_jsonl"]))
-            os.makedirs(dataset_dir, exist_ok=True)
+                # File paths
+                pass_paths = dataset_rep_paths(dataset, SPLIT)
+                dataset_dir = Path(os.path.dirname(pass_paths["passages_jsonl"]))
+                os.makedirs(dataset_dir, exist_ok=True)
 
-            passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}/passages.jsonl"
-            passages_jsonl      = pass_paths["passages_jsonl"]
-            passages_npy        = pass_paths["passages_emb"]
+                passages_jsonl_src  = f"data/processed_datasets/{dataset}/{SPLIT}/passages.jsonl"
+                passages_jsonl      = pass_paths["passages_jsonl"]
+                passages_npy        = pass_paths["passages_emb"]
 
-            questions_jsonl_src = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/exploded/iqoq.exploded.jsonl"
-            questions_jsonl     = dataset_dir / Path(questions_jsonl_src).name
-            questions_npy       = dataset_dir / Path(questions_jsonl_src).with_suffix(".emb.npy").name
+                questions_jsonl_src = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/exploded/iqoq.exploded.jsonl"
+                questions_jsonl     = dataset_dir / Path(questions_jsonl_src).name
+                questions_npy       = dataset_dir / Path(questions_jsonl_src).with_suffix(".emb.npy").name
 
-            # === PASSAGE EMBEDDINGS ===
-            if os.path.exists(passages_npy) and not RESUME:
-                passages_emb = np.load(passages_npy)["embs_all"].astype("float32")
-                print(f"[skip] {passages_npy} exists; loaded.")
-                if not os.path.exists(pass_paths["passages_index"]):
-                    build_and_save_faiss_index(
-                        embeddings=passages_emb,
-                        dataset_name=dataset,
-                        index_type="passages",
-                        output_dir=str(dataset_dir),
+                # === PASSAGE EMBEDDINGS ===
+                if os.path.exists(passages_npy) and not RESUME:
+                    passages_emb = np.load(passages_npy)["embs_all"].astype("float32")
+                    print(f"[skip] {passages_npy} exists; loaded.")
+                    if not os.path.exists(pass_paths["passages_index"]):
+                        build_and_save_faiss_index(
+                            embeddings=passages_emb,
+                            dataset_name=dataset,
+                            index_type="passages",
+                            output_dir=str(dataset_dir),
+                        )
+                else:
+                    pass_items = load_jsonl(passages_jsonl_src)
+                    done_ids, shard_ids = compute_resume_sets(
+                        resume=RESUME,
+                        out_path=str(passages_jsonl),
+                        items=pass_items,
+                        get_id=lambda x, i: x["passage_id"],
+                        phase_label="passage embeddings",
+                        required_field="vec_id",
                     )
-            else:
-                pass_items = load_jsonl(passages_jsonl_src)
-                done_ids, shard_ids = compute_resume_sets(
-                    resume=RESUME,
-                    out_path=str(passages_jsonl),
-                    items=pass_items,
-                    get_id=lambda x, i: x["passage_id"],
-                    phase_label="passage embeddings",
-                    required_field="vec_id",
-                )
-                new_ids = shard_ids - done_ids
-                passages_emb, new_pass_embs = embed_and_save(
-                    input_jsonl=passages_jsonl_src,
-                    output_npy=str(passages_npy),
-                    output_jsonl=str(passages_jsonl),
-                    model=bge_model,
-                    text_key="text",
-                    id_field="passage_id",
-                    done_ids=done_ids,
-                )
-                if new_pass_embs.size > 0:
-                    add_keywords_to_passages_jsonl(
-                        str(passages_jsonl),
-                        merged_with_iqoq=False,
-                        only_ids=new_ids,
+                    new_ids = shard_ids - done_ids
+                    passages_emb, new_pass_embs = embed_and_save(
+                        input_jsonl=passages_jsonl_src,
+                        output_npy=str(passages_npy),
+                        output_jsonl=str(passages_jsonl),
+                        model=bge_model,
+                        text_key="text",
+                        id_field="passage_id",
+                        done_ids=done_ids,
                     )
-                    build_and_save_faiss_index(
-                        embeddings=passages_emb,
-                        dataset_name=dataset,
-                        index_type="passages",
-                        output_dir=str(dataset_dir),
-                        new_vectors=new_pass_embs,
-                    )
-                elif not os.path.exists(pass_paths["passages_index"]):
-                    build_and_save_faiss_index(
-                        embeddings=passages_emb,
-                        dataset_name=dataset,
-                        index_type="passages",
-                        output_dir=str(dataset_dir),
-                    )
+                    if new_pass_embs.size > 0:
+                        add_keywords_to_passages_jsonl(
+                            str(passages_jsonl),
+                            merged_with_iqoq=False,
+                            only_ids=new_ids,
+                        )
+                        build_and_save_faiss_index(
+                            embeddings=passages_emb,
+                            dataset_name=dataset,
+                            index_type="passages",
+                            output_dir=str(dataset_dir),
+                            new_vectors=new_pass_embs,
+                        )
+                    elif not os.path.exists(pass_paths["passages_index"]):
+                        build_and_save_faiss_index(
+                            embeddings=passages_emb,
+                            dataset_name=dataset,
+                            index_type="passages",
+                            output_dir=str(dataset_dir),
+                        )
 
-            # === QUESTION EMBEDDINGS ===
-            if os.path.exists(questions_npy) and not RESUME:
-                print(f"[skip] {questions_npy} exists; loaded.")
-            else:
-                q_items = load_jsonl(questions_jsonl_src)
-                done_q, _ = compute_resume_sets(
-                    resume=RESUME,
-                    out_path=str(questions_jsonl),
-                    items=q_items,
-                    get_id=lambda x, i: x["iqoq_id"],
-                    phase_label="question embeddings",
-                    required_field="vec_id",
-                )
-                embed_and_save(
-                    input_jsonl=questions_jsonl_src,
-                    output_npy=str(questions_npy),
-                    output_jsonl=str(questions_jsonl),
-                    model=bge_model,
-                    text_key="text",
-                    id_field="iqoq_id",
-                    done_ids=done_q,
-                )
+                # === QUESTION EMBEDDINGS ===
+                if not os.path.exists(questions_jsonl_src):
+                    print(f"[warn] Missing IQ/OQ input file: {questions_jsonl_src}; skipping.")
+                    continue
+
+                if os.path.exists(questions_npy) and not RESUME:
+                    print(f"[skip] {questions_npy} exists; loaded.")
+                else:
+                    q_items = load_jsonl(questions_jsonl_src)
+                    done_q, _ = compute_resume_sets(
+                        resume=RESUME,
+                        out_path=str(questions_jsonl),
+                        items=q_items,
+                        get_id=lambda x, i: x["iqoq_id"],
+                        phase_label="question embeddings",
+                        required_field="vec_id",
+                    )
+                    embed_and_save(
+                        input_jsonl=questions_jsonl_src,
+                        output_npy=str(questions_npy),
+                        output_jsonl=str(questions_jsonl),
+                        model=bge_model,
+                        text_key="text",
+                        id_field="iqoq_id",
+                        done_ids=done_q,
+                    )
 
     # -------------------------------
     # Phase B: IQ/OQ (Model-specific)
     # -------------------------------
-    for model in MODELS:
-        print(f"\n=== IQ/OQ EMBEDDING + INDEX: {model} ===")
-        for dataset in DATASETS:
-            variant = CURRENT_VARIANT
-            hoprag_version = variant
-            iqoq_jsonl = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/cleaned/iqoq.cleaned.jsonl"
-            repr_root = os.path.join("data", "representations", model, dataset, SPLIT, hoprag_version)
-            os.makedirs(repr_root, exist_ok=True)
-            iqoq_npy = os.path.join(repr_root, f"{dataset}_iqoq_emb.npy")
+    for variant in VARIANTS:
+        hoprag_version = f"{variant}_hoprag"
+        for model in MODELS:
+            print(f"\n=== IQ/OQ EMBEDDING + INDEX: {model} | VARIANT: {variant} ===")
+            for dataset in DATASETS:
+                iqoq_jsonl = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/cleaned/iqoq.cleaned.jsonl"
+                repr_root = os.path.join("data", "representations", model, dataset, SPLIT, hoprag_version)
+                os.makedirs(repr_root, exist_ok=True)
+                iqoq_npy = os.path.join(repr_root, f"{dataset}_iqoq_emb.npy")
 
-            # === IQ/OQ EMBEDDINGS ===
-            if not os.path.exists(iqoq_jsonl):
-                print(f"[warn] Missing IQ/OQ input file: {iqoq_jsonl}; skipping.")
-                continue
+                if not os.path.exists(iqoq_jsonl):
+                    print(f"[warn] Missing IQ/OQ input file: {iqoq_jsonl}; skipping.")
+                    continue
 
-            if os.path.exists(iqoq_npy) and not RESUME:
-                iqoq_emb = np.load(iqoq_npy)["embs_all"].astype("float32")
-                print(f"[skip] {iqoq_npy} exists; loaded.")
-                if not os.path.exists(os.path.join(repr_root, f"{dataset}_faiss_iqoq.faiss")):
-                    build_and_save_faiss_index(
-                        embeddings=iqoq_emb,
-                        dataset_name=dataset,
-                        index_type="iqoq",
-                        output_dir=repr_root,
+                if os.path.exists(iqoq_npy) and not RESUME:
+                    iqoq_emb = np.load(iqoq_npy)["embs_all"].astype("float32")
+                    print(f"[skip] {iqoq_npy} exists; loaded.")
+                    if not os.path.exists(os.path.join(repr_root, f"{dataset}_faiss_iqoq.faiss")):
+                        build_and_save_faiss_index(
+                            embeddings=iqoq_emb,
+                            dataset_name=dataset,
+                            index_type="iqoq",
+                            output_dir=repr_root,
+                        )
+                else:
+                    iq_items = load_jsonl(iqoq_jsonl)
+                    done_ids, shard_ids = compute_resume_sets(
+                        resume=RESUME,
+                        out_path=iqoq_jsonl,
+                        items=iq_items,
+                        get_id=lambda x, i: x["iqoq_id"],
+                        phase_label="iqoq embeddings",
+                        id_field="iqoq_id",
+                        required_field="vec_id",
                     )
-            else:
-                iq_items = load_jsonl(iqoq_jsonl)
-                done_ids, shard_ids = compute_resume_sets(
-                    resume=RESUME,
-                    out_path=iqoq_jsonl,
-                    items=iq_items,
-                    get_id=lambda x, i: x["iqoq_id"],
-                    phase_label="iqoq embeddings",
-                    id_field="iqoq_id",
-                    required_field="vec_id",
-                )
-                new_ids = shard_ids - done_ids
-                iqoq_emb, new_iqoq_embs = embed_and_save(
-                    input_jsonl=iqoq_jsonl,
-                    output_npy=iqoq_npy,
-                    output_jsonl=iqoq_jsonl,
-                    model=bge_model,
-                    text_key="text",
-                    id_field="iqoq_id",
-                    done_ids=done_ids,
-                )
-                if new_iqoq_embs.size > 0:
-                    add_keywords_to_iqoq_jsonl(iqoq_jsonl, only_ids=new_ids)
-                    build_and_save_faiss_index(
-                        embeddings=iqoq_emb,
-                        dataset_name=dataset,
-                        index_type="iqoq",
-                        output_dir=repr_root,
-                        new_vectors=new_iqoq_embs,
+                    new_ids = shard_ids - done_ids
+                    iqoq_emb, new_iqoq_embs = embed_and_save(
+                        input_jsonl=iqoq_jsonl,
+                        output_npy=iqoq_npy,
+                        output_jsonl=iqoq_jsonl,
+                        model=bge_model,
+                        text_key="text",
+                        id_field="iqoq_id",
+                        done_ids=done_ids,
                     )
-                elif not os.path.exists(os.path.join(repr_root, f"{dataset}_faiss_iqoq.faiss")):
-                    build_and_save_faiss_index(
-                        embeddings=iqoq_emb,
-                        dataset_name=dataset,
-                        index_type="iqoq",
-                        output_dir=repr_root,
-                    )
+                    if new_iqoq_embs.size > 0:
+                        add_keywords_to_iqoq_jsonl(iqoq_jsonl, only_ids=new_ids)
+                        build_and_save_faiss_index(
+                            embeddings=iqoq_emb,
+                            dataset_name=dataset,
+                            index_type="iqoq",
+                            output_dir=repr_root,
+                            new_vectors=new_iqoq_embs,
+                        )
+                    elif not os.path.exists(os.path.join(repr_root, f"{dataset}_faiss_iqoq.faiss")):
+                        build_and_save_faiss_index(
+                            embeddings=iqoq_emb,
+                            dataset_name=dataset,
+                            index_type="iqoq",
+                            output_dir=repr_root,
+                        )
 
-            print(f"[done] {model} | {dataset} | {variant}")
+                print(f"[done] {model} | {dataset} | {variant}")
