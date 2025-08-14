@@ -716,7 +716,8 @@ def process_server_task(config: dict):
     phase_dir.mkdir(parents=True, exist_ok=True)
 
     t0 = time.time()
-    passages = load_jsonl(input_path)
+    passages = list(load_jsonl(input_path))
+
 
     # Aggregation
     total_processed = 0
