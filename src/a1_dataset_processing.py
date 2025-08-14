@@ -92,12 +92,6 @@ from src.utils import (
 
 
 
-os.makedirs("data/processed_datasets", exist_ok=True)
-
-
-
-
-
 
 # ==== HOTPOT: include ALL passages, but ONLY GOLD IDs in questions.jsonl ====
 def process_hotpotqa(

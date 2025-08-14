@@ -254,11 +254,12 @@ def split_jsonl_for_models(path: str, model: str) -> list[str]:
     """Split input JSONL into shards based on model size.
 
     Shards are placed under ``data/models/{model}/{dataset}/{split}/shards``.
+    Output file names follow format: {split}_passages_shard{N}_{size}.jsonl
     """
     size = model_size(model)
-    dataset = Path(path).parent.name
-    split_name = Path(path).stem.split("_")[0]
-    stem = Path(path).stem
+    dataset = Path(path).parent.parent.name              # musique
+    split_name = Path(path).parent.name                  # train or dev
+    stem = f"{split_name}_passages"                      # ensures correct naming
     out_paths = model_shard_paths(model, dataset, split_name, stem, size)
 
     if RESUME and all(p.exists() for p in out_paths):
@@ -274,6 +275,7 @@ def split_jsonl_for_models(path: str, model: str) -> list[str]:
         raise ValueError(f"Unsupported model size: {size}")
 
     return [str(p) for p in out_paths]
+
 
 
 
@@ -905,9 +907,9 @@ if __name__ == "__main__":
 
     RESUME = True
 
-    ACTIVE_MODEL_NAMES   = ["deepseek-distill-qwen-7b"] #["qwen-1.5b", "qwen-7b", "deepseek-distill-qwen-14b"] #["qwen-1.5b", "qwen-7b", "deepseek-distill-qwen-14b"]
-    DATASETS = ["hotpotqa"] #["musique","2wikimultihopqa", "hotpotqa"]
-    SPLIT = "train"             # or "dev"
+    ACTIVE_MODEL_NAMES   = ["qwen-7b"] #, "qwen-14"] #["qwen-1.5b", "qwen-7b", "deepseek-distill-qwen-14b"]
+    DATASETS = ["musique","2wikimultihopqa", "hotpotqa"]
+    SPLIT = "dev"             # or "dev"
 
     RUN_CS        = True        # enhanced scoring step
     RUN_BASELINE  = True        # hopRAG baseline IQ/OQ
