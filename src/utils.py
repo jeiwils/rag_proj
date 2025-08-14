@@ -1,18 +1,15 @@
+
 """Common utility functions shared across pipeline stages."""
 
 from __future__ import annotations
 
-import gzip
 import json
 import os
 import re
 import unicodedata
 from typing import Dict, Iterator, List, Optional
 
-import tempfile
-import shutil
-import logging 
-
+import logging
 
 
 # ---------------------------------------------------------------------------
@@ -26,9 +23,8 @@ def load_jsonl(path: str, log_skipped: bool = False) -> Iterator[Dict]:
     ``log_skipped`` is ``True``, the number of skipped lines is logged at
     debug level.
     """
-    open_fn = gzip.open if path.endswith(".gz") else open
     skipped = 0
-    with open_fn(path, "rt", encoding="utf-8") as f:
+    with open(path, "rt", encoding="utf-8") as f:
         for line_no, line in enumerate(f, start=1):
             line = line.strip()
             if not line:
@@ -45,36 +41,16 @@ def load_jsonl(path: str, log_skipped: bool = False) -> Iterator[Dict]:
 
 def save_jsonl(path: str, data: List[Dict]) -> None:
     """Write a list of dictionaries to a JSONL file."""
-    open_fn = gzip.open if path.endswith(".gz") else open
-    with open_fn(path, "wt", encoding="utf-8") as f:
+    with open(path, "wt", encoding="utf-8") as f:
         for item in data:
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
-
-
-def _append_jsonl_gz(path: str, obj: Dict) -> None:
-    """Append ``obj`` to a gzipped JSONL file via decompress → append → recompress."""
-    fd, tmp_path = tempfile.mkstemp(suffix=".jsonl")
-    os.close(fd)
-    try:
-        if os.path.exists(path):
-            with gzip.open(path, "rt", encoding="utf-8") as gz, open(tmp_path, "wt", encoding="utf-8") as tmp:
-                shutil.copyfileobj(gz, tmp)
-        with open(tmp_path, "at", encoding="utf-8") as tmp:
-            tmp.write(json.dumps(obj, ensure_ascii=False) + "\n")
-        with open(tmp_path, "rt", encoding="utf-8") as tmp, gzip.open(path, "wt", encoding="utf-8") as gz:
-            shutil.copyfileobj(tmp, gz)
-    finally:
-        os.remove(tmp_path)
 
 
 def append_jsonl(path: str, obj: Dict) -> None:
     """Append a single JSON serialisable object to a JSONL file."""
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    if path.endswith(".gz"):
-        _append_jsonl_gz(path, obj)
-    else:
-        with open(path, "at", encoding="utf-8") as f:
-            f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+    with open(path, "at", encoding="utf-8") as f:
+        f.write(json.dumps(obj, ensure_ascii=False) + "\n")
 
 def _next_version_path(path: str) -> str:
     """If ``path`` exists, return ``path`` with an incremented ``.vN`` suffix."""
@@ -93,8 +69,7 @@ def save_jsonl_safely(path: str, data: List[Dict], overwrite: bool = False) -> s
     out_path = path
     if os.path.exists(path) and not overwrite:
         out_path = _next_version_path(path)
-    open_fn = gzip.open if out_path.endswith(".gz") else open
-    with open_fn(out_path, "wt", encoding="utf-8") as f:
+    with open(out_path, "wt", encoding="utf-8") as f:
         for item in data:
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
     return out_path
@@ -120,25 +95,9 @@ def pid_plus_title(qid: str, title: str, sent_idx: int) -> str:
     """Create a safe passage identifier using question id and title."""
     if not title:
         safe = "no_title"
-    else:
-        safe = title.lower()
-        safe = re.sub(r"[^a-z0-9]+", "_", safe)
-        safe = re.sub(r"_+", "_", safe).strip("_") or "no_title"
-    return f"{qid}__{safe}_sent{sent_idx}"
 
-# ---------------------------------------------------------------------------
-# Path helpers
-# ---------------------------------------------------------------------------
-
-# Maps variant → preferred folder names to search (first match wins).
-FOLDERS_BY_VARIANT: Dict[str, List[str]] = {
-    "baseline": ["baseline_hoprag"],
-    "enhanced": ["enhanced_hoprag"],
-}
-
-def resolve_root(model: str, dataset: str, split: str, variant: str) -> Optional[str]:
-    """Resolve the root directory containing inputs/outputs for a job.
-
+def resolve_root(model: str, dataset: str, split: str, variant: str) -> Optional:
+    """
     Searches under ``data/models/{model}/{dataset}/{split}`` for the first
     directory listed in ``FOLDERS_BY_VARIANT[variant]`` that exists and returns
     its path. If none are found, ``None`` is returned.
@@ -163,7 +122,7 @@ def get_result_paths(model, dataset, split, variant):
     base = Path(f"results/{model}/{dataset}/{split}/{variant}")
     return {
         "base": base,
-        "answers": base / f"answer_per_query_{variant}_{split}.jsonl.gz",
+        "answers": base / f"answer_per_query_{variant}_{split}.jsonl",
         "summary": base / f"summary_metrics_{variant}_{split}.json",
     }
 
@@ -171,8 +130,8 @@ def get_traversal_paths(model, dataset, split, variant):
     base = Path(f"data/graphs/{model}/{dataset}/{split}/{variant}/traversal")
     return {
         "base": base,
-        "results": base / f"traversal_per_query_{variant}_{split}.jsonl.gz",
-        "visited_passages": base / f"all_visited_passages_{variant}_{split}.json.gz",
+        "results": base / f"traversal_per_query_{variant}_{split}.jsonl",
+        "visited_passages": base / f"all_visited_passages_{variant}_{split}.json",
         "stats": base / f"summary_metrics_{variant}_{split}.json",
     }
 

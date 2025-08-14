@@ -124,7 +124,7 @@ from tqdm import tqdm
 from typing import Callable, List, Dict
 import time
 import json
-import gzip
+
 
 
 
@@ -629,8 +629,7 @@ def existing_ids(path, id_field="passage_id"):
     if not Path(path).exists():
         return set()
     done = set()
-    open_fn = gzip.open if str(path).endswith("") else open ###################################################### IT DOESN'T NEED TO BE GZIPPED
-    with open_fn(path, "rt", encoding="utf-8") as f:
+    with open(path, "rt", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line: 

@@ -121,7 +121,7 @@ from collections import defaultdict
 import json
 from src.c_graphing import basic_graph_eval
 from pathlib import Path
-import gzip
+
 
 traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
 
@@ -540,7 +540,7 @@ def run_traversal(
         all_selected_passages.update(visited_passages)
 
     # --- Save selected_passages.json ---
-    with gzip.open(output_paths["visited_passages"], "wt", encoding="utf-8") as f:
+    with open(output_paths["visited_passages"], "wt", encoding="utf-8") as f:
         json.dump(sorted(all_selected_passages), f, indent=2)
 
 
@@ -571,7 +571,7 @@ def compute_traversal_summary(
     passage_coverage_all_gold_found = 0
     initial_retrieval_coverage = 0
 
-    with gzip.open(results_path, "rt", encoding="utf-8") as f:
+    with open(results_path, "rt", encoding="utf-8") as f:
         for line in f:
             entry = json.loads(line)
             if include_ids is not None and entry["query_id"] not in include_ids:

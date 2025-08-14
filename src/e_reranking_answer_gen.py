@@ -124,7 +124,7 @@ import numpy as np
 import faiss
 import networkx as nx
 from sentence_transformers import SentenceTransformer
-import gzip
+
 
 from src.utils import load_jsonl
 from src.b_sparse_dense_representations import dataset_rep_paths, load_faiss_index
@@ -396,8 +396,7 @@ def run_dense_rag_baseline(
         raise ValueError("output_path must be provided to run_dense_rag_baseline")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    open_fn = gzip.open if output_path.endswith("") else open ################################## DOESN'T NEED TO BE GZIPPED
-    with open_fn(output_path, "wt", encoding="utf-8") as f:
+    with open(output_path, "wt", encoding="utf-8") as f:
         pass  # Clear file before writing
 
     for entry in query_data:
@@ -453,7 +452,7 @@ def run_dense_rag_baseline(
             "method": "dense_rag"
         }
 
-        with open_fn(output_path, "at", encoding="utf-8") as f:
+    with open(output_path, "wt", encoding="utf-8") as f:
             f.write(json.dumps(result, ensure_ascii=False) + "\n")
 
     print(f"\n[Done] Saved dense RAG results to {output_path}")
@@ -582,13 +581,8 @@ if __name__ == "__main__":
                         "data", "graphs", model, dataset, split, variant,
                         f"{dataset}_{split}_graph.gpickle"
                     )
-                    if not os.path.exists(graph_path) and os.path.exists(graph_path + ""): ######################################### DOESN'T NEED TO BE GZIPPED
-                        graph_path = graph_path + ""
-                    if graph_path.endswith(""):
-                        with gzip.open(graph_path, "rb") as f:
-                            graph = nx.read_gpickle(f)
-                    else:
-                        graph = nx.read_gpickle(graph_path)
+                    
+                    graph = nx.read_gpickle(graph_path)
 
                     result_paths = get_result_paths(model, dataset, split, variant)
 

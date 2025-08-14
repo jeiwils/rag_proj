@@ -245,17 +245,16 @@ iqoq_emb_path = paths["iqoq_emb"]
 
 from pathlib import Path
 
+
 def graph_output_paths(
-    model: str, dataset: str, split: str, variant: str, compressed: bool = False
+    model: str, dataset: str, split: str, variant: str
 ) -> dict:
     base = Path("data") / "graphs" / model / dataset / split / variant
-    json_ext = ".jsonl" if compressed else ".jsonl"
-    gpickle_ext = ".gpickle" if compressed else ".gpickle"
     return {
-        "edges": base / f"{dataset}_{split}_edges{json_ext}",
-        "graph_gpickle": base / f"{dataset}_{split}_graph{gpickle_ext}",
-        "graph_log": base / f"{dataset}_{split}_graph_log{json_ext}",
-        "graph_results": base / f"{dataset}_{split}_graph_results{json_ext}",
+        "edges": base / f"{dataset}_{split}_edges.jsonl",
+        "graph_gpickle": base / f"{dataset}_{split}_graph.gpickle",
+        "graph_log": base / f"{dataset}_{split}_graph_log.jsonl",
+        "graph_results": base / f"{dataset}_{split}_graph_results.jsonl",
     }
 
 
@@ -551,8 +550,8 @@ def graph_stats(
     if save_path:
         dir_path = os.path.dirname(save_path)
         os.makedirs(dir_path or ".", exist_ok=True)
-        open_fn = gzip.open if save_path.endswith("") else open
-        with open_fn(save_path, "at", encoding="utf-8") as f:
+        os.makedirs(dir_path or ".", exist_ok=True)
+        with open(save_path, "at", encoding="utf-8") as f:
             f.write(json.dumps(stats, ensure_ascii=False) + "\n")
 
     return stats
@@ -585,19 +584,16 @@ def run_graph_pipeline(
     save_graph: bool = True,
     save_graphml: bool = False,
     resume: bool = True,
-    compressed: bool = True
 ):
     """
     Full pipeline:
         1) Load passage metadata/embeddings from the dataset folder and IQ/OQ
          metadata/embeddings from the model-specific folder
-      2) Build/load FAISS index for IQs
-      3) build_edges(...) -> save edges jsonl
-      4) build_networkx_graph(passages, edges)
-      5) basic_graph_eval + append_global_result
-      6) graph_stats -> append detailed stats jsonl
-    Set ``compressed=True`` to write ``.jsonl`` and ``.gpickle`` outputs
-    and an additional compressed FAISS index.
+        2) Build/load FAISS index for IQs
+        3) build_edges(...) -> save edges jsonl
+        4) build_networkx_graph(passages, edges)
+        5) basic_graph_eval + append_global_result
+        6) graph_stats -> append detailed stats jsonl
     """
     # ---------- 1) Load metadata + embeddings ----------
     pass_paths = dataset_rep_paths(dataset, split)
@@ -614,11 +610,11 @@ def run_graph_pipeline(
     # ---------- 2) Build / load FAISS index ----------
     base_dir = os.path.dirname(model_paths["iqoq_index"])
     os.makedirs(base_dir, exist_ok=True)
-    build_and_save_faiss_index(iqoq_emb, dataset, "iqoq", output_dir=base_dir, compress=compressed)
+    build_and_save_faiss_index(iqoq_emb, dataset, "iqoq", output_dir=base_dir)
     iq_index = load_faiss_index(model_paths["iqoq_index"])
 
     # ---------- 3) Build edges with optional resume ----------
-    graph_paths = graph_output_paths(model, dataset, split, variant, compressed=compressed)
+    graph_paths = graph_output_paths(model, dataset, split, variant)
     edges_out = str(graph_paths["edges"])
 
     oq_items = [q for q in iqoq_md if q.get("type") == "OQ"]
@@ -687,18 +683,10 @@ def run_graph_pipeline(
     )
 
     # ---------- 7) Optional graph saves ----------
-    graph_gpickle = str(graph_paths["graph_gpickle"]) ############## why the replaces???
-    graph_graphml = (
-        str(graph_paths["graph_gpickle"])
-        .replace(".gpickle", ".graphml")
-        .replace(".gpickle", ".graphml")
-    )
+    graph_gpickle = str(graph_paths["graph_gpickle"])
+    graph_graphml = str(graph_paths["graph_gpickle"]).replace(".gpickle", ".graphml")
     if save_graph:
-        if graph_gpickle.endswith(""):
-            with gzip.open(graph_gpickle, "wb") as f:
-                nx.write_gpickle(G, f)
-        else:
-            nx.write_gpickle(G, graph_gpickle)
+        nx.write_gpickle(G, graph_gpickle)
         print(f"[Graph] Saved -> {graph_gpickle}")
     if save_graphml:
         nx.write_graphml(G, graph_graphml)

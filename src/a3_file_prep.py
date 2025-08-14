@@ -452,14 +452,14 @@ def list_inputs(root: str, split: str, variant: str):
     """
     Discover shard input files under `root`, returning IQ/OQ shards and scored shards separately.
 
-    - IQ/OQ shards:
-        * `.jsonl` or `.jsonl` files that either end with `_{variant}.jsonl`/`_{variant}.jsonl`
-          (e.g., *_baseline.jsonl) or start with `{split}_iqoq_`.
-        * Excludes cleaned/debug files.
+      - IQ/OQ shards:
+          * `.jsonl` files that either end with `_{variant}.jsonl`
+            (e.g., *_baseline.jsonl) or start with `{split}_iqoq_`.
+          * Excludes cleaned/debug files.
 
-    - Scored shards:
-        * `.jsonl` or `.jsonl` files that end with `_cs.jsonl`/`_cs.jsonl`.
-        * Excludes cleaned/debug files.
+      - Scored shards:
+          * `.jsonl` files that end with `_cs.jsonl`.
+          * Excludes cleaned/debug files.
 
     Args:
         root: Root directory to scan.
@@ -486,9 +486,9 @@ def list_inputs(root: str, split: str, variant: str):
 
         full = os.path.join(root, name)
 
-        if name.endswith("_cs.jsonl") or name.endswith("_cs.jsonl"):
+        if name.endswith("_cs.jsonl"):
             scored.append(full)
-        elif name.endswith(f"_{variant}.jsonl") or name.endswith(f"_{variant}.jsonl") or name.startswith(f"{split}_iqoq_"):
+        elif name.endswith(f"_{variant}.jsonl") or name.startswith(f"{split}_iqoq_"):
             iqoq.append(full)
 
     return {"iqoq": sorted(iqoq), "scored": sorted(scored)}

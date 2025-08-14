@@ -121,7 +121,7 @@ from src.utils import (
 from pathlib import Path
 import re
 import torch
-import os, json, re, spacy, gzip
+import os, json, re, spacy
 from typing import Iterable, Set
 from src.a2_text_prep import existing_ids, compute_resume_sets
 
@@ -232,8 +232,7 @@ def embed_and_save(
         raise ValueError("You must provide a valid text_key (e.g., 'text' or 'question').")
 
     data, texts = [], []
-    open_in = gzip.open if str(input_jsonl).endswith("") else open
-    with open_in(input_jsonl, "rt", encoding="utf-8") as f:
+    with open(input_jsonl, "rt", encoding="utf-8") as f:
         for line in f:
             entry = json.loads(line)
             if done_ids and entry.get(id_field) in done_ids:
@@ -273,8 +272,7 @@ def embed_and_save(
     mode = "a" if done_ids else "w"
     dir_path = os.path.dirname(output_jsonl)
     os.makedirs(dir_path or ".", exist_ok=True)
-    open_out = gzip.open if str(output_jsonl).endswith("") else open
-    with open_out(output_jsonl, mode + "t", encoding="utf-8") as f_out:
+    with open(output_jsonl, mode + "t", encoding="utf-8") as f_out:
         for d in data:
             f_out.write(json.dumps(d) + "\n")
 
@@ -295,14 +293,12 @@ def build_and_save_faiss_index(
     index_type: str,
     output_dir: str = ".",
     new_vectors: np.ndarray | None = None,
-    compress: bool = True,
 ):
     """Build or update a FAISS cosine-similarity index.
 
     If ``new_vectors`` is provided and an existing index file is found, the new
     vectors are appended to that index. Otherwise, a fresh index is built from
-    ``embeddings``. When ``compress`` is ``True`` an additional ``.faiss``
-    file is written containing a serialised version of the index.
+    ``embeddings``. 
     """
     if not index_type or index_type not in {"passages", "iqoq"}:
         raise ValueError(
@@ -319,10 +315,7 @@ def build_and_save_faiss_index(
         index.add(embeddings)
 
     faiss.write_index(index, faiss_path)
-    if compress:
-        serialized = faiss.serialize_index(index)
-        with gzip.open(faiss_path + "", "wb") as f:
-            f.write(serialized)
+
     print(f"[FAISS] Saved {index_type} index to {faiss_path} with {index.ntotal} vectors.")
 
 
@@ -330,15 +323,9 @@ def build_and_save_faiss_index(
 
 
 def load_faiss_index(path: str):
-    """Load a FAISS index from ``path`` supporting optional gzip compression."""
-    gz_path = path if path.endswith("") else path + ""
-    if path.endswith("") or (not os.path.exists(path) and os.path.exists(gz_path)):
-        with gzip.open(gz_path, "rb") as f:
-            index = faiss.deserialize_index(f.read())
-        print(f"[FAISS] Loaded {index.ntotal} vectors from {gz_path}")
-    else:
-        index = faiss.read_index(path)
-        print(f"[FAISS] Loaded {index.ntotal} vectors from {path}")
+    """Load a FAISS index from ``path``."""
+    index = faiss.read_index(path)
+    print(f"[FAISS] Loaded {index.ntotal} vectors from {path}")
     return index
 
 
@@ -428,8 +415,7 @@ def add_keywords_to_passages_jsonl(
     merged_with_iqoq: bool = False,
     only_ids: Set[str] | None = None,
 ):
-    open_fn = gzip.open if passages_jsonl.endswith("") else open
-    rows = [json.loads(l) for l in open_fn(passages_jsonl, "rt", encoding="utf-8")]
+    rows = [json.loads(l) for l in open(passages_jsonl, "rt", encoding="utf-8")]
     if only_ids:
         targets = [r for r in rows if r.get("passage_id") in only_ids]
     else:
@@ -462,8 +448,7 @@ def add_keywords_to_iqoq_jsonl(
     out_field: str = "keywords",
     only_ids: Set[str] | None = None,
 ):
-    open_fn = gzip.open if iqoq_jsonl.endswith("") else open
-    rows = [json.loads(l) for l in open_fn(iqoq_jsonl, "rt", encoding="utf-8")]
+    rows = [json.loads(l) for l in open(iqoq_jsonl, "rt", encoding="utf-8")]
     if only_ids:
         targets = [r for r in rows if r.get("iqoq_id") in only_ids]
     else:
@@ -478,7 +463,7 @@ def add_keywords_to_iqoq_jsonl(
         }
         r[out_field] = sorted(kws)
 
-    with open_fn(iqoq_jsonl, "wt", encoding="utf-8") as f:
+    with open(iqoq_jsonl, "wt", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
