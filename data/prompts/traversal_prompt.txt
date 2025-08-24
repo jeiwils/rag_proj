@@ -1,0 +1,11 @@
+Original question:
+{query_text}
+
+Current passage:
+{passage_text}
+
+Candidate follow-up questions (OQs):
+{candidate_oqs}
+
+Choose the number of the question most helpful for answering the original question.
+Respond with a single integer only.
