@@ -161,10 +161,10 @@ TEMPERATURE = {
 
 
 
-CS_PROMPT = Path("data/prompts/7b_CS_prompt_ultra_updated.txt").read_text(encoding="utf-8")
+CS_PROMPT = Path("data/prompts/cs_prompt.txt").read_text(encoding="utf-8")
 
-enhanced_IQ_prompt = Path("data/prompts/7b_IQ_prompt_updated.txt").read_text(encoding="utf-8")
-enhanced_OQ_prompt = Path("data/prompts/7b_OQ_prompt_updated.txt").read_text(encoding="utf-8") 
+enhanced_IQ_prompt = Path("data/prompts/enhanced_iq_prompt.txt").read_text(encoding="utf-8")
+enhanced_OQ_prompt = Path("data/prompts/enhanced_oq_prompt.txt").read_text(encoding="utf-8") 
 
 hoprag_IQ_prompt = Path("data/prompts/hoprag_iq_prompt.txt").read_text(encoding="utf-8")
 hoprag_OQ_prompt = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding="utf-8") 
@@ -542,6 +542,73 @@ def iqoq_ratio( ####################################### FOCUS ON THIS
 
 
 # Modify the generate_iqoq function to include version
+# def generate_iqoq(
+#     entry: dict,
+#     iq_prompt_template: str,
+#     oq_prompt_template: str,
+#     server_url: str,
+#     iq_tokens: int,
+#     oq_tokens: int,
+#     iq_temperature: float = 0.1,
+#     oq_temperature: float = 0.1,
+#     conditioned_score: float = None,
+#     use_ratio: bool = False,
+#     hoprag_version: str = "standard_hoprag",
+#     debug_dir: Path = None  # kept for signature compatibility; not used
+# ):
+#     """
+#     Generates IQ and OQ lists for a passage.
+#     Returns (entry, missing_iq_ids, missing_oq_ids).
+#     On failure, entry=None and the lists indicate what failed.
+
+#     Note: This function does NOT set dataset/split. Set those where you write results.
+#     """
+#     passage_text = entry["text"]
+
+#     if use_ratio and conditioned_score is not None:
+#         _, num_iq, num_oq = iqoq_ratio(conditioned_score)
+#     else:
+#         num_iq, num_oq = 2, 4
+
+#     iq_prompt_filled = (
+#         iq_prompt_template
+#         .replace("{{PASSAGE}}", passage_text)
+#         .replace("{{NUM_QUESTIONS}}", str(num_iq))
+#     )
+#     oq_prompt_filled = (
+#         oq_prompt_template
+#         .replace("{{PASSAGE}}", passage_text)
+#         .replace("{{NUM_QUESTIONS}}", str(num_oq))
+#     )
+
+#     try:
+#         iq_response = query_llm(iq_prompt_filled, server_url, max_tokens=iq_tokens, temperature=iq_temperature)
+#         oq_response = query_llm(oq_prompt_filled, server_url, max_tokens=oq_tokens, temperature=oq_temperature)
+#     except Exception as e:
+#         print(f"[ERROR] LLM failed for {entry.get('passage_id','?')}: {e}")
+#         pid = entry.get("passage_id", "?")
+#         return None, [pid], [pid]
+
+#     missing_iq_this, missing_oq_this = [], []
+#     if not iq_response.strip():
+#         missing_iq_this.append(entry.get("passage_id", "?"))
+#     if not oq_response.strip():
+#         missing_oq_this.append(entry.get("passage_id", "?"))
+
+#     if missing_iq_this or missing_oq_this:
+#         return None, missing_iq_this, missing_oq_this
+
+#     entry["IQs"] = [q for q in iq_response.split("\n") if q.strip()]
+#     entry["OQs"] = [q for q in oq_response.split("\n") if q.strip()]
+#     entry["num_iq"] = num_iq
+#     entry["num_oq"] = num_oq
+#     entry["cs_used"] = conditioned_score if use_ratio else None
+#     entry["hoprag_version"] = hoprag_version
+
+#     return entry, [], [] ########################## WHY?????
+
+
+
 def generate_iqoq(
     entry: dict,
     iq_prompt_template: str,
@@ -554,15 +621,14 @@ def generate_iqoq(
     conditioned_score: float = None,
     use_ratio: bool = False,
     hoprag_version: str = "standard_hoprag",
-    debug_dir: Path = None  # kept for signature compatibility; not used
+    debug_dir: Path = None
 ):
     """
     Generates IQ and OQ lists for a passage.
     Returns (entry, missing_iq_ids, missing_oq_ids).
-    On failure, entry=None and the lists indicate what failed.
-
-    Note: This function does NOT set dataset/split. Set those where you write results.
     """
+    import re
+
     passage_text = entry["text"]
 
     if use_ratio and conditioned_score is not None:
@@ -570,15 +636,22 @@ def generate_iqoq(
     else:
         num_iq, num_oq = 2, 4
 
+    # NEW: max (N+2)
+    max_iq = num_iq + 2
+    max_oq = num_oq + 2
+
+    # Fill prompts (support both {{NUM_QUESTIONS}} and {{NUM_QUESTIONS+2}})
     iq_prompt_filled = (
         iq_prompt_template
         .replace("{{PASSAGE}}", passage_text)
-        .replace("{NUM_QUESTIONS}", str(num_iq))
+        .replace("{{NUM_QUESTIONS}}", str(num_iq))
+        .replace("{{NUM_QUESTIONS+2}}", str(max_iq))   # NEW
     )
     oq_prompt_filled = (
         oq_prompt_template
         .replace("{{PASSAGE}}", passage_text)
-        .replace("{NUM_QUESTIONS}", str(num_oq))
+        .replace("{{NUM_QUESTIONS}}", str(num_oq))
+        .replace("{{NUM_QUESTIONS+2}}", str(max_oq))   # NEW
     )
 
     try:
@@ -594,21 +667,29 @@ def generate_iqoq(
         missing_iq_this.append(entry.get("passage_id", "?"))
     if not oq_response.strip():
         missing_oq_this.append(entry.get("passage_id", "?"))
-
     if missing_iq_this or missing_oq_this:
         return None, missing_iq_this, missing_oq_this
 
-    entry["IQs"] = [q for q in iq_response.split("\n") if q.strip()]
-    entry["OQs"] = [q for q in oq_response.split("\n") if q.strip()]
-    entry["num_iq"] = num_iq
+    # Minimal cleanup + HARD CAP to N+2  (keeps your existing behavior otherwise)
+    def _split_clean(s: str) -> list[str]:
+        lines = [ln.strip() for ln in s.split("\n") if ln.strip()]
+        # drop obvious headers if they appear
+        lines = [ln for ln in lines if not ln.lower().startswith(("passage:", "questions:"))]
+        # strip numbering/bullets
+        lines = [re.sub(r'^\s*[-–•\d]+\s*[.)]?\s*', '', ln) for ln in lines]
+        return lines
+
+    IQs = _split_clean(iq_response)[:max_iq]  # NEW cap
+    OQs = _split_clean(oq_response)[:max_oq]  # NEW cap
+
+    entry["IQs"] = IQs
+    entry["OQs"] = OQs
+    entry["num_iq"] = num_iq           # your target N (baseline/enhanced)
     entry["num_oq"] = num_oq
     entry["cs_used"] = conditioned_score if use_ratio else None
     entry["hoprag_version"] = hoprag_version
 
-    return entry, [], [] ########################## WHY?????
-
-
-
+    return entry, [], []
 
 
 
@@ -907,7 +988,7 @@ if __name__ == "__main__":
 
     RESUME = True
 
-    ACTIVE_MODEL_NAMES   = ["qwen-7b"] #, "qwen-14"] #["qwen-1.5b", "qwen-7b", "deepseek-distill-qwen-14b"]
+    ACTIVE_MODEL_NAMES   = ["qwen-14b"] #, "qwen-14"] #["qwen-1.5b", "qwen-7b", "deepseek-distill-qwen-14b"]
     DATASETS = ["musique","2wikimultihopqa", "hotpotqa"]
     SPLIT = "dev"             # or "dev"
 
