@@ -670,18 +670,6 @@ def generate_iqoq(
     if missing_iq_this or missing_oq_this:
         return None, missing_iq_this, missing_oq_this
 
-    # Minimal cleanup + HARD CAP to N+2  (keeps your existing behavior otherwise)
-    def _split_clean(s: str) -> list[str]:
-        lines = [ln.strip() for ln in s.split("\n") if ln.strip()]
-        # drop obvious headers if they appear
-        lines = [ln for ln in lines if not ln.lower().startswith(("passage:", "questions:"))]
-        # strip numbering/bullets
-        lines = [re.sub(r'^\s*[-–•\d]+\s*[.)]?\s*', '', ln) for ln in lines]
-        return lines
-
-    IQs = _split_clean(iq_response)[:max_iq]  # NEW cap
-    OQs = _split_clean(oq_response)[:max_oq]  # NEW cap
-
     entry["IQs"] = IQs
     entry["OQs"] = OQs
     entry["num_iq"] = num_iq           # your target N (baseline/enhanced)

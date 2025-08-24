@@ -23,7 +23,7 @@ Example of Answer:
 json {"Question List":["What's the name of their eighth album?","When was the album '(How to Live) As Ghosts' scheduled to be released?"]}
 
 Sentence List:
-{sentences}
+{{PASSAGE}}
 
 Your response must strictly follow the JSON format, avoiding unnecessary escapes, line breaks, or spaces. You should also pay extra attention to ensure that, except for the JSON and list formats themselves using double quotes ("), other instances of double quotes should be replaced with single quotes. For example, use '(How to Live) As Ghosts' instead of "(How to Live) As Ghosts".
 
