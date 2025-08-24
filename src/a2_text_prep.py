@@ -671,7 +671,7 @@ def generate_iqoq(
         return None, missing_iq_this, missing_oq_this
 
     entry["IQs"] = [q for q in iq_response.split("\n") if q.strip()]
-    entry["OQs"] = [q for q in iq_response.split("\n") if q.strip()]
+    entry["OQs"] = [q for q in oq_response.split("\n") if q.strip()]
     entry["num_iq"] = num_iq           # your target N (baseline/enhanced)
     entry["num_oq"] = num_oq
     entry["cs_used"] = conditioned_score if use_ratio else None
