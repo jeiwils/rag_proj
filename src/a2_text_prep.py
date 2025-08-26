@@ -338,9 +338,6 @@ def is_r1_like(model_name: str) -> bool:
 
 def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
               stop=None, grammar=None, model_name=""):
-    # auto-stop for DeepSeek R1 distills
-    if is_r1_like(model_name):
-        stop = (stop or []) + ["</think>"]
 
     payload = {"prompt": prompt, "temperature": temperature, "n_predict": max_tokens}
     if stop:
@@ -446,7 +443,8 @@ def get_conditioned_score(
             grammar=CS_GRAMMAR,             # hard-constrain output
             model_name=model_name
         )
-
+        if is_r1_like(model_name):
+            response = strip_think(response)
 
         match = (
             re.search(r"(?:CS|Conditioned\s*Score)\s*:?\s*(?P<score>(?:0?\.\d+|0|1(?:\.0+)?))", response, re.I)
@@ -648,15 +646,24 @@ def generate_iqoq(
         # iq_response = query_llm(iq_prompt_filled, server_url, max_tokens=iq_tokens, temperature=iq_temperature)
         # oq_response = query_llm(oq_prompt_filled, server_url, max_tokens=oq_tokens, temperature=oq_temperature)
 
-        iq_response = query_llm(iq_prompt_filled, server_url,
-                        max_tokens=iq_tokens, temperature=iq_temperature,
-                        model_name=model)  # <- pass model
-        oq_response = query_llm(oq_prompt_filled, server_url,
-                        max_tokens=oq_tokens, temperature=oq_temperature,
-                        model_name=model)
+        iq_response = query_llm(
+            iq_prompt_filled,
+            server_url,
+            max_tokens=iq_tokens,
+            temperature=iq_temperature,
+            model_name=model,
+        )
+        oq_response = query_llm(
+            oq_prompt_filled,
+            server_url,
+            max_tokens=oq_tokens,
+            temperature=oq_temperature,
+            model_name=model,
+        )
 
-        iq_response = strip_think(iq_response)
-        oq_response = strip_think(oq_response)
+        if is_r1_like(model):
+            iq_response = strip_think(iq_response)
+            oq_response = strip_think(oq_response)
     except Exception as e:
         print(f"[ERROR] LLM failed for {entry.get('passage_id','?')}: {e}")
         pid = entry.get("passage_id", "?")
