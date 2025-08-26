@@ -661,9 +661,10 @@ def generate_iqoq(
             model_name=model_name,
         )
 
-        if is_r1_like(model):
+        if is_r1_like(model_name):
             iq_response = strip_think(iq_response)
             oq_response = strip_think(oq_response)
+            
     except Exception as e:
         print(f"[ERROR] LLM failed for {entry.get('passage_id','?')}: {e}")
         pid = entry.get("passage_id", "?")
