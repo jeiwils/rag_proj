@@ -135,7 +135,7 @@ from sentence_transformers import SentenceTransformer
 
 from src.utils import load_jsonl
 from src.b_sparse_dense_representations import dataset_rep_paths, load_faiss_index
-from src.a2_text_prep import query_llm
+from src.a2_text_prep import query_llm, strip_think, is_r1_like
 from src.utils import SERVER_CONFIGS
 from src.d_traversal import (
     select_seed_passages,
@@ -245,7 +245,8 @@ def ask_llm_with_passages(
     graph: Optional[nx.DiGraph],
     server_url: str,
     max_tokens: int = 100,
-    passage_lookup: Optional[Dict[str, str]] = None  # optional for dense mode
+    passage_lookup: Optional[Dict[str, str]] = None,  # optional for dense mode
+    model_name: str = ""
 ) -> Dict[str, str]:
     """Generate an answer from top passages using an LLM server.
 
@@ -264,6 +265,8 @@ def ask_llm_with_passages(
         Maximum number of tokens to generate, by default ``100``.
     passage_lookup : Optional[Dict[str, str]]
         Mapping from ``passage_id`` to passage text when ``graph`` is ``None``.
+    model_name : str, optional
+        Identifier of the active model, passed to ``query_llm``.
 
     Outputs
     -------
@@ -288,7 +291,16 @@ def ask_llm_with_passages(
         + f"\n\nQuestion: {query_text}\nAnswer:"
     )
 
-    raw = query_llm(prompt, server_url=server_url, max_tokens=max_tokens)
+    raw = query_llm(
+        prompt,
+        server_url=server_url,
+        max_tokens=max_tokens,
+        model_name=model_name,
+    )
+
+    if is_r1_like(model_name):
+        raw = strip_think(raw)
+
     norm = normalise_answer(raw)
     return {"raw_answer": raw, "normalised_answer": norm}
 
@@ -438,7 +450,8 @@ def run_dense_rag_baseline(
             passage_ids=seed_passages,
             graph=None,  # don't use graph — will look up text manually below
             server_url=server_configs[0]["server_url"],
-            max_tokens=128
+            max_tokens=128,
+            model_name=server_configs[0]["model"]
         )
 
         pred_answer = llm_output["normalised_answer"]
