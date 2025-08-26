@@ -104,7 +104,7 @@ from src.utils import get_traversal_paths, append_jsonl, load_jsonl
 
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Callable, Set
-from src.a2_text_prep import extract_keywords, query_llm
+from src.a2_text_prep import extract_keywords, query_llm, strip_think
 from src.utils import SERVER_CONFIGS, compute_resume_sets
 from src.b_sparse_dense_representations import (
     faiss_search_topk,
@@ -221,7 +221,10 @@ def llm_choose_edge(  # helper for multi_hop_graph_traverse_llm()
         server_url=server_configs[1]["server_url"],
         max_tokens=5,
         temperature=0.0,
+        model_name=server_configs[1]["model"]
     )
+
+    answer = strip_think(answer)
     
     # Extract integer choice
     for token in answer.split():
