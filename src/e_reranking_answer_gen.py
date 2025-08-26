@@ -120,8 +120,6 @@ from src.utils import (
 
 from typing import List, Dict, Optional, Tuple
 
-from typing import List, Dict, Optional, Tuple
-
 import json
 import os
 import re
@@ -271,7 +269,7 @@ def ask_llm_with_passages(
     Outputs
     -------
     Dict[str, str]
-        ``{"raw_answer": str, "normalized_answer": str}``.
+        ``{"raw_answer": str, "normalised_answer": str}``.
     """
     passage_texts = []
 
