@@ -1,0 +1,8 @@
+Total passages processed: 0
+Skipped due to resume: 1993
+Model used: qwen-7b
+Model size: 7b
+Dataset: musique
+Split: train
+Phase: cs
+Total time taken: 0.03 seconds

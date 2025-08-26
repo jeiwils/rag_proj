@@ -1,0 +1,8 @@
+Total passages processed: 10655
+Skipped due to resume: 0
+Model used: qwen-7b
+Model size: 7b
+Dataset: hotpotqa
+Split: dev
+Phase: cs
+Total time taken: 26231.39 seconds
