@@ -131,7 +131,7 @@ SIM_THRESHOLD = 0.65
 MAX_NEIGHBOURS = 5
 ALPHA = 0.5
 
-params = {
+DEFAULT_PARAMS = {
     "sim_threshold": SIM_THRESHOLD,
     "max_neighbors": MAX_NEIGHBOURS,
     "alpha": ALPHA
@@ -176,7 +176,7 @@ __all__ = [
     "SIM_THRESHOLD",
     "MAX_NEIGHBOURS",
     "ALPHA",
-    "params",
+    "DEFAULT_PARAMS",
     "dataset_rep_paths",
     "model_rep_paths",
     "get_embedding_model",

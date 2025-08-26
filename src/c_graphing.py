@@ -198,7 +198,7 @@ from datetime import datetime
 import json
 
 from src.b_sparse_dense_representations import (
-    params,
+    DEFAULT_PARAMS,
     faiss_search_topk,
     jaccard_similarity,
     build_and_save_faiss_index,
@@ -669,7 +669,7 @@ def run_graph_pipeline(
     stats = graph_stats(
         G,
         save_path=stats_path,
-        params=params,
+        params=DEFAULT_PARAMS,
         iteration=iteration,
         dataset=f"{dataset}_{split}",
     )
