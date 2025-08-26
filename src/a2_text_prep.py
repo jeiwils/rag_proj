@@ -344,6 +344,8 @@ def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
         payload["stop"] = stop
     if grammar:
         payload["grammar"] = grammar
+    if model_name:
+        payload["model_name"] = model_name
 
     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
     resp.raise_for_status()
@@ -664,7 +666,7 @@ def generate_iqoq(
         if is_r1_like(model_name):
             iq_response = strip_think(iq_response)
             oq_response = strip_think(oq_response)
-            
+
     except Exception as e:
         print(f"[ERROR] LLM failed for {entry.get('passage_id','?')}: {e}")
         pid = entry.get("passage_id", "?")
@@ -989,9 +991,9 @@ if __name__ == "__main__":
     DATASETS = ["musique","2wikimultihopqa", "hotpotqa"]
     SPLIT = "dev"             # or "dev"
 
-    RUN_CS        = False        # enhanced scoring step
+    RUN_CS        = True        # enhanced scoring step
     RUN_BASELINE  = True        # hopRAG baseline IQ/OQ
-    RUN_ENHANCED  = False        # enhanced IQ/OQ
+    RUN_ENHANCED  = True        # enhanced IQ/OQ
 
 
 
