@@ -163,11 +163,11 @@ TEMPERATURE = {
 
 CS_PROMPT = Path("data/prompts/cs_prompt.txt").read_text(encoding="utf-8")
 
-enhanced_IQ_prompt = Path("data/prompts/enhanced_iq_prompt.txt").read_text(encoding="utf-8")
-enhanced_OQ_prompt = Path("data/prompts/enhanced_oq_prompt.txt").read_text(encoding="utf-8") 
+ENHANCED_IQ_PROMPT = Path("data/prompts/enhanced_iq_prompt.txt").read_text(encoding="utf-8")
+ENHANCED_OQ_PROMPT = Path("data/prompts/enhanced_oq_prompt.txt").read_text(encoding="utf-8") 
 
-hoprag_IQ_prompt = Path("data/prompts/hoprag_iq_prompt.txt").read_text(encoding="utf-8")
-hoprag_OQ_prompt = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding="utf-8") 
+HOPRAG_IQ_PROMPT = Path("data/prompts/hoprag_iq_prompt.txt").read_text(encoding="utf-8")
+HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding="utf-8") 
 
 
 
@@ -869,7 +869,7 @@ def process_server_task(config: dict):
                     cs = 0.5
 
                 out, mi, mo = generate_iqoq(
-                    p, enhanced_IQ_prompt, enhanced_OQ_prompt, server_url,
+                    p, ENHANCED_IQ_PROMPT, ENHANCED_OQ_PROMPT, server_url,
                     iq_tokens=iq_tokens, oq_tokens=oq_tokens,
                     iq_temperature=TEMPERATURE["iqoq_generation"],
                     oq_temperature=TEMPERATURE["iqoq_generation"],
@@ -935,7 +935,7 @@ def process_server_task(config: dict):
 
             total_processed += 1
             out, mi, mo = generate_iqoq(
-                p, hoprag_IQ_prompt, hoprag_OQ_prompt, server_url,
+                p, HOPRAG_IQ_PROMPT, HOPRAG_OQ_PROMPT, server_url,
                 iq_tokens=iq_tokens, oq_tokens=oq_tokens,
                 iq_temperature=TEMPERATURE["iqoq_generation"],
                 oq_temperature=TEMPERATURE["iqoq_generation"],
