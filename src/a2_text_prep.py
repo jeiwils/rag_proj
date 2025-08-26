@@ -651,14 +651,14 @@ def generate_iqoq(
             server_url,
             max_tokens=iq_tokens,
             temperature=iq_temperature,
-            model_name=model,
+            model_name=model_name,
         )
         oq_response = query_llm(
             oq_prompt_filled,
             server_url,
             max_tokens=oq_tokens,
             temperature=oq_temperature,
-            model_name=model,
+            model_name=model_name,
         )
 
         if is_r1_like(model):

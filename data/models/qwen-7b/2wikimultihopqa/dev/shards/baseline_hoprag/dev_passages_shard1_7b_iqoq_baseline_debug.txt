@@ -1,13 +1,19 @@
-Total passages processed: 7995
-Skipped due to resume: 0
+Total passages processed: 4
+Skipped due to resume: 7991
 Model used: qwen-7b
 Model size: 7b
 Dataset: 2wikimultihopqa
 Split: dev
 Phase: iqoq_baseline
-Total time taken: 67507.13 seconds
+Total time taken: 0.09 seconds
 
 Passages missing IQ: 4
+- 3cbd107e0bde11eba7f7acde48001122__ayumi_hamasaki_sent4
+- aa0370860bdb11eba7f7acde48001122__heaven_namie_amuro_song_sent7
+- 22d296de0bde11eba7f7acde48001122__boris_nemtsov_sent26
+- 44e72de60bdb11eba7f7acde48001122__bj_rk_sent13
+
+Passages missing OQ: 4
 - 3cbd107e0bde11eba7f7acde48001122__ayumi_hamasaki_sent4
 - aa0370860bdb11eba7f7acde48001122__heaven_namie_amuro_song_sent7
 - 22d296de0bde11eba7f7acde48001122__boris_nemtsov_sent26
