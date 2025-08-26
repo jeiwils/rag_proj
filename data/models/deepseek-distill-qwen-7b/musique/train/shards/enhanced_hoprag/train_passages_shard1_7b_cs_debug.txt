@@ -1,0 +1,8 @@
+Total passages processed: 0
+Skipped due to resume: 4993
+Model used: deepseek-distill-qwen-7b
+Model size: 7b
+Dataset: musique
+Split: train
+Phase: cs
+Total time taken: 0.04 seconds

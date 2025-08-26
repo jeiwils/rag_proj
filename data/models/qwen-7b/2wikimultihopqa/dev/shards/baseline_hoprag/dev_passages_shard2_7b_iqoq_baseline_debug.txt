@@ -1,11 +1,11 @@
-Total passages processed: 6
-Skipped due to resume: 7990
+Total passages processed: 5
+Skipped due to resume: 7991
 Model used: qwen-7b
 Model size: 7b
 Dataset: 2wikimultihopqa
 Split: dev
 Phase: iqoq_baseline
-Total time taken: 55.87 seconds
+Total time taken: 40.62 seconds
 
 Passages missing IQ: 5
 - 6900298c0bde11eba7f7acde48001122__the_fj_holden_sent1

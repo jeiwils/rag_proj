@@ -1,0 +1,14 @@
+Total passages processed: 1008
+Skipped due to resume: 9648
+Model used: qwen-7b
+Model size: 7b
+Dataset: hotpotqa
+Split: dev
+Phase: iqoq_baseline
+Total time taken: 8011.47 seconds
+
+Passages missing IQ: 1
+- 5add564a5542990dbb2f7e38__boots_and_hearts_music_festival_sent7
+
+Passages missing OQ: 1
+- 5add564a5542990dbb2f7e38__boots_and_hearts_music_festival_sent7

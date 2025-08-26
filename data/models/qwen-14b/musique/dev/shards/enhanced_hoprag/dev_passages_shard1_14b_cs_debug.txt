@@ -1,0 +1,8 @@
+Total passages processed: 2538
+Skipped due to resume: 7460
+Model used: qwen-14b
+Model size: 14b
+Dataset: musique
+Split: dev
+Phase: cs
+Total time taken: 8416.02 seconds
