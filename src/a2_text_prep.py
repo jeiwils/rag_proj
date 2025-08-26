@@ -318,55 +318,6 @@ def run_multiprocess(
 
 
 
-# def query_llm(prompt: str, server_url: str, max_tokens: int = 5, temperature: float = 0.0, stop=None, grammar=None) -> str:
-#     payload = {
-#         "prompt": prompt,
-#         "temperature": temperature,
-#         "n_predict": max_tokens,
-#     }
-#     if stop:
-#         payload["stop"] = stop
-#     if grammar:
-#         payload["grammar"] = grammar
-#     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
-#     resp.raise_for_status()
-#     return resp.json().get("content", "").strip()
-
-
-
-
-
-# def query_llm(
-#     prompt: str,
-#     server_url: str,
-#     max_tokens: int = 5,
-#     temperature: float = 0.0,
-#     stop=None,
-#     grammar=None,
-#     messages=None  # ✅ NEW ############### PRETTY SURE i DON'T NEED THIS ANY MORE 
-# ) -> str:
-#     if messages:
-#         payload = {
-#             "messages": messages,
-#             "temperature": temperature,
-#             "n_predict": max_tokens
-#         }
-#     else:
-#         payload = {
-#             "prompt": prompt,
-#             "temperature": temperature,
-#             "n_predict": max_tokens
-#         }
-#         if stop:
-#             payload["stop"] = stop
-#         if grammar:
-#             payload["grammar"] = grammar
-
-#     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
-#     resp.raise_for_status()
-#     return resp.json().get("content", "").strip()
-
-
 ############################################################################################## I NEED TO CHECK THIS BEFORE RUNNIN GIT AGAIN - NEED TO INTEGRATE 
 
 THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", flags=re.S|re.I)
@@ -386,18 +337,16 @@ def is_r1_like(model_name: str) -> bool:
 
 
 def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
-              stop=None, grammar=None, messages=None, model_name=""):
+              stop=None, grammar=None, model_name=""):
     # auto-stop for DeepSeek R1 distills
     if is_r1_like(model_name):
         stop = (stop or []) + ["</think>"]
 
-    payload = {"temperature": temperature, "n_predict": max_tokens}
-    if messages:
-        payload["messages"] = messages
-    else:
-        payload["prompt"] = prompt
-        if stop: payload["stop"] = stop
-        if grammar: payload["grammar"] = grammar
+    payload = {"prompt": prompt, "temperature": temperature, "n_predict": max_tokens}
+    if stop:
+        payload["stop"] = stop
+    if grammar:
+        payload["grammar"] = grammar
 
     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
     resp.raise_for_status()
@@ -477,7 +426,8 @@ def get_conditioned_score(
     cs_prompt_template: str,
     server_url: str,
     cs_tokens: int,
-    cs_temperature: float = 0.0
+    cs_temperature: float = 0.0,
+    model_name: str = ""
 ):
     """
     Query CS for a single passage. Returns the UPDATED entry on success; None on failure.
@@ -493,8 +443,11 @@ def get_conditioned_score(
             max_tokens=cs_tokens,          # keep this small
             temperature=cs_temperature,
             stop=["\n"],                   # stop at first newline
-            grammar=CS_GRAMMAR             # hard-constrain output
+            grammar=CS_GRAMMAR,             # hard-constrain output
+            model_name=model_name
         )
+
+
         match = (
             re.search(r"(?:CS|Conditioned\s*Score)\s*:?\s*(?P<score>(?:0?\.\d+|0|1(?:\.0+)?))", response, re.I)
             or re.search(r"\b(?P<score>(?:0?\.\d+|0|1(?:\.0+)?))\b", response)
@@ -829,6 +782,7 @@ def process_server_task(config: dict):
                     p, CS_PROMPT, server_url,
                     cs_tokens=cs_tokens,
                     cs_temperature=TEMPERATURE["cs"],
+                    model_name=model
                 )
                 if s:
                     s["dataset"] = dataset
