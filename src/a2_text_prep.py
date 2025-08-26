@@ -333,40 +333,76 @@ def run_multiprocess(
 #     return resp.json().get("content", "").strip()
 
 
-def query_llm(
-    prompt: str,
-    server_url: str,
-    max_tokens: int = 5,
-    temperature: float = 0.0,
-    stop=None,
-    grammar=None,
-    messages=None  # ✅ NEW
-) -> str:
+
+
+
+# def query_llm(
+#     prompt: str,
+#     server_url: str,
+#     max_tokens: int = 5,
+#     temperature: float = 0.0,
+#     stop=None,
+#     grammar=None,
+#     messages=None  # ✅ NEW ############### PRETTY SURE i DON'T NEED THIS ANY MORE 
+# ) -> str:
+#     if messages:
+#         payload = {
+#             "messages": messages,
+#             "temperature": temperature,
+#             "n_predict": max_tokens
+#         }
+#     else:
+#         payload = {
+#             "prompt": prompt,
+#             "temperature": temperature,
+#             "n_predict": max_tokens
+#         }
+#         if stop:
+#             payload["stop"] = stop
+#         if grammar:
+#             payload["grammar"] = grammar
+
+#     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
+#     resp.raise_for_status()
+#     return resp.json().get("content", "").strip()
+
+
+############################################################################################## I NEED TO CHECK THIS BEFORE RUNNIN GIT AGAIN - NEED TO INTEGRATE 
+
+THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", flags=re.S|re.I)
+
+def strip_think(text: str) -> str:
+    return THINK_BLOCK_RE.sub("", text).strip()
+
+
+def is_r1_like(model_name: str) -> bool:
+    name = model_name.lower()
+    return ("deepseek" in name and ("r1" in name or "distill" in name)) or "r1" in name
+
+
+
+
+
+
+
+def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
+              stop=None, grammar=None, messages=None, model_name=""):
+    # auto-stop for DeepSeek R1 distills
+    if is_r1_like(model_name):
+        stop = (stop or []) + ["</think>"]
+
+    payload = {"temperature": temperature, "n_predict": max_tokens}
     if messages:
-        payload = {
-            "messages": messages,
-            "temperature": temperature,
-            "n_predict": max_tokens
-        }
+        payload["messages"] = messages
     else:
-        payload = {
-            "prompt": prompt,
-            "temperature": temperature,
-            "n_predict": max_tokens
-        }
-        if stop:
-            payload["stop"] = stop
-        if grammar:
-            payload["grammar"] = grammar
+        payload["prompt"] = prompt
+        if stop: payload["stop"] = stop
+        if grammar: payload["grammar"] = grammar
 
     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
     resp.raise_for_status()
-    return resp.json().get("content", "").strip()
-
-
-
-
-
+    out = resp.json().get("content", "")
+    return out
 
 
 
@@ -621,7 +657,8 @@ def generate_iqoq(
     conditioned_score: float = None,
     use_ratio: bool = False,
     hoprag_version: str = "standard_hoprag",
-    debug_dir: Path = None
+    debug_dir: Path = None,
+    model_name: str = ""
 ):
     """
     Generates IQ and OQ lists for a passage.
@@ -655,8 +692,18 @@ def generate_iqoq(
     )
 
     try:
-        iq_response = query_llm(iq_prompt_filled, server_url, max_tokens=iq_tokens, temperature=iq_temperature)
-        oq_response = query_llm(oq_prompt_filled, server_url, max_tokens=oq_tokens, temperature=oq_temperature)
+        # iq_response = query_llm(iq_prompt_filled, server_url, max_tokens=iq_tokens, temperature=iq_temperature)
+        # oq_response = query_llm(oq_prompt_filled, server_url, max_tokens=oq_tokens, temperature=oq_temperature)
+
+        iq_response = query_llm(iq_prompt_filled, server_url,
+                        max_tokens=iq_tokens, temperature=iq_temperature,
+                        model_name=model)  # <- pass model
+        oq_response = query_llm(oq_prompt_filled, server_url,
+                        max_tokens=oq_tokens, temperature=oq_temperature,
+                        model_name=model)
+
+        iq_response = strip_think(iq_response)
+        oq_response = strip_think(oq_response)
     except Exception as e:
         print(f"[ERROR] LLM failed for {entry.get('passage_id','?')}: {e}")
         pid = entry.get("passage_id", "?")
@@ -868,7 +915,8 @@ def process_server_task(config: dict):
                     conditioned_score=cs,  # 0.5 default drives 2–4 with your weighted iqoq_ratio
                     use_ratio=True,
                     hoprag_version=hoprag_version,
-                    debug_dir=None
+                    debug_dir=None,
+                    model_name=model  # pass model name for think block handling
                 )
                 if mi: missing_iq.extend(mi)
                 if mo: missing_oq.extend(mo)
@@ -931,7 +979,8 @@ def process_server_task(config: dict):
                 iq_temperature=TEMPERATURE["iqoq_generation"],
                 oq_temperature=TEMPERATURE["iqoq_generation"],
                 use_ratio=False, hoprag_version=hoprag_version,
-                debug_dir=None
+                debug_dir=None,
+                model_name=model  # pass model name for think block handling
             )
             if mi: missing_iq.extend(mi)
             if mo: missing_oq.extend(mo)
@@ -969,14 +1018,12 @@ def process_server_task(config: dict):
 
 
 
-
-
 if __name__ == "__main__": 
 
 
     RESUME = True
 
-    ACTIVE_MODEL_NAMES   = ["qwen-7b"] #, "qwen-14"] #["qwen-1.5b", "qwen-7b", "deepseek-distill-qwen-14b"]
+    ACTIVE_MODEL_NAMES   = ["qwen-7b"] #, "qwen-14"] #["qwen-1.5b", "qwen-7b", 
     DATASETS = ["musique","2wikimultihopqa", "hotpotqa"]
     SPLIT = "dev"             # or "dev"
 
