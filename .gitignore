@@ -1,12 +1,11 @@
 # Ignore all datasets and large generated files
-data/
-*.npy
-*.faiss
-*.jsonl
-*.pt
-*.ckpt
 *.log
 *.debug.txt
+
+# Ignore train directories but keep dev
+data/models/*/*/train/
+data/processed_datasets/*/train/
+data/representations/datasets/*/train/
 
 # Ignore virtual environments
 .venv/
@@ -22,9 +21,3 @@ __pycache__/
 .DS_Store
 .cache/
 bin/
-__pycache__/
-*.pyc
-*.pyo
-__pycache__/
-*.pyc
-*.pyo
