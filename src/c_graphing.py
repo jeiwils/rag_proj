@@ -201,7 +201,6 @@ from src.b_sparse_dense_representations import (
     DEFAULT_PARAMS,
     faiss_search_topk,
     jaccard_similarity,
-    build_and_save_faiss_index,
     MAX_NEIGHBOURS,
     SIM_THRESHOLD,
     load_faiss_index,
@@ -581,7 +580,7 @@ def run_graph_pipeline(
     Full pipeline:
         1) Load passage metadata/embeddings from the dataset folder and IQ/OQ
          metadata/embeddings from the model-specific folder
-        2) Build/load FAISS index for IQs
+        2) Load FAISS index for IQs
         3) build_edges(...) -> save edges jsonl
         4) build_networkx_graph(passages, edges)
         5) basic_graph_eval + append_global_result
@@ -599,10 +598,7 @@ def run_graph_pipeline(
     passages_emb = np.load(pass_paths["passages_emb"])
     iqoq_emb = np.load(model_paths["iqoq_emb"])
 
-    # ---------- 2) Build / load FAISS index ----------
-    base_dir = os.path.dirname(model_paths["iqoq_index"])
-    os.makedirs(base_dir, exist_ok=True)
-    build_and_save_faiss_index(iqoq_emb, dataset, "iqoq", output_dir=base_dir)
+    # ---------- 2) Load FAISS index ----------
     iq_index = load_faiss_index(model_paths["iqoq_index"])
 
     # ---------- 3) Build edges with optional resume ----------
@@ -702,7 +698,7 @@ if __name__ == "__main__":
     total_queries = 100
     iteration = 12
 
-    for dataset in DATASETS:
+    for dataset in DATASETS: ############## I NEED TO MAKE THESE FOR LOOPS LOGICAL AND COHESIVE ACROSS MODULES 
         for model in MODELS:
             for variant in VARIANTS:
                 print(
