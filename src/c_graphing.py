@@ -222,7 +222,7 @@ VARIANT = "baseline"
 
 pass_paths = dataset_rep_paths(DATASET, SPLIT)
 PASSAGES_PATH = pass_paths["passages_jsonl"]
-passages_emb_path = pass_paths["passages_emb"]
+
 
 iqoq_paths = model_rep_paths(MODEL, DATASET, SPLIT, VARIANT)
 IQOQ_PATH = iqoq_paths["iqoq_jsonl"]
@@ -593,11 +593,10 @@ def run_graph_pipeline(
     q_path = iqoq_file if iqoq_file else model_paths["iqoq_jsonl"]
 
     passages_md = load_jsonl(p_path)
-    iqoq_md = list(load_jsonl(q_path))
+    iqoq_md = list(load_jsonl(q_path))   ## mmap_mode=r ?
 
-    passages_emb = np.load(pass_paths["passages_emb"])
     iqoq_emb = np.load(model_paths["iqoq_emb"])
-
+    
     # ---------- 2) Load FAISS index ----------
     iq_index = load_faiss_index(model_paths["iqoq_index"])
 
