@@ -605,9 +605,10 @@ def generate_iqoq(
     )
 
     # DeepSeek: prefer recommended temperature for generative phases
-    if is_r1_like(model_name):
-        iq_temperature = _temp_for(model_name, "iqoq_generation")
-        oq_temperature = _temp_for(model_name, "iqoq_generation")
+    try:
+        if is_r1_like(model_name):
+            iq_temperature = _temp_for(model_name, "iqoq_generation")
+            oq_temperature = _temp_for(model_name, "iqoq_generation")
 
         iq_response = query_llm(
             iq_prompt_filled,
@@ -616,7 +617,7 @@ def generate_iqoq(
             temperature=iq_temperature,
             model_name=model_name,
             phase="iqoq_generation",
-         )
+        )
         oq_response = query_llm(
             oq_prompt_filled,
             server_url,
@@ -624,7 +625,7 @@ def generate_iqoq(
             temperature=oq_temperature,
             model_name=model_name,
             phase="iqoq_generation",
-         )
+        )
 
         if is_r1_like(model_name):
             iq_response = strip_think(iq_response)
