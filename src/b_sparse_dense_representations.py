@@ -292,7 +292,7 @@ def embed_and_save(
     existing_embs = None
     vec_offset = 0
     if os.path.exists(output_npy):
-        existing_embs = np.load(output_npy)["embs_all"].astype("float32")
+        existing_embs = np.load(output_npy).astype("float32") #existing_embs = np.load(output_npy)["embs_all"].astype("float32")
         vec_offset = existing_embs.shape[0]
         if os.path.exists(output_jsonl):
             with open(output_jsonl, "rt", encoding="utf-8") as f_old:
@@ -336,7 +336,7 @@ def embed_and_save(
         embs_all = np.vstack([existing_embs, new_embs])
     else:
         embs_all = new_embs
-    np.savez_compressed(output_npy, embs_all=embs_all)
+    np.save(output_npy, embs_all)
 
     mode = "a" if vec_offset > 0 else "w"
     dir_path = os.path.dirname(output_jsonl)
@@ -585,7 +585,7 @@ if __name__ == "__main__":
 
         # === PASSAGE EMBEDDINGS ===
         if os.path.exists(passages_npy) and not RESUME:
-            passages_emb = np.load(passages_npy)["embs_all"].astype("float32")
+            passages_emb = np.load(passages_npy).astype("float32")
             print(f"[skip] {passages_npy} exists; loaded.")
             if not os.path.exists(pass_paths["passages_index"]):
                 build_and_save_faiss_index(
@@ -670,7 +670,7 @@ if __name__ == "__main__":
                     continue
 
                 if os.path.exists(iqoq_npy) and not RESUME:
-                    iqoq_emb = np.load(iqoq_npy)["embs_all"].astype("float32")
+                    iqoq_emb = np.load(iqoq_npy).astype("float32")
                     print(f"[skip] {iqoq_npy} exists; loaded.")
                     if not os.path.exists(iqoq_index):
                         build_and_save_faiss_index(

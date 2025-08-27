@@ -569,7 +569,7 @@ if __name__ == "__main__":
             # --- Load data for this dataset + split ---
             rep_paths = dataset_rep_paths(dataset, split)
             passage_metadata = list(load_jsonl(rep_paths["passages_jsonl"]))
-            passage_emb = np.load(rep_paths["passages_emb"])["embs_all"]
+            passage_emb = np.load(rep_paths["passages_emb"])
             passage_index = load_faiss_index(rep_paths["passages_index"])
 
             query_path = str(processed_dataset_paths(dataset, split)["questions"])

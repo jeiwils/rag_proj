@@ -642,7 +642,7 @@ if __name__ == "__main__":
         # Load dataset-wide resources once per dataset
         paths = dataset_rep_paths(dataset, SPLIT)
         passage_metadata = list(load_jsonl(paths["passages_jsonl"]))
-        passage_emb = np.load(paths["passages_emb"])["embs_all"]
+        passage_emb = np.load(paths["passages_emb"])
         passage_index = faiss.read_index(paths["passages_index"])
         query_data_full = [json.loads(line) for line in open(f"{dataset}_{SPLIT}.jsonl")]
 

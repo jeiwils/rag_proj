@@ -596,8 +596,8 @@ def run_graph_pipeline(
     passages_md = load_jsonl(p_path)
     iqoq_md = list(load_jsonl(q_path))
 
-    passages_emb = np.load(pass_paths["passages_emb"])["embs_all"]
-    iqoq_emb = np.load(model_paths["iqoq_emb"])["embs_all"]
+    passages_emb = np.load(pass_paths["passages_emb"])
+    iqoq_emb = np.load(model_paths["iqoq_emb"])
 
     # ---------- 2) Build / load FAISS index ----------
     base_dir = os.path.dirname(model_paths["iqoq_index"])
