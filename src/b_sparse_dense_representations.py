@@ -650,9 +650,6 @@ if __name__ == "__main__":
             print(f"\n=== IQ/OQ EMBEDDING + INDEX: {model} | VARIANT: {variant} ===")
             for dataset in DATASETS:
                 # Input paths for IQ/OQ data
-                iqoq_cleaned_src = (
-                    f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/cleaned/iqoq.cleaned.jsonl"
-                )
                 iqoq_exploded_src = (
                     f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/exploded/iqoq.exploded.jsonl"
                 )
@@ -667,10 +664,9 @@ if __name__ == "__main__":
 
 
 
-                if not os.path.exists(iqoq_cleaned_src) or not os.path.exists(iqoq_exploded_src):
+                if not os.path.exists(iqoq_exploded_src):
                     print(
-                        f"[warn] Missing IQ/OQ input file: cleaned={iqoq_cleaned_src} exploded={iqoq_exploded_src}; skipping."
-                    )
+                        f"[warn] Missing IQ/OQ input file: exploded={iqoq_exploded_src}; skipping.")
                     continue
 
                 if os.path.exists(iqoq_npy) and not RESUME:
@@ -703,7 +699,7 @@ if __name__ == "__main__":
                         text_key="text",
                         id_field="iqoq_id",
                         done_ids=done_ids,
-                        output_jsonl_input=iqoq_cleaned_src,
+                        output_jsonl_input=iqoq_exploded_src,
                     )
                     if new_iqoq_embs.size > 0:
                         add_keywords_to_iqoq_jsonl(iqoq_jsonl, only_ids=new_ids)
