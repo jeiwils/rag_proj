@@ -346,21 +346,62 @@ def write_cleaning_debug(
 
 
 
-def explode_passages(master_path: str, output_path: str):
-    data = load_jsonl(master_path)
+# def explode_passages(master_path: str, output_path: str):
+#     data = load_jsonl(master_path)
+#     out = []
+#     for e in data:
+#         out.append({
+#             "dataset": e.get("dataset"),
+#             "split": e.get("split"),
+#             "generation_model": e.get("generation_model"),
+#             "passage_id": e["passage_id"],
+#             "text": e.get("text", ""),
+#             "conditioned_score": e.get("cs_used"),
+#         })
+#     save_jsonl(output_path, out)
+
+def explode_passages(
+    master_path: str, output_path: str, resume: bool = False
+) -> None:
+    """Explode merged IQ/OQ file into one row per passage.
+
+    When ``resume`` is ``True``, existing ``passage_id`` values in
+    ``output_path`` are skipped so the operation can safely restart.
+    """
+
+    data = list(load_jsonl(master_path))
+    items = [e["passage_id"] for e in data]
+    done_ids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=output_path,
+        items=items,
+        get_id=lambda x, i: x,
+        phase_label="explode_passages",
+        id_field="passage_id",
+    )
+
     out = []
     for e in data:
-        out.append({
-            "dataset": e.get("dataset"),
-            "split": e.get("split"),
-            "generation_model": e.get("generation_model"),
-            "passage_id": e["passage_id"],
-            "text": e.get("text", ""),
-            "conditioned_score": e.get("cs_used"),
-        })
-    save_jsonl(output_path, out)
+        pid = e["passage_id"]
+        if resume and pid in done_ids:
+            print(f"[resume] explode_passages skipping {pid}")
+            continue
+        out.append(
+            {
+                "dataset": e.get("dataset"),
+                "split": e.get("split"),
+                "generation_model": e.get("generation_model"),
+                "passage_id": pid,
+                "text": e.get("text", ""),
+                "conditioned_score": e.get("cs_used"),
+            }
+        )
 
-
+    if resume:
+        for rec in out:
+            append_jsonl(output_path, rec)
+    else:
+        save_jsonl(output_path, out)
 
 
 
