@@ -382,59 +382,106 @@ def _temp_for(model_name: str, phase: str) -> float: ############ I GUESS I SHOU
 #     out = resp.json().get("content", "")
 #     return out
 
-def query_llm(
-    prompt,
-    server_url,
-    max_tokens=512,
-    temperature=0.1,
-    stop=None,
-    grammar=None,
-    model_name="",
-    phase=None,
-):
-    """Query an LLM server and return the text content.
+# def query_llm(
+#     prompt,
+#     server_url,
+#     max_tokens=512,
+#     temperature=0.1,
+#     stop=None,
+#     grammar=None,
+#     model_name="",
+#     phase=None,
+# ):
+#     """Query an LLM server and return the text content.
 
-    DeepSeek-style models (``is_r1_like``) expect an OpenAI-like payload with
-    ``messages`` rather than a single ``prompt``. All other models continue to
-    use the existing ``prompt`` field payload. Responses may return the model's
-    text in either ``content`` or ``message`` fields, so we check both.
-    """
+#     DeepSeek-style models (``is_r1_like``) expect an OpenAI-like payload with
+#     ``messages`` rather than a single ``prompt``. All other models continue to
+#     use the existing ``prompt`` field payload. Responses may return the model's
+#     text in either ``content`` or ``message`` fields, so we check both.
+#     """
 
-    # If DeepSeek, ensure everything is in the *user* prompt and (optionally)
-    # add '<think>\n' guidance.
-    if is_r1_like(model_name):
-        prompt = _wrap_for_deepseek_user(prompt, phase or "")
-        payload: Dict[str, object] = {
-            "messages": [{"role": "user", "content": prompt}],
+#     # If DeepSeek, ensure everything is in the *user* prompt and (optionally)
+#     # add '<think>\n' guidance.
+#     if is_r1_like(model_name):
+#         prompt = _wrap_for_deepseek_user(prompt, phase or "")
+#         payload: Dict[str, object] = {
+#             "messages": [{"role": "user", "content": prompt}],
+#             "temperature": temperature,
+#             "n_predict": max_tokens,
+#         }
+#     else:
+#         payload = {
+#             "prompt": prompt,
+#             "temperature": temperature,
+#             "n_predict": max_tokens,
+#         }
+
+#     if stop:
+#         payload["stop"] = stop
+#     if grammar:
+#         payload["grammar"] = grammar
+#     if model_name:
+#         payload["model_name"] = model_name
+
+#     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
+#     resp.raise_for_status()
+#     data = resp.json()
+#     if "content" in data:
+#         out = data["content"]
+#     else:
+#         message = data.get("message", {})
+#         if isinstance(message, dict):
+#             out = message.get("content", "")
+#         else:
+#             out = message or ""
+#     return out
+
+
+
+
+
+
+def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
+              stop=None, grammar=None, model_name="", phase=None):
+    # If you want R1-style guidance inside the *user* message:
+    def _wrap_for_deepseek_user(p):
+        return ("All instructions are provided in this single user message. "
+                "Begin your output with '<think>\\n' for internal reasoning, "
+                "then give the final answer.\n\n" + p)
+
+    use_chat = ("deepseek" in model_name.lower())  # your is_r1_like() is fine too
+    if use_chat:
+        endpoint = "/v1/chat/completions"
+        payload = {
+            "model": "local",  # required by the spec; llama.cpp ignores the value
+            "messages": [{"role": "user", "content": _wrap_for_deepseek_user(prompt)}],
             "temperature": temperature,
-            "n_predict": max_tokens,
+            "max_tokens": max_tokens,
         }
+        if stop: payload["stop"] = stop
     else:
+        endpoint = "/completion"
         payload = {
             "prompt": prompt,
-            "temperature": temperature,
             "n_predict": max_tokens,
+            "temperature": temperature,
         }
+        if stop: payload["stop"] = stop
+        if grammar: payload["grammar"] = grammar  # grammar works on /completion
 
-    if stop:
-        payload["stop"] = stop
-    if grammar:
-        payload["grammar"] = grammar
-    if model_name:
-        payload["model_name"] = model_name
+    r = requests.post(f"{server_url}{endpoint}", json=payload, timeout=60)
+    r.raise_for_status()
+    data = r.json()
 
-    resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
-    resp.raise_for_status()
-    data = resp.json()
-    if "content" in data:
-        out = data["content"]
+    if use_chat:
+        # OpenAI-style response
+        return data["choices"][0]["message"]["content"]
     else:
-        message = data.get("message", {})
-        if isinstance(message, dict):
-            out = message.get("content", "")
-        else:
-            out = message or ""
-    return out
+        # llama.cpp completion response
+        return data.get("content", data.get("message", ""))
+    
+
+
 
 
 
@@ -1003,11 +1050,11 @@ if __name__ == "__main__":
 
     RESUME = True
 
-    ACTIVE_MODEL_NAMES   = ["qwen-7b"] #["deepseek-distill-qwen-7b"] #, "qwen-14"] #["qwen-1.5b", "qwen-7b", 
+    ACTIVE_MODEL_NAMES   = ["deepseek-distill-qwen-7b"]#["qwen-7b"] # #, "qwen-14"] #["qwen-1.5b", "qwen-7b", 
     DATASETS = ["musique","2wikimultihopqa", "hotpotqa"]
     SPLIT = "dev"             # or "dev"
 
-    RUN_CS        = True        # enhanced scoring step
+    RUN_CS        = False        # enhanced scoring step
     RUN_BASELINE  = True        # hopRAG baseline IQ/OQ
     RUN_ENHANCED  = True        # enhanced IQ/OQ
 
