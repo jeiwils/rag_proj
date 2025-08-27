@@ -731,7 +731,7 @@ if __name__ == "__main__":
     # --- config ---
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     MODEL_TO_PROCESS   = ["qwen-7b"]  # ["deepseek-distill-qwen-7b"]
-    SPLIT = "train"
+    SPLIT = "dev"
 
     # All models we know about (from your SERVER_CONFIGS)
     ALL_MODELS = sorted({cfg["model"] for cfg in SERVER_CONFIGS})
@@ -754,6 +754,8 @@ if __name__ == "__main__":
     RUN_CLEAN    = True
     RUN_MERGE    = True
     RUN_EXPLODE  = True
+
+    
     RESUME       = True
 
     # optional: skip specific combos
