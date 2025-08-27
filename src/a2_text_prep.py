@@ -346,10 +346,10 @@ def _wrap_for_deepseek_user(prompt: str, task: str) -> str:
     return prompt
 
 
-def _temp_for(model_name: str, phase: str) -> float:
-    # DeepSeek-R1 rec: 0.5–0.7 for generative tasks; keep CS deterministic
-    if is_r1_like(model_name) and phase in {"iqoq_generation","answer_generation","edge_selection"}:
-        return 0.6
+def _temp_for(model_name: str, phase: str) -> float: ############ I GUESS I SHOULD EVENTUALLY REMOVE THIS 
+    # # DeepSeek-R1 rec: 0.5–0.7 for generative tasks; keep CS deterministic
+    # if is_r1_like(model_name) and phase in {"iqoq_generation","answer_generation","edge_selection"}:
+    #     return 0.6
     return TEMPERATURE.get(phase, 0.1)
 
 
