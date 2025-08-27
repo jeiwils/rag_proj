@@ -167,7 +167,7 @@ def model_rep_paths(model: str, dataset: str, split: str, variant: str) -> Dict[
     """Return paths for model-specific IQ/OQ representations."""
     base = os.path.join("data", "representations", "models", model, dataset, split, variant)
     return {
-        "iqoq_jsonl": os.path.join(base, f"{dataset}_iqoq.jsonl"),
+        "iqoq_jsonl": os.path.join(base, "iqoq.cleaned.jsonl"),
         "iqoq_emb": os.path.join(base, f"{dataset}_iqoq_emb.npy"),
         "iqoq_index": os.path.join(base, f"{dataset}_faiss_iqoq.faiss"),
     }
