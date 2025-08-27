@@ -24,3 +24,12 @@ bin/
 
 # ignore FAISS indexes
 *.faiss
+
+# keep big artifacts local
+data/raw_datasets/
+data/representations/models/
+data/models/
+*.faiss
+*.npy
+*.npz
+*.jsonl
