@@ -198,6 +198,29 @@ __all__ = [
 
 
 
+# def embed_and_save(
+#     input_jsonl,
+#     output_npy,
+#     output_jsonl,
+#     model,
+#     text_key,
+#     *,
+#     id_field="passage_id",
+#     done_ids: Set[str] | None = None,
+# ):
+#     if not text_key:
+#         raise ValueError("You must provide a valid text_key (e.g., 'text' or 'question').")
+
+#     data, texts = [], []
+#     with open(input_jsonl, "rt", encoding="utf-8") as f:
+#         for line in f:
+#             entry = json.loads(line)
+#             if done_ids and entry.get(id_field) in done_ids:
+#                 continue
+#             texts.append(entry[text_key])
+#             data.append(entry)
+
+
 def embed_and_save(
     input_jsonl,
     output_npy,
@@ -207,18 +230,64 @@ def embed_and_save(
     *,
     id_field="passage_id",
     done_ids: Set[str] | None = None,
+    output_jsonl_input: str | None = None,
 ):
+    """Embed texts from ``input_jsonl`` and save results.
+
+    Parameters
+    ----------
+    input_jsonl: str
+        Path to the JSONL file containing the text used for embedding (e.g. the
+        *exploded* IQ/OQ file).
+    output_npy: str
+        Destination path for the NumPy embedding array.
+    output_jsonl: str
+        Destination JSONL path where entries with ``vec_id`` are written.
+    model: SentenceTransformer
+        The embedding model.
+    text_key: str
+        Key in each JSON record that contains the text to be embedded.
+    id_field: str, optional
+        Field holding the unique identifier for each entry.
+    done_ids: set[str], optional
+        Set of IDs that already have embeddings and should be skipped.
+    output_jsonl_input: str, optional
+        Path to the JSONL file providing the metadata to write to ``output_jsonl``.
+        If ``None``, ``input_jsonl`` is used.
+    """
+
     if not text_key:
         raise ValueError("You must provide a valid text_key (e.g., 'text' or 'question').")
+
+    # If a separate source for the output JSONL is provided (e.g., a cleaned
+    # version of the data), build a lookup by ID so we can pair the embedding
+    # text from ``input_jsonl`` with the cleaned metadata.
+    if output_jsonl_input is None:
+        output_jsonl_input = input_jsonl
+
+    by_id = {}
+    if output_jsonl_input != input_jsonl:
+        with open(output_jsonl_input, "rt", encoding="utf-8") as f_clean:
+            for line in f_clean:
+                entry = json.loads(line)
+                by_id[entry[id_field]] = entry
 
     data, texts = [], []
     with open(input_jsonl, "rt", encoding="utf-8") as f:
         for line in f:
             entry = json.loads(line)
-            if done_ids and entry.get(id_field) in done_ids:
+            entry_id = entry.get(id_field)
+            if done_ids and entry_id in done_ids:
                 continue
             texts.append(entry[text_key])
-            data.append(entry)
+            if by_id:
+                if entry_id not in by_id:
+                    raise KeyError(
+                        f"{id_field} {entry_id} from {input_jsonl} not found in {output_jsonl_input}"
+                    )
+                data.append(by_id[entry_id])
+            else:
+                data.append(entry)
 
     existing_embs = None
     vec_offset = 0
@@ -580,10 +649,13 @@ if __name__ == "__main__":
         for model in MODELS:
             print(f"\n=== IQ/OQ EMBEDDING + INDEX: {model} | VARIANT: {variant} ===")
             for dataset in DATASETS:
-                # Input path for cleaned IQ/OQ
-                iqoq_jsonl_src = f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/cleaned/iqoq.cleaned.jsonl"
-
-
+                # Input paths for IQ/OQ data
+                iqoq_cleaned_src = (
+                    f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/cleaned/iqoq.cleaned.jsonl"
+                )
+                iqoq_exploded_src = (
+                    f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/exploded/iqoq.exploded.jsonl"
+                )
 
 
                 # Output paths for representations
@@ -593,8 +665,12 @@ if __name__ == "__main__":
                 iqoq_index = repr_paths["iqoq_index"]
                 os.makedirs(os.path.dirname(iqoq_jsonl), exist_ok=True)
 
-                if not os.path.exists(iqoq_jsonl_src):
-                    print(f"[warn] Missing IQ/OQ input file: {iqoq_jsonl_src}; skipping.")
+
+
+                if not os.path.exists(iqoq_cleaned_src) or not os.path.exists(iqoq_exploded_src):
+                    print(
+                        f"[warn] Missing IQ/OQ input file: cleaned={iqoq_cleaned_src} exploded={iqoq_exploded_src}; skipping."
+                    )
                     continue
 
                 if os.path.exists(iqoq_npy) and not RESUME:
@@ -608,7 +684,7 @@ if __name__ == "__main__":
                             output_dir=os.path.dirname(iqoq_index),
                         )
                 else:
-                    iq_items = load_jsonl(iqoq_jsonl_src)
+                    iq_items = load_jsonl(iqoq_cleaned_src)
                     done_ids, shard_ids = compute_resume_sets(
                         resume=RESUME,
                         out_path=iqoq_jsonl,
@@ -620,13 +696,14 @@ if __name__ == "__main__":
                     )
                     new_ids = shard_ids - done_ids
                     iqoq_emb, new_iqoq_embs = embed_and_save(
-                        input_jsonl=iqoq_jsonl_src,
+                        input_jsonl=iqoq_exploded_src,
                         output_npy=iqoq_npy,
                         output_jsonl=iqoq_jsonl,
                         model=bge_model,
                         text_key="text",
                         id_field="iqoq_id",
                         done_ids=done_ids,
+                        output_jsonl_input=iqoq_cleaned_src,
                     )
                     if new_iqoq_embs.size > 0:
                         add_keywords_to_iqoq_jsonl(iqoq_jsonl, only_ids=new_ids)
