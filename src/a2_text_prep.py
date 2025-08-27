@@ -363,13 +363,59 @@ def _temp_for(model_name: str, phase: str) -> float:
 #               stop=None, grammar=None, model_name=""):
 
 
-def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
-              stop=None, grammar=None, model_name="", phase=None):
-    # If DeepSeek, ensure everything is in the *user* prompt and (optionally) add '<think>\\n' guidance.
+# def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
+#               stop=None, grammar=None, model_name="", phase=None):
+#     # If DeepSeek, ensure everything is in the *user* prompt and (optionally) add '<think>\\n' guidance.
+#     if is_r1_like(model_name):
+#         prompt = _wrap_for_deepseek_user(prompt, phase or "")
+
+#     payload = {"prompt": prompt, "temperature": temperature, "n_predict": max_tokens}
+#     if stop:
+#         payload["stop"] = stop
+#     if grammar:
+#         payload["grammar"] = grammar
+#     if model_name:
+#         payload["model_name"] = model_name
+
+#     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
+#     resp.raise_for_status()
+#     out = resp.json().get("content", "")
+#     return out
+
+def query_llm(
+    prompt,
+    server_url,
+    max_tokens=512,
+    temperature=0.1,
+    stop=None,
+    grammar=None,
+    model_name="",
+    phase=None,
+):
+    """Query an LLM server and return the text content.
+
+    DeepSeek-style models (``is_r1_like``) expect an OpenAI-like payload with
+    ``messages`` rather than a single ``prompt``. All other models continue to
+    use the existing ``prompt`` field payload. Responses may return the model's
+    text in either ``content`` or ``message`` fields, so we check both.
+    """
+
+    # If DeepSeek, ensure everything is in the *user* prompt and (optionally)
+    # add '<think>\n' guidance.
     if is_r1_like(model_name):
         prompt = _wrap_for_deepseek_user(prompt, phase or "")
+        payload: Dict[str, object] = {
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": temperature,
+            "n_predict": max_tokens,
+        }
+    else:
+        payload = {
+            "prompt": prompt,
+            "temperature": temperature,
+            "n_predict": max_tokens,
+        }
 
-    payload = {"prompt": prompt, "temperature": temperature, "n_predict": max_tokens}
     if stop:
         payload["stop"] = stop
     if grammar:
@@ -379,10 +425,16 @@ def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
 
     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
     resp.raise_for_status()
-    out = resp.json().get("content", "")
+    data = resp.json()
+    if "content" in data:
+        out = data["content"]
+    else:
+        message = data.get("message", {})
+        if isinstance(message, dict):
+            out = message.get("content", "")
+        else:
+            out = message or ""
     return out
-
-
 
 
 
