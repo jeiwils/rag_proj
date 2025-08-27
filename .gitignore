@@ -21,3 +21,6 @@ __pycache__/
 .DS_Store
 .cache/
 bin/
+
+# ignore FAISS indexes
+*.faiss
