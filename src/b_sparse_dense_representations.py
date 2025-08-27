@@ -684,11 +684,11 @@ if __name__ == "__main__":
                             output_dir=os.path.dirname(iqoq_index),
                         )
                 else:
-                    iq_items = load_jsonl(iqoq_cleaned_src)
+                    iqoq_items = load_jsonl(iqoq_exploded_src)
                     done_ids, shard_ids = compute_resume_sets(
                         resume=RESUME,
                         out_path=iqoq_jsonl,
-                        items=iq_items,
+                        items=iqoq_items,
                         get_id=lambda x, i: x["iqoq_id"],
                         phase_label="iqoq embeddings",
                         id_field="iqoq_id",
