@@ -1056,7 +1056,7 @@ if __name__ == "__main__":
 
     RUN_CS        = False        # enhanced scoring step
     RUN_BASELINE  = True        # hopRAG baseline IQ/OQ
-    RUN_ENHANCED  = True        # enhanced IQ/OQ
+    RUN_ENHANCED  = False        # enhanced IQ/OQ
 
 
 
