@@ -5,7 +5,7 @@ Model size: 7b
 Dataset: 2wikimultihopqa
 Split: dev
 Phase: iqoq_baseline
-Total time taken: 32.79 seconds
+Total time taken: 22.51 seconds
 
 Passages missing IQ: 4
 - 3cbd107e0bde11eba7f7acde48001122__ayumi_hamasaki_sent4

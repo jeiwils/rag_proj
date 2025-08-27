@@ -5,7 +5,7 @@ Model size: 7b
 Dataset: 2wikimultihopqa
 Split: dev
 Phase: iqoq_baseline
-Total time taken: 40.62 seconds
+Total time taken: 30.98 seconds
 
 Passages missing IQ: 5
 - 6900298c0bde11eba7f7acde48001122__the_fj_holden_sent1

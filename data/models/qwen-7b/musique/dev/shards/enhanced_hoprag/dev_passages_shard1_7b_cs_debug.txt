@@ -5,4 +5,4 @@ Model size: 7b
 Dataset: musique
 Split: dev
 Phase: cs
-Total time taken: 0.05 seconds
+Total time taken: 0.04 seconds

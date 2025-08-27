@@ -5,4 +5,4 @@ Model size: 7b
 Dataset: 2wikimultihopqa
 Split: dev
 Phase: cs
-Total time taken: 0.06 seconds
+Total time taken: 0.04 seconds

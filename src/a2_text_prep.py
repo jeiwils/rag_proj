@@ -330,14 +330,44 @@ def is_r1_like(model_name: str) -> bool:
     name = model_name.lower()
     return ("deepseek" in name and ("r1" in name or "distill" in name)) or "r1" in name
 
+def _wrap_for_deepseek_user(prompt: str, task: str) -> str:
+    """
+    DeepSeek-R1 guidance must live in the *user* message. We inline the rules here.
+    For generative tasks (IQ/OQ, answers, edge selection), we ask the model to
+    start with '<think>\\n'. For CS (grammar+newline stop), we do NOT enforce think.
+    """
+    if task in {"iqoq_generation", "answer_generation", "edge_selection"}:
+        preface = (
+            "All instructions are provided in this single user message (no system prompt). "
+            "Begin your output with '<think>\\n' and use that block for your reasoning. "
+            "After the think block, follow the requested output format exactly."
+        )
+        return f"{preface}\n\n{prompt}"
+    return prompt
+
+
+def _temp_for(model_name: str, phase: str) -> float:
+    # DeepSeek-R1 rec: 0.5–0.7 for generative tasks; keep CS deterministic
+    if is_r1_like(model_name) and phase in {"iqoq_generation","answer_generation","edge_selection"}:
+        return 0.6
+    return TEMPERATURE.get(phase, 0.1)
 
 
 
 
+
+
+
+
+# def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
+#               stop=None, grammar=None, model_name=""):
 
 
 def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
-              stop=None, grammar=None, model_name=""):
+              stop=None, grammar=None, model_name="", phase=None):
+    # If DeepSeek, ensure everything is in the *user* prompt and (optionally) add '<think>\\n' guidance.
+    if is_r1_like(model_name):
+        prompt = _wrap_for_deepseek_user(prompt, phase or "")
 
     payload = {"prompt": prompt, "temperature": temperature, "n_predict": max_tokens}
     if stop:
@@ -351,10 +381,6 @@ def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
     resp.raise_for_status()
     out = resp.json().get("content", "")
     return out
-
-
-
-
 
 
 
@@ -440,10 +466,11 @@ def get_conditioned_score(
             cs_prompt_filled,
             server_url,
             max_tokens=cs_tokens,          # keep this small
-            temperature=cs_temperature,
+            temperature=_temp_for(model_name, "cs"),
             stop=["\n"],                   # stop at first newline
             grammar=CS_GRAMMAR,             # hard-constrain output
-            model_name=model_name
+            model_name=model_name,
+            phase="cs"
         )
         if is_r1_like(model_name):
             response = strip_think(response)
@@ -530,73 +557,6 @@ def iqoq_ratio( ####################################### FOCUS ON THIS
 
 
 
-# Modify the generate_iqoq function to include version
-# def generate_iqoq(
-#     entry: dict,
-#     iq_prompt_template: str,
-#     oq_prompt_template: str,
-#     server_url: str,
-#     iq_tokens: int,
-#     oq_tokens: int,
-#     iq_temperature: float = 0.1,
-#     oq_temperature: float = 0.1,
-#     conditioned_score: float = None,
-#     use_ratio: bool = False,
-#     hoprag_version: str = "standard_hoprag",
-#     debug_dir: Path = None  # kept for signature compatibility; not used
-# ):
-#     """
-#     Generates IQ and OQ lists for a passage.
-#     Returns (entry, missing_iq_ids, missing_oq_ids).
-#     On failure, entry=None and the lists indicate what failed.
-
-#     Note: This function does NOT set dataset/split. Set those where you write results.
-#     """
-#     passage_text = entry["text"]
-
-#     if use_ratio and conditioned_score is not None:
-#         _, num_iq, num_oq = iqoq_ratio(conditioned_score)
-#     else:
-#         num_iq, num_oq = 2, 4
-
-#     iq_prompt_filled = (
-#         iq_prompt_template
-#         .replace("{{PASSAGE}}", passage_text)
-#         .replace("{{NUM_QUESTIONS}}", str(num_iq))
-#     )
-#     oq_prompt_filled = (
-#         oq_prompt_template
-#         .replace("{{PASSAGE}}", passage_text)
-#         .replace("{{NUM_QUESTIONS}}", str(num_oq))
-#     )
-
-#     try:
-#         iq_response = query_llm(iq_prompt_filled, server_url, max_tokens=iq_tokens, temperature=iq_temperature)
-#         oq_response = query_llm(oq_prompt_filled, server_url, max_tokens=oq_tokens, temperature=oq_temperature)
-#     except Exception as e:
-#         print(f"[ERROR] LLM failed for {entry.get('passage_id','?')}: {e}")
-#         pid = entry.get("passage_id", "?")
-#         return None, [pid], [pid]
-
-#     missing_iq_this, missing_oq_this = [], []
-#     if not iq_response.strip():
-#         missing_iq_this.append(entry.get("passage_id", "?"))
-#     if not oq_response.strip():
-#         missing_oq_this.append(entry.get("passage_id", "?"))
-
-#     if missing_iq_this or missing_oq_this:
-#         return None, missing_iq_this, missing_oq_this
-
-#     entry["IQs"] = [q for q in iq_response.split("\n") if q.strip()]
-#     entry["OQs"] = [q for q in oq_response.split("\n") if q.strip()]
-#     entry["num_iq"] = num_iq
-#     entry["num_oq"] = num_oq
-#     entry["cs_used"] = conditioned_score if use_ratio else None
-#     entry["hoprag_version"] = hoprag_version
-
-#     return entry, [], [] ########################## WHY?????
-
-
 
 def generate_iqoq(
     entry: dict,
@@ -644,9 +604,10 @@ def generate_iqoq(
         .replace("{{NUM_QUESTIONS+2}}", str(max_oq))   # NEW
     )
 
-    try:
-        # iq_response = query_llm(iq_prompt_filled, server_url, max_tokens=iq_tokens, temperature=iq_temperature)
-        # oq_response = query_llm(oq_prompt_filled, server_url, max_tokens=oq_tokens, temperature=oq_temperature)
+    # DeepSeek: prefer recommended temperature for generative phases
+    if is_r1_like(model_name):
+        iq_temperature = _temp_for(model_name, "iqoq_generation")
+        oq_temperature = _temp_for(model_name, "iqoq_generation")
 
         iq_response = query_llm(
             iq_prompt_filled,
@@ -654,14 +615,16 @@ def generate_iqoq(
             max_tokens=iq_tokens,
             temperature=iq_temperature,
             model_name=model_name,
-        )
+            phase="iqoq_generation",
+         )
         oq_response = query_llm(
             oq_prompt_filled,
             server_url,
             max_tokens=oq_tokens,
             temperature=oq_temperature,
             model_name=model_name,
-        )
+            phase="iqoq_generation",
+         )
 
         if is_r1_like(model_name):
             iq_response = strip_think(iq_response)
@@ -987,7 +950,7 @@ if __name__ == "__main__":
 
     RESUME = True
 
-    ACTIVE_MODEL_NAMES   = ["qwen-7b"] #, "qwen-14"] #["qwen-1.5b", "qwen-7b", 
+    ACTIVE_MODEL_NAMES   = ["qwen-7b"] #["deepseek-distill-qwen-7b"] #, "qwen-14"] #["qwen-1.5b", "qwen-7b", 
     DATASETS = ["musique","2wikimultihopqa", "hotpotqa"]
     SPLIT = "dev"             # or "dev"
 
