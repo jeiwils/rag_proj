@@ -692,40 +692,39 @@ def run_graph_pipeline(
     }
 
 
-
 if __name__ == "__main__":
-# tweak these as needed
-    dataset = "hotpot"
-    model = "qwen-7b"
-    split = "train"
-    variant = "baseline"
-
-
+    
+    MODELS   = ["qwen-7b"]  # , "deepseek-distill-qwen-7b"]
+    DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
+    VARIANTS = ["baseline", "enhanced"]
+    SPLIT    = "dev"
 
     total_queries = 100
     iteration = 12
 
-
-
-
-    result_paths = run_graph_pipeline(
-        dataset=dataset,
-        split=split,
-        model=model,
-        variant=variant,
-        passages_file=None,   # uses dataset_rep_paths internally
-        iqoq_file=None,        # uses model_rep_paths internally
-        top_k=None,           # defaults to MAX_NEIGHBOURS
-        sim_threshold=None,   # defaults to SIM_THRESHOLD
-        total_queries=total_queries,
-        iteration=iteration,
-        save_graph=True,
-        save_graphml=False,
-    )
-
-    print("[Done]")
-    print(result_paths)
-
+    for dataset in DATASETS:
+        for model in MODELS:
+            for variant in VARIANTS:
+                print(
+                    f"[Run] dataset={dataset} model={model} "
+                    f"split={SPLIT} variant={variant}"
+                )
+                result_paths = run_graph_pipeline(
+                    dataset=dataset,
+                    split=SPLIT,
+                    model=model,
+                    variant=variant,
+                    passages_file=None,
+                    iqoq_file=None,
+                    top_k=None,
+                    sim_threshold=None,
+                    total_queries=total_queries,
+                    iteration=iteration,
+                    save_graph=True,
+                    save_graphml=False,
+                )
+                print("[Done]")
+                print(result_paths)
 
 
 
