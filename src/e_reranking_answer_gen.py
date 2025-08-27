@@ -294,6 +294,7 @@ def ask_llm_with_passages(
         server_url=server_url,
         max_tokens=max_tokens,
         model_name=model_name,
+        phase="answer_generation",
     )
 
     if is_r1_like(model_name):
