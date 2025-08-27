@@ -1,11 +1,11 @@
-Total passages processed: 1034
-Skipped due to resume: 9621
+Total passages processed: 2
+Skipped due to resume: 10653
 Model used: qwen-7b
 Model size: 7b
 Dataset: hotpotqa
 Split: dev
 Phase: iqoq_baseline
-Total time taken: 8117.11 seconds
+Total time taken: 10.00 seconds
 
 Passages missing IQ: 2
 - 5adbfbd555429947ff173893__jeremy_schoenberg_sent5
