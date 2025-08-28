@@ -91,7 +91,7 @@ Aggregated summary across all queries:
   "mean_recall": float,
   "passage_coverage_all_gold_found": int,
   "initial_retrieval_coverage": int,
-  "avg_hops_before_first_gold": "TODO",
+  "avg_hops_before_first_gold": float | null, 
   "avg_total_hops": float,
   "avg_repeat_visits": float,
   "avg_none_count_per_query": float,

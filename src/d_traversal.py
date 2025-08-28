@@ -337,14 +337,89 @@ def enhanced_traversal_algorithm(
     return {chosen_vk}
 
 
+# def traverse_graph(
+#     graph: nx.DiGraph,
+#     query_text: str,
+#     seed_passages: list,
+#     n_hops: int,
+#     server_configs: list,
+#     traversal_alg: Callable  # custom algorithm step (edge + queueing logic)
+# ):
+#     Cqueue = seed_passages[:]
+#     visited_passages = set(seed_passages)
+#     ccount = {pid: 1 for pid in Cqueue}
+#     hop_trace = []
+#     state = {
+#         "Evisited": set(),
+#         "none_count": 0,
+#         "repeat_visit_count": 0
+#     }
+
+#     for hop in range(n_hops):
+#         next_Cqueue = []
+#         hop_log = {
+#             "hop": hop,
+#             "expanded_from": list(Cqueue),
+#             "new_passages": [],
+#             "edges_chosen": [],
+#             "none_count": 0,
+#             "repeat_visit_count": 0
+#         }
+
+#         for vj in Cqueue:
+#             if vj not in graph:
+#                 continue
+
+#             new_nodes = traversal_alg(
+#                 vj=vj,
+#                 graph=graph,
+#                 query_text=query_text,
+#                 visited_passages=visited_passages,
+#                 server_configs=server_configs,
+#                 ccount=ccount,
+#                 next_Cqueue=next_Cqueue,
+#                 hop_log=hop_log,
+#                 state=state,
+#             )
+#             visited_passages.update(new_nodes)
+
+#         hop_trace.append(hop_log)
+#         Cqueue = next_Cqueue
+
+#     return list(visited_passages), ccount, hop_trace, {
+#         "none_count": state["none_count"],
+#         "repeat_visit_count": state["repeat_visit_count"]
+#     }
+
 def traverse_graph(
     graph: nx.DiGraph,
     query_text: str,
+    query_emb: np.ndarray,
+    passage_emb: np.ndarray,
     seed_passages: list,
     n_hops: int,
     server_configs: list,
-    traversal_alg: Callable  # custom algorithm step (edge + queueing logic)
+    traveral_alg: Callable,  # custom algorithm step (edge + queueing logic)
+    alpha: float = ALPHA,
 ):
+    """Traverse the graph while recording query similarity for visited passages."""
+
+    query_keywords = set(extract_keywords(query_text))
+
+    def _update_query_sim(pid: str) -> None:
+        node = graph.nodes.get(pid)
+        if not node:
+            return
+        vec_id = node.get("vec_id")
+        sim_cos = 0.0
+        if vec_id is not None and 0 <= vec_id < len(passage_emb):
+            sim_cos = float(np.dot(query_emb, passage_emb[vec_id]))
+        sim_jac = jaccard_similarity(
+            query_keywords, set(node.get("keywords_passage", []))
+        )
+        sim_hybrid = alpha * sim_cos + (1 - alpha) * sim_jac
+        node["query_sim"] = round(sim_hybrid, 4)
+
     Cqueue = seed_passages[:]
     visited_passages = set(seed_passages)
     ccount = {pid: 1 for pid in Cqueue}
@@ -352,8 +427,11 @@ def traverse_graph(
     state = {
         "Evisited": set(),
         "none_count": 0,
-        "repeat_visit_count": 0
+        "repeat_visit_count": 0,
     }
+
+    for pid in visited_passages:
+        _update_query_sim(pid)
 
     for hop in range(n_hops):
         next_Cqueue = []
@@ -363,14 +441,14 @@ def traverse_graph(
             "new_passages": [],
             "edges_chosen": [],
             "none_count": 0,
-            "repeat_visit_count": 0
+            "repeat_visit_count": 0,
         }
 
         for vj in Cqueue:
             if vj not in graph:
                 continue
 
-            new_nodes = traversal_alg(
+            new_nodes = traveral_alg(
                 vj=vj,
                 graph=graph,
                 query_text=query_text,
@@ -381,6 +459,8 @@ def traverse_graph(
                 hop_log=hop_log,
                 state=state,
             )
+            for new_pid in new_nodes:
+                _update_query_sim(new_pid)
             visited_passages.update(new_nodes)
 
         hop_trace.append(hop_log)
@@ -388,9 +468,8 @@ def traverse_graph(
 
     return list(visited_passages), ccount, hop_trace, {
         "none_count": state["none_count"],
-        "repeat_visit_count": state["repeat_visit_count"]
+        "repeat_visit_count": state["repeat_visit_count"],
     }
-
 
 
 
@@ -441,6 +520,7 @@ def save_traversal_result( # helper for run_dev_set()
     ccount,
     hop_trace,
     traversal_alg,
+    helpful_passages,
     output_path="dev_results.jsonl"
 ):
     """
@@ -456,7 +536,11 @@ def save_traversal_result( # helper for run_dev_set()
         "visit_counts": dict(ccount),
         "hop_trace": hop_trace_with_metrics,
         "final_metrics": final_metrics,
-        "traversal_algorithm": traversal_alg.__name__
+        "traversal_algorithm": traversal_alg.__name__,
+        "helpful_passages": [
+            {"passage_id": pid, "score": round(score, 4)}
+            for pid, score in helpful_passages
+        ],
     }
 
     append_jsonl(str(output_path), result_entry)
@@ -518,13 +602,25 @@ def run_traversal(
         visited_passages, ccount, hop_trace, stats = traverse_graph(
             graph=graph,
             query_text=query_text,
+            query_emb=query_emb,
+            passage_emb=passage_emb,
             seed_passages=seed_passages,
             n_hops=n_hops,
             server_configs=server_configs,
-            traversal_alg=traversal_alg
+            traveral_alg=traversal_alg,
+            alpha=alpha,
         )
 
         print(f"[Traversal] Visited {len(visited_passages)} passages (None={stats['none_count']}, Repeat={stats['repeat_visit_count']})")
+
+        from src.e_reranking_answer_gen import rerank_passages_by_helpfulness
+
+        helpful_passages = rerank_passages_by_helpfulness(
+            candidate_passages=visited_passages,
+            query_text=query_text,
+            ccount=ccount,
+            graph=graph,
+        )
 
         # --- Save per-query JSONL ---
         save_traversal_result(
@@ -533,8 +629,9 @@ def run_traversal(
             visited_passages=visited_passages,
             ccount=ccount,
             hop_trace=hop_trace,
-            traversal_alg=traversal_alg,
-            output_path=output_paths["results"]
+            traveral_alg=traversal_alg,
+            helpful_passages=helpful_passages,
+            output_path=output_paths["results"],
         )
 
         # --- Accumulate traversal + selected passages ---
