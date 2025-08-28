@@ -590,83 +590,6 @@ def graph_stats(
 
 
 
-
-# def run_graph_pipeline(
-#     dataset: str = DATASET,
-#     split: str = SPLIT,
-#     model: str = MODEL,
-#     variant: str = VARIANT,
-#     passages_file: str = None,
-#     iqoq_file: str = None,
-#     top_k: int = None,
-#     sim_threshold: float = None,
-#     total_queries: int = 0,
-#     iteration: int = 0,
-#     save_graph: bool = True,
-#     save_graphml: bool = False,
-#     resume: bool = True,
-# ):
-#     """
-#     Full pipeline:
-#         1) Load passage metadata/embeddings from the dataset folder and IQ/OQ
-#          metadata/embeddings from the model-specific folder
-#         2) Load FAISS index for all IQ/OQ vectors
-#         3) build_edges(...) -> save edges jsonl
-#         4) build_networkx_graph(passages, edges)
-#         5) basic_graph_eval + append_global_result
-#         6) graph_stats -> append detailed stats jsonl
-#     """
-#     # ---------- 1) Load metadata + embeddings ----------
-#     pass_paths = dataset_rep_paths(dataset, split)
-#     model_paths = model_rep_paths(model, dataset, split, variant)
-#     p_path = passages_file if passages_file else pass_paths["passages_jsonl"]
-#     q_path = iqoq_file if iqoq_file else model_paths["iqoq_jsonl"]
-
-#     passages_md = load_jsonl(p_path)
-#     iqoq_md = list(load_jsonl(q_path))   ## mmap_mode=r ?
-
-#     iqoq_emb = np.load(model_paths["iqoq_emb"])
-
-#     # ---------- 2) Load FAISS index over all IQ/OQ vectors ----------
-#     iq_index = load_faiss_index(model_paths["iqoq_index"])
-#     oq_items = [q for q in iqoq_md if q.get("type") == "OQ"]
-
-#     # ---------- 3) Build edges with optional resume ----------
-#     graph_paths = graph_output_paths(model, dataset, split, variant)
-#     edges_out = str(graph_paths["edges"])
-
-#     done_ids, _ = compute_resume_sets(
-#         resume=resume,
-#         out_path=edges_out,
-#         items=oq_items,
-#         get_id=lambda x, i: x["iqoq_id"],
-#         phase_label="edges",
-#         id_field="oq_id",
-#     )
-#     existing_edges = list(load_jsonl(edges_out)) if resume and os.path.exists(edges_out) else []
-#     oq_to_process = [q for q in oq_items if q["iqoq_id"] not in done_ids]
-
-#     new_edges = build_edges(
-#         oq_metadata=oq_to_process,
-#         iqoq_metadata=iqoq_md,
-#         oq_emb=iqoq_emb,
-#         iq_index=iq_index,
-#         top_k=top_k if top_k is not None else MAX_NEIGHBOURS,
-#         sim_threshold=sim_threshold if sim_threshold is not None else SIM_THRESHOLD,
-#         output_jsonl=None,
-#     )
-
-#     edges = existing_edges + new_edges
-
-#     os.makedirs(os.path.dirname(edges_out), exist_ok=True)
-
-
-#     if new_edges or not existing_edges:
-#         save_jsonl(edges_out, edges)
-#         print(f"[Edges] Saved {len(edges)} edges to {edges_out}")
-#     else:
-#         print(f"[Edges] Using existing {len(edges)} edges from {edges_out}")
-    
 def run_graph_pipeline(
     dataset: str = DATASET,
     split: str = SPLIT,
@@ -699,7 +622,7 @@ def run_graph_pipeline(
     p_path = passages_file if passages_file else pass_paths["passages_jsonl"]
     q_path = iqoq_file if iqoq_file else model_paths["iqoq_jsonl"]
 
-    passages_md = load_jsonl(p_path)
+    passages_md = list(load_jsonl(p_path))
     iqoq_md = list(load_jsonl(q_path))   ## mmap_mode=r ?
 
     n_passages = len(passages_md)
@@ -839,8 +762,8 @@ if __name__ == "__main__":
                     variant=variant,
                     passages_file=None,
                     iqoq_file=None,
-                    top_k=None,
-                    sim_threshold=None,
+                    top_k=50, #################### THIS SHOULD BE SET SOMEWHERE GLOBALLY
+                    sim_threshold=0.60,  #################### THIS SHOULD BE SET SOMEWHERE GLOBALLY,
                     total_queries=total_queries,
                     iteration=iteration,
                     save_graph=True,
