@@ -207,11 +207,8 @@ import math
 
 
 from src.b_sparse_dense_representations import (
-    DEFAULT_PARAMS,
     faiss_search_topk,
     jaccard_similarity,
-    MAX_NEIGHBOURS,
-    SIM_THRESHOLD,
     load_faiss_index,
     dataset_rep_paths,
     model_rep_paths,
@@ -222,6 +219,17 @@ from src.utils import compute_resume_sets
 
 
 from pathlib import Path
+
+SIM_THRESHOLD = 0.65
+MAX_NEIGHBOURS = 5
+ALPHA = 0.5
+
+DEFAULT_PARAMS = {
+    "sim_threshold": SIM_THRESHOLD,
+    "max_neighbors": MAX_NEIGHBOURS,
+    "alpha": ALPHA
+}
+
 
 
 

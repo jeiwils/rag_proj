@@ -109,17 +109,15 @@ from src.utils import SERVER_CONFIGS, compute_resume_sets
 from src.b_sparse_dense_representations import (
     faiss_search_topk,
     jaccard_similarity,
-    ALPHA,
     dataset_rep_paths,
     get_embedding_model,
 )
-from src.c_graphing import append_global_result
+from src.c_graphing import append_global_result, ALPHA, basic_graph_eval
 import faiss
 import networkx as nx
 import os
 from collections import defaultdict
 import json
-from src.c_graphing import basic_graph_eval
 from pathlib import Path
 
 
@@ -399,7 +397,7 @@ def traverse_graph(
     seed_passages: list,
     n_hops: int,
     server_configs: list,
-    traveral_alg: Callable,  # custom algorithm step (edge + queueing logic)
+    traversal_alg: Callable,  # custom algorithm step (edge + queueing logic)
     alpha: float = ALPHA,
 ):
     """Traverse the graph while recording query similarity for visited passages."""
@@ -448,7 +446,7 @@ def traverse_graph(
             if vj not in graph:
                 continue
 
-            new_nodes = traveral_alg(
+            new_nodes = traversal_alg(
                 vj=vj,
                 graph=graph,
                 query_text=query_text,
@@ -607,7 +605,7 @@ def run_traversal(
             seed_passages=seed_passages,
             n_hops=n_hops,
             server_configs=server_configs,
-            traveral_alg=traversal_alg,
+            traversal_alg=traversal_alg,
             alpha=alpha,
         )
 
@@ -629,7 +627,7 @@ def run_traversal(
             visited_passages=visited_passages,
             ccount=ccount,
             hop_trace=hop_trace,
-            traveral_alg=traversal_alg,
+            traversal_alg=traversal_alg,
             helpful_passages=helpful_passages,
             output_path=output_paths["results"],
         )
