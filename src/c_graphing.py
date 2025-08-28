@@ -317,9 +317,14 @@ def build_edges(
         idxs, scores = faiss_search_topk(oq_vec.reshape(1, -1), iq_index, top_k=top_k)
 
         candidate_edges = []
+        oq_parent = oq["parent_passage_id"]
         for rank, iq_idx in enumerate(idxs):
             iq = iqoq_metadata[iq_idx]
             if iq.get("type") != "IQ":
+                continue
+            iq_parent = iq["parent_passage_id"]
+            if iq_parent == oq_parent:
+                # Skip self-loops where OQ and IQ originate from the same passage
                 continue
             sim_cos = float(scores[rank])  # FAISS cosine
             sim_jac = jaccard_similarity(set(oq["keywords"]), set(iq["keywords"]))
@@ -330,12 +335,12 @@ def build_edges(
 
             candidate_edges.append({
                 "oq_id": oq["iqoq_id"],
-                "oq_parent": oq["parent_passage_id"],
+                "oq_parent": oq_parent,
                 "oq_vec_id": oq["vec_id"],
                 "oq_text": oq["text"],
 
                 "iq_id": iq["iqoq_id"],
-                "iq_parent": iq["parent_passage_id"],
+                "iq_parent": iq_parent,
                 "iq_vec_id": iq["vec_id"],
 
                 "sim_cos": round(sim_cos, 4),
