@@ -219,8 +219,8 @@ from src.utils import compute_resume_sets
 from pathlib import Path
 
 DEFAULT_TOP_K = 50
-DEFAULT_SIM_THRESHOLD = 0.65
-DEFAULT_ALPHA = 0.5
+DEFAULT_SIM_THRESHOLD = 0.60
+DEFAULT_ALPHA = 1.0
 
 DEFAULT_PARAMS = {
     "top_k": DEFAULT_TOP_K,
@@ -755,6 +755,7 @@ if __name__ == "__main__":
                     iqoq_file=None,
                     save_graph=True,
                     save_graphml=False,
+                    edge_budget_alpha=DEFAULT_ALPHA,
                 )
                 print(
                     f"[Done] dataset={dataset} model={model} variant={variant} split={SPLIT}"
