@@ -475,7 +475,6 @@ def run_traversal(
     emb_model,
     server_configs: List[Dict],
     output_paths: Dict[str, Path],  # use traversal_output_paths()
-    model_servers: Optional[List[str]] = None,
     seed_top_k=50,
     alpha=0.5,
     n_hops=2,
@@ -534,6 +533,7 @@ def run_traversal(
             visited_passages=visited_passages,
             ccount=ccount,
             hop_trace=hop_trace,
+            traversal_alg=traveral_alg,
             output_path=output_paths["results"]
         )
 
@@ -665,9 +665,6 @@ if __name__ == "__main__":
 
         for model in MODELS:
 
-            model_servers = [
-                cfg["server_url"] for cfg in SERVER_CONFIGS if cfg["model"] == model
-            ]
 
             for variant in VARIANTS:
                 print(
@@ -704,7 +701,6 @@ if __name__ == "__main__":
                     passage_index=passage_index,
                     emb_model=emb_model,
                     server_configs=SERVER_CONFIGS,
-                    model_servers=model_servers,
                     output_paths=output_paths,
                     seed_top_k=TOP_K_SEED_PASSAGES,
                     alpha=ALPHA,

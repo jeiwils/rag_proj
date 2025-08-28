@@ -130,7 +130,7 @@ import faiss
 import networkx as nx
 from sentence_transformers import SentenceTransformer
 
-
+from pathlib import Path
 from src.utils import load_jsonl
 from src.b_sparse_dense_representations import dataset_rep_paths, load_faiss_index
 from src.a2_text_prep import query_llm, strip_think, is_r1_like
@@ -500,6 +500,12 @@ def run_pipeline(
     - 'hoprag': Standard HopRAG
     - 'enhanced': Enhanced HopRAG
     """
+    output_paths = {
+        "results": Path(output_path),
+        "visited_passages": Path(output_path).with_name("visited_passages.json"),
+        "stats": Path(output_path).with_name("traversal_stats.json"),
+    }
+
     if mode == "dense":
         run_dense_rag_baseline(
             query_data=query_data,
@@ -520,8 +526,8 @@ def run_pipeline(
             passage_emb=passage_emb,
             passage_index=passage_index,
             emb_model=emb_model,
-            model_servers=server_configs,
-            output_path=output_path,
+            server_configs=server_configs,
+            output_paths=output_paths,
             seed_top_k=seed_top_k,
             alpha=alpha,
             n_hops=n_hops,
@@ -535,8 +541,8 @@ def run_pipeline(
             passage_emb=passage_emb,
             passage_index=passage_index,
             emb_model=emb_model,
-            model_servers=server_configs,
-            output_path=output_path,
+            server_configs=server_configs,
+            output_paths=output_paths,
             seed_top_k=seed_top_k,
             alpha=alpha,
             n_hops=n_hops,
