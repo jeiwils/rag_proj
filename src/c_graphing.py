@@ -198,7 +198,7 @@ from tqdm import tqdm
 from datetime import datetime
 import json
 import networkx as nx
-
+import pickle 
 
 
 
@@ -654,11 +654,13 @@ def run_graph_pipeline(
     graph_graphml = graph_gpickle.replace(".gpickle", ".graphml")
 
     if save_graph:
-        nx.write_gpickle(G, graph_gpickle)
+        # Save as gpickle-compatible using stdlib pickle
+        with open(graph_gpickle, "wb") as f:
+            pickle.dump(G, f, protocol=pickle.HIGHEST_PROTOCOL)
         print(f"[Graph] Saved -> {graph_gpickle}")
 
     if save_graphml:
-        # write_graphml is available at top-level in modern NetworkX
+        # GraphML writer is still available
         if hasattr(nx, "write_graphml"):
             nx.write_graphml(G, graph_graphml)
             print(f"[Graph] Saved -> {graph_graphml}")
