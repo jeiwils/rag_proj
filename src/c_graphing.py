@@ -218,14 +218,14 @@ from src.utils import compute_resume_sets
 
 from pathlib import Path
 
-SIM_THRESHOLD = 0.65
-MAX_NEIGHBOURS = 5
-ALPHA = 0.5
+DEFAULT_TOP_K = 50
+DEFAULT_SIM_THRESHOLD = 0.65
+DEFAULT_ALPHA = 0.5
 
 DEFAULT_PARAMS = {
-    "sim_threshold": SIM_THRESHOLD,
-    "max_neighbors": MAX_NEIGHBOURS,
-    "alpha": ALPHA
+    "top_k": DEFAULT_TOP_K,
+    "sim_threshold": DEFAULT_SIM_THRESHOLD,
+    "alpha": DEFAULT_ALPHA,
 }
 
 
@@ -276,29 +276,13 @@ def graph_output_paths(
 
 
 
-# def build_edges(
-#     oq_metadata: List[Dict],
-#     iq_metadata: List[Dict],
-#     oq_emb: np.ndarray,
-#     iq_index,
-#     top_k: int = 50, # highest cosine sim iqs considered per oq
-#     sim_threshold = 0.65,
-#     output_jsonl: str = None
-# ) -> List[Dict]:
-#     """
-#     Build final OQ→IQ edges by:
-#     1. FAISS top_k retrieval
-#     2. Compute hybrid similarity
-#     3. Keep only the single highest-scoring IQ per OQ
-#     """
-
 def build_edges(
     oq_metadata: List[Dict],
     iqoq_metadata: List[Dict],
     oq_emb: np.ndarray,
     iq_index,
-    top_k: int = 50,  # highest cosine sim iqs considered per oq
-    sim_threshold=0.65,
+    top_k: int = DEFAULT_TOP_K,  # highest cosine sim iqs considered per oq
+    sim_threshold: float = DEFAULT_SIM_THRESHOLD,
     output_jsonl: str = None,
 ) -> List[Dict]:
     """Build final OQ→IQ edges.
@@ -604,8 +588,8 @@ def run_graph_pipeline(
     variant: str = VARIANT,
     passages_file: str = None,
     iqoq_file: str = None,
-    top_k: int = None,
-    sim_threshold: float = None,
+    top_k: int = DEFAULT_TOP_K,
+    sim_threshold: float = DEFAULT_SIM_THRESHOLD,
     save_graph: bool = True,
     save_graphml: bool = False,
     resume: bool = True,
@@ -641,6 +625,11 @@ def run_graph_pipeline(
     iq_index = load_faiss_index(model_paths["iqoq_index"])
     oq_items = [q for q in iqoq_md if q.get("type") == "OQ"]
 
+    top_k = top_k if top_k is not None else DEFAULT_TOP_K
+    sim_threshold = (
+        sim_threshold if sim_threshold is not None else DEFAULT_SIM_THRESHOLD
+    )
+
     # ---------- 3) Build edges with optional resume ----------
     graph_paths = graph_output_paths(model, dataset, split, variant)
     edges_out = str(graph_paths["edges"])
@@ -661,8 +650,8 @@ def run_graph_pipeline(
         iqoq_metadata=iqoq_md,
         oq_emb=iqoq_emb,
         iq_index=iq_index,
-        top_k=top_k if top_k is not None else MAX_NEIGHBOURS,
-        sim_threshold=sim_threshold if sim_threshold is not None else SIM_THRESHOLD,
+        top_k=top_k,
+        sim_threshold=sim_threshold,
         output_jsonl=None,
     )
 
@@ -699,18 +688,20 @@ def run_graph_pipeline(
             "edges_file": edges_out,
             "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "params": {
-                "top_k": top_k if top_k is not None else MAX_NEIGHBOURS,
-                "sim_threshold": sim_threshold if sim_threshold is not None else SIM_THRESHOLD,
+                "top_k": top_k,
+                "sim_threshold": sim_threshold,
             },
         },
     )
 
     # ---------- 6) Detailed stats ----------
 
+    params_used = DEFAULT_PARAMS.copy()
+    params_used.update({"top_k": top_k, "sim_threshold": sim_threshold})
     stats = graph_stats(
         G,
         save_path=stats_path,
-        params=DEFAULT_PARAMS,
+        params=params_used,
         dataset=f"{dataset}_{split}",
     )
 
@@ -762,8 +753,6 @@ if __name__ == "__main__":
                     variant=variant,
                     passages_file=None,
                     iqoq_file=None,
-                    top_k=50, #################### THIS SHOULD BE SET SOMEWHERE GLOBALLY
-                    sim_threshold=0.60,  #################### THIS SHOULD BE SET SOMEWHERE GLOBALLY,
                     save_graph=True,
                     save_graphml=False,
                 )
