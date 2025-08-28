@@ -343,7 +343,7 @@ def traverse_graph(
     seed_passages: list,
     n_hops: int,
     server_configs: list,
-    traveral_alg: Callable  # custom algorithm step (edge + queueing logic)
+    traversal_alg: Callable  # custom algorithm step (edge + queueing logic)
 ):
     Cqueue = seed_passages[:]
     visited_passages = set(seed_passages)
@@ -370,7 +370,7 @@ def traverse_graph(
             if vj not in graph:
                 continue
 
-            new_nodes = traveral_alg(
+            new_nodes = traversal_alg(
                 vj=vj,
                 graph=graph,
                 query_text=query_text,
@@ -440,7 +440,7 @@ def save_traversal_result( # helper for run_dev_set()
     visited_passages,
     ccount,
     hop_trace,
-    traveral_alg,
+    traversal_alg,
     output_path="dev_results.jsonl"
 ):
     """
@@ -456,7 +456,7 @@ def save_traversal_result( # helper for run_dev_set()
         "visit_counts": dict(ccount),
         "hop_trace": hop_trace_with_metrics,
         "final_metrics": final_metrics,
-        "traversal_algorithm": traveral_alg.__name__
+        "traversal_algorithm": traversal_alg.__name__
     }
 
     append_jsonl(str(output_path), result_entry)
@@ -478,7 +478,7 @@ def run_traversal(
     seed_top_k=50,
     alpha=0.5,
     n_hops=2,
-    traveral_alg=None
+    traversal_alg=None
 ):
     """
     Run LLM-guided multi-hop traversal over a QA query set (e.g., train, dev).
@@ -521,7 +521,7 @@ def run_traversal(
             seed_passages=seed_passages,
             n_hops=n_hops,
             server_configs=server_configs,
-            traveral_alg=traveral_alg
+            traversal_alg=traversal_alg
         )
 
         print(f"[Traversal] Visited {len(visited_passages)} passages (None={stats['none_count']}, Repeat={stats['repeat_visit_count']})")
@@ -533,7 +533,7 @@ def run_traversal(
             visited_passages=visited_passages,
             ccount=ccount,
             hop_trace=hop_trace,
-            traversal_alg=traveral_alg,
+            traversal_alg=traversal_alg,
             output_path=output_paths["results"]
         )
 
@@ -705,7 +705,7 @@ if __name__ == "__main__":
                     seed_top_k=TOP_K_SEED_PASSAGES,
                     alpha=ALPHA,
                     n_hops=NUMBER_HOPS,
-                    traveral_alg=trav_alg,
+                    traversal_alg=trav_alg,
                 )
 
                 new_ids = {q["query_id"] for q in remaining_queries}

@@ -531,7 +531,7 @@ def run_pipeline(
             seed_top_k=seed_top_k,
             alpha=alpha,
             n_hops=n_hops,
-            traveral_alg=hoprag_traversal_algorithm,
+            traversal_alg=hoprag_traversal_algorithm,
         )
     elif mode == "enhanced":
         run_dev_set(
@@ -546,7 +546,7 @@ def run_pipeline(
             seed_top_k=seed_top_k,
             alpha=alpha,
             n_hops=n_hops,
-            traveral_alg=enhanced_traversal_algorithm,
+            traversal_alg=enhanced_traversal_algorithm,
         )
     else:
         raise ValueError(f"Unknown mode: {mode}")
