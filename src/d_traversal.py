@@ -104,13 +104,14 @@ from src.utils import get_traversal_paths, append_jsonl, load_jsonl
 
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Callable, Set
-from src.a2_text_prep import extract_keywords, query_llm, strip_think, is_r1_like, _temp_for
+from src.a2_text_prep import query_llm, strip_think, is_r1_like, _temp_for
 from src.utils import SERVER_CONFIGS, compute_resume_sets
 from src.b_sparse_dense_representations import (
     faiss_search_topk,
     jaccard_similarity,
     dataset_rep_paths,
     get_embedding_model,
+    extract_keywords
 )
 from src.c_graphing import append_global_result, DEFAULT_ALPHA, basic_graph_eval
 import faiss
@@ -118,7 +119,7 @@ import networkx as nx
 from collections import defaultdict
 import json
 from pathlib import Path
-from src.e_reranking_answer_gen import rerank_passages_by_helpfulness
+import numpy as np
 
 traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
 
@@ -132,6 +133,62 @@ NUMBER_HOPS = 2
 
 
 
+
+def compute_helpfulness( # helper function for rerank_passages_by_helpfulness()
+    vertex_id: str,
+    vertex_query_sim: float, # similarity between the passage and the query
+    ccount: dict
+) -> float:
+
+    """
+    Compute a numeric helpfulness score for a passage.
+
+    Args:
+        vertex_id: Identifier of the passage vertex.
+        vertex_query_sim: Similarity between the passage and the query in ``[0, 1]``.
+        ccount: Mapping of passage IDs to visitation counts during traversal.
+
+    Returns:
+        float: Helpfulness score in ``[0, 1]`` where higher values indicate
+        passages that are both similar to the query and frequently visited.
+        The score is the average of ``vertex_query_sim`` and the normalised
+        visit count (importance).
+    """
+    total_visits = sum(ccount.values()) or 1
+    importance = ccount.get(vertex_id, 0) / total_visits
+
+    # HopRAG helpfulness formula: (SIM + IMP) / 2
+    helpfulness = 0.5 * (
+        vertex_query_sim + importance
+        ) # similarity between the passage and the query
+    return helpfulness
+
+
+
+def rerank_passages_by_helpfulness(
+    candidate_passages: List[str],
+    query_text: str,
+    ccount: dict,
+    graph: nx.DiGraph,
+    top_k: int = 5
+) -> List[Tuple[str, float]]:
+    """
+    Compute helpfulness scores for candidate passages and return top-k ranked list.
+    
+    Returns:
+        List of tuples: [(passage_id, helpfulness_score), ...]
+    """
+    reranked = []
+    for pid in candidate_passages:
+        node = graph.nodes.get(pid, {})
+        passage_text = node.get("text", "")
+        vertex_query_sim = node.get("query_sim", 0.0)  # make sure this is populated when building graph!
+
+        score = compute_helpfulness(pid, vertex_query_sim, ccount)
+        reranked.append((pid, score))
+
+    reranked.sort(key=lambda x: x[1], reverse=True)
+    return reranked[:top_k]
 
 ################################################################################################################
 # 6. RETRIEVAL AND GRAPH TRAVERSAL  
