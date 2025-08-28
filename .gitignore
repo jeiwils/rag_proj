@@ -25,11 +25,17 @@ bin/
 # ignore FAISS indexes
 *.faiss
 
-# keep big artifacts local
+# keep big artifacts local by default
 data/raw_datasets/
-data/representations/models/
-data/models/
+data/models/*
+data/representations/models/*
 *.faiss
 *.npy
 *.npz
 *.jsonl
+
+# but keep these specific dev folders
+!data/models/deepseek-distill-qwen-7b/
+!data/models/deepseek-distill-qwen-7b/**/dev/
+!data/models/qwen-7b/
+!data/models/qwen-7b/**/dev/
