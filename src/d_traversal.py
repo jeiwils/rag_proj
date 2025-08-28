@@ -81,7 +81,7 @@ File Schema
     "mean_recall": float,
     "passage_coverage_all_gold_found": int,
     "initial_retrieval_coverage": int,
-    "avg_hops_before_first_gold": "TODO",
+    "avg_hops_before_first_gold": float | null,
     "avg_total_hops": float,
     "avg_repeat_visits": float,
     "avg_none_count_per_query": float,
@@ -565,7 +565,6 @@ def compute_traversal_summary(
     """
     Summarize traversal-wide metrics across all dev results or a filtered subset.
     """
-    import json
 
     total_queries = 0
     sum_precision = 0.0
@@ -575,6 +574,7 @@ def compute_traversal_summary(
     total_repeat = 0
     passage_coverage_all_gold_found = 0
     initial_retrieval_coverage = 0
+    first_gold_hops = []
 
     with open(results_path, "rt", encoding="utf-8") as f:
         for line in f:
@@ -592,24 +592,41 @@ def compute_traversal_summary(
                 passage_coverage_all_gold_found += 1
 
             # Coverage at hop 0 (seed retrieval)
+            gold_set = set(entry["gold_passages"])
+
             hop0_passages = set(entry["hop_trace"][0]["expanded_from"])
-            if hop0_passages & set(entry["gold_passages"]):
+            if hop0_passages & gold_set:
                 initial_retrieval_coverage += 1
+                first_gold_hop = 0
+            else:
+                first_gold_hop = None
 
             for hop_log in entry["hop_trace"]:
                 hop_depth_counts[hop_log["hop"]] += 1
                 total_none += hop_log["none_count"]
                 total_repeat += hop_log["repeat_visit_count"]
 
+                if first_gold_hop is None and set(hop_log.get("new_passages", [])) & gold_set:
+                    first_gold_hop = hop_log["hop"]
+
+            if first_gold_hop is not None:
+                first_gold_hops.append(first_gold_hop)
+
     mean_precision = sum_precision / total_queries if total_queries else 0
     mean_recall = sum_recall / total_queries if total_queries else 0
+
+    avg_first_gold = (
+        round(sum(first_gold_hops) / len(first_gold_hops), 2)
+        if first_gold_hops
+        else None
+    )
 
     return {
         "mean_precision": round(mean_precision, 4),
         "mean_recall": round(mean_recall, 4),
         "passage_coverage_all_gold_found": passage_coverage_all_gold_found,
         "initial_retrieval_coverage": initial_retrieval_coverage,
-        "avg_hops_before_first_gold": "TODO",  # Optional advanced metric
+        "avg_hops_before_first_gold": avg_first_gold,
         "avg_total_hops": round(sum(hop_depth_counts.values()) / total_queries, 2),
         "avg_repeat_visits": round(total_repeat / total_queries, 2),
         "avg_none_count_per_query": round(total_none / total_queries, 2),
