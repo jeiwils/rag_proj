@@ -653,7 +653,9 @@ if __name__ == "__main__":
             ]
 
             for variant in VARIANTS:
-                print(f"\n=== Running {variant.upper()} traversal | {dataset} | {model} ===")
+                print(
+                    f"[Run] dataset={dataset} model={model} variant={variant} split={SPLIT}"
+                )
 
                 graph_path = Path(
                     f"data/graphs/{model}/{dataset}/{SPLIT}/{variant}/{dataset}_{SPLIT}_graph.gpickle"
@@ -701,6 +703,10 @@ if __name__ == "__main__":
                     save_path=output_paths["stats"],
                     total_queries=len(new_ids),
                     traversal_eval=traversal_metrics
+                )
+
+                print(
+                    f"[Done] dataset={dataset} model={model} variant={variant} split={SPLIT}"
                 )
 
     print("\nAll traversals completed.")

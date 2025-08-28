@@ -577,9 +577,12 @@ if __name__ == "__main__":
 
             for model in MODELS:
                 # --- Run DENSE baseline ---
-                result_paths = get_result_paths(model, dataset, split, variant="baseline")  # Dense doesn't depend on variant but keep structure unified
+                result_paths = get_result_paths(model, dataset, split, variant="baseline"
+                )  # Dense doesn't depend on variant but keep structure unified
 
-                print("\n========== Running DENSE RAG ==========")
+                print(
+                    f"[Run] dataset={dataset} model={model} variant=baseline split={split}"
+                )
                 run_pipeline(
                     mode="dense",
                     query_data=query_data,
@@ -591,16 +594,25 @@ if __name__ == "__main__":
                     server_configs=server_configs,
                     output_path=result_paths["answers"],
                     seed_top_k=seed_top_k,
-                    alpha=alpha
+                    alpha=alpha,
                 )
-
+                print(
+                    f"[Done] dataset={dataset} model={model} variant=baseline split={split}"
+                )
                 # --- Run HopRAG and Enhanced ---
                 for variant in VARIANTS:
-                    print(f"\n========== Running {variant.upper()} HopRAG ==========")
+                    print(
+                        f"[Run] dataset={dataset} model={model} variant={variant} split={split}"
+                    )
 
                     graph_path = os.path.join(
-                        "data", "graphs", model, dataset, split, variant,
-                        f"{dataset}_{split}_graph.gpickle"
+                        "data",
+                        "graphs",
+                        model,
+                        dataset,
+                        split,
+                        variant,
+                        f"{dataset}_{split}_graph.gpickle",
                     )
                     
                     graph = nx.read_gpickle(graph_path)
@@ -619,7 +631,10 @@ if __name__ == "__main__":
                         output_path=result_paths["answers"],
                         seed_top_k=seed_top_k,
                         alpha=alpha,
-                        n_hops=n_hops
+                        n_hops=n_hops,
+                    )
+                    print(
+                        f"[Done] dataset={dataset} model={model} variant={variant} split={split}"
                     )
 
     print("\n✅ All pipelines complete.")

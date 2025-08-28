@@ -712,8 +712,7 @@ if __name__ == "__main__":
         for model in MODELS:
             for variant in VARIANTS:
                 print(
-                    f"[Run] dataset={dataset} model={model} "
-                    f"split={SPLIT} variant={variant}"
+                    f"[Run] dataset={dataset} model={model} variant={variant} split={SPLIT}"
                 )
                 result_paths = run_graph_pipeline(
                     dataset=dataset,
@@ -729,7 +728,9 @@ if __name__ == "__main__":
                     save_graph=True,
                     save_graphml=False,
                 )
-                print("[Done]")
+                print(
+                    f"[Done] dataset={dataset} model={model} variant={variant} split={SPLIT}"
+                )
                 print(result_paths)
 
 

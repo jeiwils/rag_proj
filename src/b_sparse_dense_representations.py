@@ -644,11 +644,13 @@ if __name__ == "__main__":
     # -------------------------------
     # Phase B: IQ/OQ (Model-specific)
     # -------------------------------
-    for variant in VARIANTS:
-        hoprag_version = f"{variant}_hoprag"
+    for dataset in DATASETS:
         for model in MODELS:
-            print(f"\n=== IQ/OQ EMBEDDING + INDEX: {model} | VARIANT: {variant} ===")
-            for dataset in DATASETS:
+            for variant in VARIANTS:
+                hoprag_version = f"{variant}_hoprag"
+                print(
+                    f"[Run] dataset={dataset} model={model} variant={variant} split={SPLIT}"
+                )
                 # Input paths for IQ/OQ data
                 iqoq_exploded_src = (
                     f"data/models/{model}/{dataset}/{SPLIT}/{hoprag_version}/exploded/iqoq.exploded.jsonl"
@@ -666,8 +668,8 @@ if __name__ == "__main__":
 
                 if not os.path.exists(iqoq_exploded_src):
                     print(
-                        f"[warn] Missing IQ/OQ input file: exploded={iqoq_exploded_src}; skipping.")
-                    continue
+                        f"[warn] Missing IQ/OQ input file: exploded={iqoq_exploded_src}; skipping."
+                    )
 
                 if os.path.exists(iqoq_npy) and not RESUME:
                     iqoq_emb = np.load(iqoq_npy).astype("float32")
@@ -718,4 +720,6 @@ if __name__ == "__main__":
                             output_dir=os.path.dirname(iqoq_index),
                         )
 
-                print(f"[done] {model} | {dataset} | {variant}")
+                print(
+                    f"[Done] dataset={dataset} model={model} variant={variant} split={SPLIT}"
+                )
