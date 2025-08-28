@@ -186,8 +186,6 @@ Edge:
 # - neo4j for final graph build + test traversal # CHECK 
 
 
-# WRITING TO CHECK WHETHER THE CODEX IS UPDATED!!
-
 
 
 
@@ -197,6 +195,7 @@ from typing import List, Dict, Optional
 
 import numpy as np
 import networkx as nx
+from tqdm import tqdm
 from datetime import datetime
 import json
 
@@ -278,7 +277,9 @@ def build_edges(
     """
     edges = []
 
-    for oq in oq_metadata:
+    for oq in tqdm(
+        oq_metadata, desc="Building edges", unit="OQ", miniters=100, mininterval=1
+    ):
         if oq["type"] != "OQ":
             continue
 
@@ -505,7 +506,7 @@ def graph_stats(
     if save_path:
         dir_path = os.path.dirname(save_path)
         os.makedirs(dir_path or ".", exist_ok=True)
-        os.makedirs(dir_path or ".", exist_ok=True)
+
         with open(save_path, "at", encoding="utf-8") as f:
             f.write(json.dumps(stats, ensure_ascii=False) + "\n")
 
@@ -589,7 +590,12 @@ def run_graph_pipeline(
         sim_threshold=sim_threshold if sim_threshold is not None else SIM_THRESHOLD,
         output_jsonl=None,
     )
+
     edges = existing_edges + new_edges
+
+    os.makedirs(os.path.dirname(edges_out), exist_ok=True)
+
+
     if new_edges or not existing_edges:
         save_jsonl(edges_out, edges)
         print(f"[Edges] Saved {len(edges)} edges to {edges_out}")
