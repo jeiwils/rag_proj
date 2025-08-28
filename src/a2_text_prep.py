@@ -131,7 +131,7 @@ from tqdm import tqdm
 from typing import Callable, List, Dict
 import time
 import json
-from src.utils import SERVER_CONFIGS, existing_ids, compute_resume_sets
+from src.utils import SERVER_CONFIGS, existing_ids, compute_resume_sets, get_server_urls
 
 
 RESUME = True  

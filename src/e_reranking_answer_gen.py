@@ -106,8 +106,8 @@ from src.utils import (
     get_traversal_paths,
     append_jsonl,
     processed_dataset_paths,
-    SERVER_CONFIGS,
-    save_jsonl
+    save_jsonl,
+    get_server_configs
 )
 
 from typing import List, Dict, Optional, Tuple
@@ -328,8 +328,8 @@ def generate_answers_from_traversal(
     top_k:
         Number of passages to supply to the LLM per query.
     server_url, model_name:
-        LLM server configuration. Defaults to the first entry in
-        :data:`SERVER_CONFIGS` when not provided.
+        LLM server configuration. Defaults to the first server returned by
+        :func:`get_server_configs` for ``model`` when not provided.
 
     Returns
     -------
@@ -338,7 +338,7 @@ def generate_answers_from_traversal(
     """
 
     if server_url is None or model_name is None:
-        server = SERVER_CONFIGS[0]
+        server = get_server_configs(model)[0]
         server_url = server_url or server["server_url"]
         model_name = model_name or server["model"]
 

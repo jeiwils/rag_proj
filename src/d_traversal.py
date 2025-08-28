@@ -105,7 +105,7 @@ from src.utils import get_traversal_paths, append_jsonl, load_jsonl, processed_d
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Callable, Set
 from src.a2_text_prep import query_llm, strip_think, is_r1_like, _temp_for
-from src.utils import SERVER_CONFIGS, compute_resume_sets
+from src.utils import SERVER_CONFIGS, compute_resume_sets, get_server_configs
 from src.b_sparse_dense_representations import (
     faiss_search_topk,
     jaccard_similarity,
@@ -272,16 +272,17 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
     )
     
     # Send to OQ worker
+    oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
     answer = query_llm(
         prompt,
-        server_url=server_configs[1]["server_url"],
+        server_url=oq_server["server_url"],
         max_tokens=5,
-        temperature=_temp_for(server_configs[1]["model"], "edge_selection"),
-        model_name=server_configs[1]["model"],
+        temperature=_temp_for(oq_server["model"], "edge_selection"),
+        model_name=oq_server["model"],
         phase="edge_selection"
     )
 
-    if is_r1_like(server_configs[1]["model"]):
+    if is_r1_like(oq_server["model"]):
         answer = strip_think(answer)
     
     # Extract integer choice
@@ -629,7 +630,7 @@ def run_traversal(
     - final_traversal_stats.json: 📈 Aggregate traversal metrics across the query set
     """
 
-    output_paths["base".mkdir(parents=True, exist_ok=True)]
+    output_paths["base"].mkdir(parents=True, exist_ok=True)
         
     all_selected_passages = set()
 
@@ -864,7 +865,7 @@ if __name__ == "__main__":
                     passage_emb=passage_emb,
                     passage_index=passage_index,
                     emb_model=emb_model,
-                    server_configs=SERVER_CONFIGS,
+                    server_configs=get_server_configs(model),
                     output_paths=output_paths,
                     seed_top_k=TOP_K_SEED_PASSAGES,
                     alpha=DEFAULT_ALPHA,

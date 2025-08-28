@@ -49,7 +49,49 @@ SERVER_CONFIGS = [
     {"server_url": "http://localhost:8013", "model": "deepseek-distill-qwen-14b"},
 ]
 
+def get_server_configs(model: str) -> List[Dict[str, str]]:
+    """Return all server configuration dicts for ``model``.
 
+    Parameters
+    ----------
+    model:
+        Model name (e.g. ``"qwen-7b"``).
+
+    Returns
+    -------
+    List[Dict[str, str]]
+        All matching entries from :data:`SERVER_CONFIGS`.
+
+    Raises
+    ------
+    ValueError
+        If ``model`` is unknown.
+    """
+
+    configs = [cfg for cfg in SERVER_CONFIGS if cfg["model"] == model]
+    if not configs:
+        raise ValueError(f"Unknown model: {model}")
+    return configs
+
+
+def get_server_urls(model: str) -> List[str]:
+    """Return just the server URLs for ``model``."""
+
+    return [cfg["server_url"] for cfg in get_server_configs(model)]
+
+
+# def get_server_urls(model):
+#     """
+#     Return all server URLs for a given model (e.g., 4 for 1.5B, 2 for 7B).
+
+
+#     goes in the __main__ loop to activate all relevant servers 
+
+#     """
+#     urls = [config["server_url"] for config in SERVER_CONFIGS if config["model"] == model]
+#     if not urls:
+#         raise ValueError(f"Unknown model: {model}")
+#     return urls
 
 
 
@@ -377,6 +419,9 @@ def model_shard_paths(model: str, dataset: str, split: str, stem: str, size: str
 
 
 __all__ = [
+    "SERVER_CONFIGS",
+    "get_server_configs",
+    "get_server_urls",
     "load_jsonl",
     "save_jsonl",
     "append_jsonl",
