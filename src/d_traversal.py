@@ -115,7 +115,6 @@ from src.b_sparse_dense_representations import (
 from src.c_graphing import append_global_result, ALPHA, basic_graph_eval
 import faiss
 import networkx as nx
-import os
 from collections import defaultdict
 import json
 from pathlib import Path

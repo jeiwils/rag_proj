@@ -107,10 +107,9 @@ Notes
 
 
 
-import json
 import numpy as np
 import faiss
-from typing import List, Dict
+from typing import Dict, Iterable, List, Set
 from sentence_transformers import SentenceTransformer
 from src.utils import (
     load_jsonl,
@@ -120,10 +119,11 @@ from src.utils import (
     processed_dataset_paths,
 )
 from pathlib import Path
-import re
 import torch
-import os, json, re, spacy
-from typing import Iterable, Set
+import os
+import json
+import re
+import spacy
 from src.utils import existing_ids, compute_resume_sets
 
 
