@@ -47,7 +47,7 @@ File Schemas
 Each line contains a dict with the full traversal trace and evaluation:
 
 {
-  "query_id": str,
+  "question_id": str,
   "gold_passages": List[str],
   "visited_passages": List[str],
   "visit_counts": Dict[str, int],
@@ -357,7 +357,7 @@ def generate_answers_from_traversal(
     )
     query_file = processed_dataset_paths(dataset, split)["questions"]
 
-    traversal_records = {r["query_id"]: r for r in load_jsonl(traversal_file)}
+    traversal_records = {r["question_id"]: r for r in load_jsonl(traversal_file)}
     graph = nx.read_gpickle(graph_file)
     passage_lookup = {pid: data.get("text", "") for pid, data in graph.nodes(data=True)}
     queries = {q["question_id"]: q for q in load_jsonl(query_file)}
@@ -389,7 +389,7 @@ def generate_answers_from_traversal(
 
         answers.append(
             {
-                "query_id": qid,
+                "question_id": qid,
                 "question": question,
                 "raw_answer": llm_out["raw_answer"],
                 "normalised_answer": llm_out["normalised_answer"],

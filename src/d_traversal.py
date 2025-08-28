@@ -49,7 +49,7 @@ File Schema
 ### per_query_traversal_results.jsonl
 
 {
-  "query_id": "{question_id}",
+  "question_id": "{question_id}",
   "gold_passages": ["{passage_id_1}", "..."],
   "visited_passages": ["{passage_id_1}", "..."],
   "visit_counts": {"{passage_id}": count, ...},
@@ -72,7 +72,7 @@ File Schema
 ]
 
 
-### traversal_stats.json
+### final_traversal_stats.json
 
 {
   "timestamp": "2025-08-13T14:22:31",
@@ -570,7 +570,7 @@ def compute_hop_metrics(
 
 
 def save_traversal_result( # helper for run_dev_set()
-    query_id,
+    question_id,
     gold_passages,
     visited_passages,
     ccount,
@@ -586,7 +586,7 @@ def save_traversal_result( # helper for run_dev_set()
     hop_trace_with_metrics, final_metrics = compute_hop_metrics(hop_trace, gold_passages)
 
     result_entry = {
-        "query_id": query_id,
+        "question_id": question_id,
         "gold_passages": gold_passages,
         "visited_passages": list(visited_passages),
         "visit_counts": dict(ccount),
@@ -626,17 +626,19 @@ def run_traversal(
     Outputs:
     - visited_passages.json: ✅ Used downstream (answer generation, reranking)
     - per_query_traversal_results.jsonl: 🔍 Full per-query trace and metrics
-    - traversal_stats.json: 📈 Aggregate traversal metrics across the query set
+    - final_traversal_stats.json: 📈 Aggregate traversal metrics across the query set
     """
+
+    output_paths["base".mkdir(parents=True, exist_ok=True)]
         
     all_selected_passages = set()
 
     for entry in query_data:
-        query_id = entry["query_id"]
+        question_id = entry["question_id"]
         query_text = entry["question"]
         gold_passages = entry["gold_passages"]
 
-        print(f"\n[Query] {query_id} - \"{query_text}\"")
+        print(f"\n[Query] {question_id} - \"{query_text}\"")
 
         # --- Embed query ---
         query_emb = emb_model.encode(query_text, normalize_embeddings=True)
@@ -677,7 +679,7 @@ def run_traversal(
 
         # --- Save per-query JSONL ---
         save_traversal_result(
-            query_id=query_id,
+            question_id=question_id,
             gold_passages=gold_passages,
             visited_passages=visited_passages,
             ccount=ccount,
@@ -692,6 +694,7 @@ def run_traversal(
         all_selected_passages.update(visited_passages)
 
     # --- Save selected_passages.json ---
+    output_paths["visited_passages"].parent.mkdir(parents=True, exist_ok=True)
     with open(output_paths["visited_passages"], "wt", encoding="utf-8") as f:
         json.dump(sorted(all_selected_passages), f, indent=2)
 
@@ -726,7 +729,7 @@ def compute_traversal_summary(
     with open(results_path, "rt", encoding="utf-8") as f:
         for line in f:
             entry = json.loads(line)
-            if include_ids is not None and entry["query_id"] not in include_ids:
+            if include_ids is not None and entry["question_id"] not in include_ids:
                 continue
 
             total_queries += 1
@@ -818,7 +821,10 @@ if __name__ == "__main__":
         passage_emb = np.load(paths["passages_emb"])
         passage_index = faiss.read_index(paths["passages_index"])
         query_path = processed_dataset_paths(dataset, SPLIT)["questions"]
-        query_data_full = list(load_jsonl(query_path))
+        query_data_full = [
+            {**q, "query_id": q["question_id"]}
+            for q in load_jsonl(query_path)
+        ]
 
         for model in MODELS:
 
@@ -842,11 +848,11 @@ if __name__ == "__main__":
                     resume=RESUME,
                     out_path=str(output_paths["results"]),
                     items=query_data_full,
-                    get_id=lambda q, i: q["query_id"],
+                    get_id=lambda q, i: q["question_id"],
                     phase_label=f"Traversal ({variant})",
-                    id_field="query_id",
+                    id_field="question_id",
                 )
-                remaining_queries = [q for q in query_data_full if q["query_id"] not in done_ids]
+                remaining_queries = [q for q in query_data_full if q["question_id"] not in done_ids]
                 if not remaining_queries:
                     print("No new queries to process.")
                     continue
@@ -866,7 +872,7 @@ if __name__ == "__main__":
                     traversal_alg=trav_alg,
                 )
 
-                new_ids = {q["query_id"] for q in remaining_queries}
+                new_ids = {q["question_id"] for q in remaining_queries}
                 traversal_metrics = compute_traversal_summary(
                     output_paths["results"], include_ids=new_ids
                 )

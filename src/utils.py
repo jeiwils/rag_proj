@@ -320,9 +320,9 @@ def get_traversal_paths(model, dataset, split, variant):
     base = Path(f"data/graphs/{model}/{dataset}/{split}/{variant}/traversal")
     return {
         "base": base,
-        "results": base / f"traversal_per_query_{variant}_{split}.jsonl",
-        "visited_passages": base / f"all_visited_passages_{variant}_{split}.json",
-        "stats": base / f"summary_metrics_{variant}_{split}.json",
+        "results": base / "per_query_traversal_results.jsonl",
+        "visited_passages": base / "visited_passages.json",
+        "stats": base / "final_traversal_stats.json",
     }
 
 
