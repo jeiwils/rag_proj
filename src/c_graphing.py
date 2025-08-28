@@ -105,7 +105,6 @@ Edge:
 
 {
   "timestamp": "2025-08-13T14:22:31",
-  "total_queries": 100,
   "graph_eval": {
     "avg_node_degree": 1.43,
     "node_degree_variance": 0.97,
@@ -131,7 +130,6 @@ Edge:
 
 {
   "dataset": "hotpot_train",
-  "iteration": 12,
   "timestamp": "2025-08-13T14:22:31",
   "params": {
     "top_k": 50,
@@ -480,9 +478,8 @@ def basic_graph_eval(
 
 
 
-def append_global_result( 
+def append_global_result(
     save_path: str,
-    total_queries: int,
     graph_eval: Optional[Dict] = None,
     traversal_eval: Optional[Dict] = None,
     answer_eval: Optional[Dict] = None,
@@ -494,7 +491,6 @@ def append_global_result(
     """
     result = {
         "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-        "total_queries": total_queries
     }
 
     if graph_eval:
@@ -524,7 +520,6 @@ def graph_stats(
     G: nx.DiGraph,
     save_path: str = None, # input save path if you want to save
     params: dict = None,
-    iteration: int = None,
     dataset: str = None
 ) -> dict:
     """
@@ -542,7 +537,6 @@ def graph_stats(
 
     stats = {
         "dataset": dataset if dataset else "unknown",
-        "iteration": iteration if iteration is not None else 0,
         "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         "params": params if params else {},
 
@@ -612,8 +606,6 @@ def run_graph_pipeline(
     iqoq_file: str = None,
     top_k: int = None,
     sim_threshold: float = None,
-    total_queries: int = 0,
-    iteration: int = 0,
     save_graph: bool = True,
     save_graphml: bool = False,
     resume: bool = True,
@@ -699,7 +691,6 @@ def run_graph_pipeline(
     os.makedirs("outputs", exist_ok=True)
     append_global_result(
         save_path=global_path,
-        total_queries=total_queries,
         graph_eval=graph_eval,
         extra_metadata={
             "mode": "standard_pipeline",
@@ -720,7 +711,6 @@ def run_graph_pipeline(
         G,
         save_path=stats_path,
         params=DEFAULT_PARAMS,
-        iteration=iteration,
         dataset=f"{dataset}_{split}",
     )
 
@@ -759,9 +749,6 @@ if __name__ == "__main__":
     VARIANTS = ["baseline", "enhanced"]
     SPLIT    = "dev"
 
-    total_queries = 100
-    iteration = 12
-
     for dataset in DATASETS: ############## I NEED TO MAKE THESE FOR LOOPS LOGICAL AND COHESIVE ACROSS MODULES 
         for model in MODELS:
             for variant in VARIANTS:
@@ -777,8 +764,6 @@ if __name__ == "__main__":
                     iqoq_file=None,
                     top_k=50, #################### THIS SHOULD BE SET SOMEWHERE GLOBALLY
                     sim_threshold=0.60,  #################### THIS SHOULD BE SET SOMEWHERE GLOBALLY,
-                    total_queries=total_queries,
-                    iteration=iteration,
                     save_graph=True,
                     save_graphml=False,
                 )

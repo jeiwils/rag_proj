@@ -75,7 +75,7 @@ File Schema
 ### traversal_stats.json
 
 {
-  "total_queries": int,
+  "timestamp": "2025-08-13T14:22:31",
   "traversal_eval": {
     "mean_precision": float,
     "mean_recall": float,
@@ -808,7 +808,6 @@ if __name__ == "__main__":
                 )
                 append_global_result(
                     save_path=output_paths["stats"],
-                    total_queries=len(new_ids),
                     traversal_eval=traversal_metrics
                 )
 
