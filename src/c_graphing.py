@@ -210,7 +210,7 @@ from src.b_sparse_dense_representations import (
 
 from src.utils import load_jsonl, save_jsonl, append_jsonl
 from src.utils import compute_resume_sets
-import gzip
+
 
 from pathlib import Path
 
@@ -320,45 +320,6 @@ def build_edges(
 
 
 
-####
-
-
-
-
-
-# # Make edges.jsonl
-# edges = build_edges(
-#     oq_metadata=iqoq_metadata,
-#     iq_metadata=iqoq_metadata,
-#     oq_emb=iqoq_emb,
-#     iq_emb=iqoq_emb,
-#     iq_index=iq_index,
-#     top_k=MAX_NEIGHBOURS,
-#     sim_threshold=SIM_THRESHOLD,
-#     output_jsonl="train/hotpot_edges.jsonl"
-# )
-
-
-#
-# { {dataset}_edges.jsonl
-#   "oq_id": "hotpot_001_sent1_oq1",
-#   "oq_parent": "hotpot_001_sent1",
-#   "oq_vec_id": 12,
-#   "oq_text": "What year was the Battle of Hastings?", #include text for LLM to query - saves accessing another file 
-#
-#   "iq_id": "hotpot_002_sent4_iq0",
-#   "iq_parent": "hotpot_002_sent4",
-#   "iq_vec_id": 37,
-#
-#   "sim_cos": 0.72,
-#   "sim_jaccard": 0.56,
-#   "sim_hybrid": 0.64
-# }
-#
-
-
-
-####
 
 
 
@@ -596,7 +557,7 @@ def run_graph_pipeline(
     iqoq_md = list(load_jsonl(q_path))   ## mmap_mode=r ?
 
     iqoq_emb = np.load(model_paths["iqoq_emb"])
-    
+
     # ---------- 2) Load FAISS index ----------
     iq_index = load_faiss_index(model_paths["iqoq_index"])
 
