@@ -100,7 +100,7 @@ File Schema
 # - 2) enhanced hoprag traversal algorithm (allows node revists - no edge revisits)
 
 
-from src.utils import get_traversal_paths, append_jsonl, load_jsonl
+from src.utils import get_traversal_paths, append_jsonl, load_jsonl, processed_dataset_paths
 
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Callable, Set
@@ -816,7 +816,8 @@ if __name__ == "__main__":
         passage_metadata = list(load_jsonl(paths["passages_jsonl"]))
         passage_emb = np.load(paths["passages_emb"])
         passage_index = faiss.read_index(paths["passages_index"])
-        query_data_full = [json.loads(line) for line in open(f"{dataset}_{SPLIT}.jsonl")]
+        query_path = processed_dataset_paths(dataset, SPLIT)["questions"]
+        query_data_full = list(load_jsonl(query_path))
 
         for model in MODELS:
 

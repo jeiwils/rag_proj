@@ -116,6 +116,8 @@ from src.utils import (
     get_traversal_paths,
     append_jsonl,
     processed_dataset_paths,
+    SERVER_CONFIGS,
+    save_jsonl
 )
 
 from typing import List, Dict, Optional, Tuple
@@ -134,7 +136,6 @@ from pathlib import Path
 from src.utils import load_jsonl
 from src.b_sparse_dense_representations import dataset_rep_paths, load_faiss_index
 from src.a2_text_prep import query_llm, strip_think, is_r1_like
-from src.utils import SERVER_CONFIGS
 from src.d_traversal import (
     select_seed_passages,
     run_dev_set,
@@ -252,6 +253,15 @@ def ask_llm_with_passages(
 
 
 
+
+
+
+
+
+
+
+
+
 def compute_exact_match(
         pred: str, 
         gold: str
@@ -316,7 +326,102 @@ def evaluate_answers(
 
 
 
+def generate_answers_from_traversal(
+    model: str,
+    dataset: str,
+    split: str,
+    variant: str,
+    top_k: int = TOP_K_ANSWER_PASSAGES,
+    server_url: str | None = None,
+    model_name: str | None = None,
+) -> Dict[str, float]:
+    """Generate answers from pre-computed traversal outputs.
 
+    Parameters
+    ----------
+    model, dataset, split, variant:
+        Identify the traversal directory produced by :mod:`d_traversal`.
+    top_k:
+        Number of passages to supply to the LLM per query.
+    server_url, model_name:
+        LLM server configuration. Defaults to the first entry in
+        :data:`SERVER_CONFIGS` when not provided.
+
+    Returns
+    -------
+    Dict[str, float]
+        Evaluation metrics (EM/F1) over the generated answers.
+    """
+
+    if server_url is None or model_name is None:
+        server = SERVER_CONFIGS[0]
+        server_url = server_url or server["server_url"]
+        model_name = model_name or server["model"]
+
+    traversal_paths = get_traversal_paths(model, dataset, split, variant)
+    result_paths = get_result_paths(model, dataset, split, variant)
+
+    traversal_file = traversal_paths["results"]
+    graph_file = (
+        Path("data")
+        / "graphs"
+        / model
+        / dataset
+        / split
+        / variant
+        / f"{dataset}_{split}_graph.gpickle"
+    )
+    query_file = processed_dataset_paths(dataset, split)["questions"]
+
+    traversal_records = {r["query_id"]: r for r in load_jsonl(traversal_file)}
+    graph = nx.read_gpickle(graph_file)
+    passage_lookup = {pid: data.get("text", "") for pid, data in graph.nodes(data=True)}
+    queries = {q["question_id"]: q for q in load_jsonl(query_file)}
+
+    answers: List[Dict] = []
+    predictions: Dict[str, str] = {}
+    gold: Dict[str, List[str]] = {}
+
+    for qid, t_entry in traversal_records.items():
+        q = queries[qid]
+        question = q["question"]
+        gold[qid] = [q.get("gold_answer", "")]
+
+        helpful = sorted(
+            t_entry.get("helpful_passages", []),
+            key=lambda x: x["score"],
+            reverse=True,
+        )
+        top_passages = [h["passage_id"] for h in helpful[:top_k]]
+
+        llm_out = ask_llm_with_passages(
+            query_text=question,
+            passage_ids=top_passages,
+            graph=None,
+            server_url=server_url,
+            passage_lookup=passage_lookup,
+            model_name=model_name,
+        )
+
+        answers.append(
+            {
+                "query_id": qid,
+                "question": question,
+                "raw_answer": llm_out["raw_answer"],
+                "normalised_answer": llm_out["normalised_answer"],
+                "used_passages": top_passages,
+            }
+        )
+        predictions[qid] = llm_out["normalised_answer"]
+
+    result_paths["base"].mkdir(parents=True, exist_ok=True)
+    save_jsonl(result_paths["answers"], answers)
+
+    metrics = evaluate_answers(predictions, gold)
+    with open(result_paths["summary"], "wt", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2)
+
+    return metrics
 
 
 
