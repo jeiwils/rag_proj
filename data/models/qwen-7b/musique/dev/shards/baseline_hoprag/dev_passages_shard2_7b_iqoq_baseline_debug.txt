@@ -1,0 +1,8 @@
+Total passages processed: 0
+Skipped due to resume: 4999
+Model used: qwen-7b
+Model size: 7b
+Dataset: musique
+Split: dev
+Phase: iqoq_baseline
+Total time taken: 0.06 seconds

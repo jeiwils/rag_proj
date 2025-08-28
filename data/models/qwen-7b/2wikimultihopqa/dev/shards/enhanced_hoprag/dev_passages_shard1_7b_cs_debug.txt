@@ -1,0 +1,8 @@
+Total passages processed: 0
+Skipped due to resume: 7995
+Model used: qwen-7b
+Model size: 7b
+Dataset: 2wikimultihopqa
+Split: dev
+Phase: cs
+Total time taken: 0.04 seconds
