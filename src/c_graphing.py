@@ -194,10 +194,14 @@ import os
 from typing import List, Dict, Optional
 
 import numpy as np
-import networkx as nx
 from tqdm import tqdm
 from datetime import datetime
 import json
+import networkx as nx
+from networkx.readwrite import gpickle as _gp
+from networkx.readwrite import graphml as _gml
+
+
 
 from src.b_sparse_dense_representations import (
     DEFAULT_PARAMS,
@@ -217,6 +221,9 @@ from src.utils import compute_resume_sets
 from pathlib import Path
 
 
+
+################ any point in this stuff??? How do I usually define this in the first 3 modules? 
+
 DATASET = "hotpot"
 SPLIT = "train"
 MODEL = "qwen-7b"
@@ -231,7 +238,7 @@ IQOQ_PATH = iqoq_paths["iqoq_jsonl"]
 iqoq_emb_path = iqoq_paths["iqoq_emb"]
 
 
-
+###################################################
 
 
 
@@ -641,12 +648,14 @@ def run_graph_pipeline(
 
     # ---------- 7) Optional graph saves ----------
     graph_gpickle = str(graph_paths["graph_gpickle"])
-    graph_graphml = str(graph_paths["graph_gpickle"]).replace(".gpickle", ".graphml")
+    graph_graphml = graph_gpickle.replace(".gpickle", ".graphml")
+
     if save_graph:
-        nx.write_gpickle(G, graph_gpickle)
+        _gp.write_gpickle(G, graph_gpickle)
         print(f"[Graph] Saved -> {graph_gpickle}")
+
     if save_graphml:
-        nx.write_graphml(G, graph_graphml)
+        _gml.write_graphml(G, graph_graphml)
         print(f"[Graph] Saved -> {graph_graphml}")
 
     return {
