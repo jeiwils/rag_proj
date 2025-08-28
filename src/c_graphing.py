@@ -269,20 +269,40 @@ def graph_output_paths(
 
 
 
+# def build_edges(
+#     oq_metadata: List[Dict],
+#     iq_metadata: List[Dict],
+#     oq_emb: np.ndarray,
+#     iq_index,
+#     top_k: int = 50, # highest cosine sim iqs considered per oq
+#     sim_threshold = 0.65,
+#     output_jsonl: str = None
+# ) -> List[Dict]:
+#     """
+#     Build final OQ→IQ edges by:
+#     1. FAISS top_k retrieval
+#     2. Compute hybrid similarity
+#     3. Keep only the single highest-scoring IQ per OQ
+#     """
+
 def build_edges(
     oq_metadata: List[Dict],
-    iq_metadata: List[Dict],
+    iqoq_metadata: List[Dict],
     oq_emb: np.ndarray,
     iq_index,
-    top_k: int = 50, # highest cosine sim iqs considered per oq
-    sim_threshold = 0.65,
-    output_jsonl: str = None
+    top_k: int = 50,  # highest cosine sim iqs considered per oq
+    sim_threshold=0.65,
+    output_jsonl: str = None,
 ) -> List[Dict]:
-    """
-    Build final OQ→IQ edges by:
-    1. FAISS top_k retrieval
+    """Build final OQ→IQ edges.
+
+    1. FAISS ``top_k`` retrieval against an index containing all IQ/OQ vectors
     2. Compute hybrid similarity
     3. Keep only the single highest-scoring IQ per OQ
+
+    ``iqoq_metadata`` must be aligned with the FAISS index. Retrieved
+    candidates whose metadata ``type`` is not ``"IQ"`` are skipped so OQs
+    are only compared against IQs.
     """
     edges = []
 
@@ -297,7 +317,9 @@ def build_edges(
 
         candidate_edges = []
         for rank, iq_idx in enumerate(idxs):
-            iq = iq_metadata[iq_idx]
+            iq = iqoq_metadata[iq_idx]
+            if iq.get("type") != "IQ":
+                continue
             sim_cos = float(scores[rank])  # FAISS cosine
             sim_jac = jaccard_similarity(set(oq["keywords"]), set(iq["keywords"]))
             sim_hybrid = 0.5 * (sim_cos + sim_jac)
@@ -554,7 +576,7 @@ def run_graph_pipeline(
     Full pipeline:
         1) Load passage metadata/embeddings from the dataset folder and IQ/OQ
          metadata/embeddings from the model-specific folder
-        2) Load FAISS index for IQs
+        2) Load FAISS index for all IQ/OQ vectors
         3) build_edges(...) -> save edges jsonl
         4) build_networkx_graph(passages, edges)
         5) basic_graph_eval + append_global_result
@@ -571,14 +593,14 @@ def run_graph_pipeline(
 
     iqoq_emb = np.load(model_paths["iqoq_emb"])
 
-    # ---------- 2) Load FAISS index ----------
+    # ---------- 2) Load FAISS index over all IQ/OQ vectors ----------
     iq_index = load_faiss_index(model_paths["iqoq_index"])
+    oq_items = [q for q in iqoq_md if q.get("type") == "OQ"]
 
     # ---------- 3) Build edges with optional resume ----------
     graph_paths = graph_output_paths(model, dataset, split, variant)
     edges_out = str(graph_paths["edges"])
 
-    oq_items = [q for q in iqoq_md if q.get("type") == "OQ"]
     done_ids, _ = compute_resume_sets(
         resume=resume,
         out_path=edges_out,
@@ -592,7 +614,7 @@ def run_graph_pipeline(
 
     new_edges = build_edges(
         oq_metadata=oq_to_process,
-        iq_metadata=iqoq_md,
+        iqoq_metadata=iqoq_md,
         oq_emb=iqoq_emb,
         iq_index=iq_index,
         top_k=top_k if top_k is not None else MAX_NEIGHBOURS,

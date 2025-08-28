@@ -28,6 +28,7 @@ bin/
 # keep big artifacts local by default
 data/raw_datasets/
 data/models/*
+data/graphs/*
 data/representations/models/*
 *.faiss
 *.npy
