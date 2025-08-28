@@ -112,13 +112,13 @@ from src.b_sparse_dense_representations import (
     dataset_rep_paths,
     get_embedding_model,
 )
-from src.c_graphing import append_global_result, ALPHA, basic_graph_eval
+from src.c_graphing import append_global_result, DEFAULT_ALPHA, basic_graph_eval
 import faiss
 import networkx as nx
 from collections import defaultdict
 import json
 from pathlib import Path
-
+from src.e_reranking_answer_gen import rerank_passages_by_helpfulness
 
 traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
 
@@ -188,10 +188,11 @@ def select_seed_passages(  # helper for run_dev_set()
 ### COMPONENT 2 - traversal 
 
 
-def llm_choose_edge(  # helper for multi_hop_graph_traverse_llm()
-        query_text: str,  # from multi_hop_graph_traverse_llm() # the llm reads the query
-        passage_text: str,  # form build_edges() -> build_networkx_graph() # the llm reads the passages
-        candidate_edges: list,  # from multi_hop_graph_traverse_llm() # then the llm considers all possible OQs in the outgoing edges
+def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
+        query_text: str,  # from hoprag_traversal_algorithm() - the llm reads the query
+        passage_text: str,  # from build_edges() -> build_networkx_graph() - the llm reads the passages
+        candidate_edges: list,  # from hoprag_traversal_algorithm()
+        # then the llm considers all possible OQs in the outgoing edges
         server_configs: list  # from arg. in multi_hop_traverse()
         ):
     """
@@ -397,7 +398,7 @@ def traverse_graph(
     n_hops: int,
     server_configs: list,
     traversal_alg: Callable,  # custom algorithm step (edge + queueing logic)
-    alpha: float = ALPHA,
+    alpha: float = DEFAULT_ALPHA,
 ):
     """Traverse the graph while recording query similarity for visited passages."""
 
@@ -570,7 +571,6 @@ def run_traversal(
     - traversal_stats.json: 📈 Aggregate traversal metrics across the query set
     """
         
-    all_traversals = []
     all_selected_passages = set()
 
     for entry in query_data:
@@ -610,8 +610,6 @@ def run_traversal(
 
         print(f"[Traversal] Visited {len(visited_passages)} passages (None={stats['none_count']}, Repeat={stats['repeat_visit_count']})")
 
-        from src.e_reranking_answer_gen import rerank_passages_by_helpfulness
-
         helpful_passages = rerank_passages_by_helpfulness(
             candidate_passages=visited_passages,
             query_text=query_text,
@@ -632,10 +630,7 @@ def run_traversal(
         )
 
         # --- Accumulate traversal + selected passages ---
-        all_traversals.append({
-            "query_id": query_id,
-            "hop_trace": hop_trace
-        })
+
         all_selected_passages.update(visited_passages)
 
     # --- Save selected_passages.json ---
@@ -688,11 +683,18 @@ def compute_traversal_summary(
             # Coverage at hop 0 (seed retrieval)
             gold_set = set(entry["gold_passages"])
 
-            hop0_passages = set(entry["hop_trace"][0]["expanded_from"])
-            if hop0_passages & gold_set:
-                initial_retrieval_coverage += 1
-                first_gold_hop = 0
+
+            # what does this do?????
+            hop_trace = entry.get("hop_trace", [])
+            if hop_trace:
+                hop0_passages = set(hop_trace[0].get("expanded_from", []))
+                if hop0_passages & gold_set:
+                    initial_retrieval_coverage += 1
+                    first_gold_hop = 0
+                else:
+                    first_gold_hop = None
             else:
+                # No hops were taken; treat coverage as zero
                 first_gold_hop = None
 
             for hop_log in entry["hop_trace"]:
@@ -735,10 +737,12 @@ def compute_traversal_summary(
 
 
 if __name__ == "__main__":
+
     # Configuration lists
-    DATASETS = ["hotpot"]
+    DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     MODELS = ["qwen-7b"]
     VARIANTS = ["baseline", "enhanced"]
+
     RESUME = True
     SPLIT = "dev"
 
@@ -797,7 +801,7 @@ if __name__ == "__main__":
                     server_configs=SERVER_CONFIGS,
                     output_paths=output_paths,
                     seed_top_k=TOP_K_SEED_PASSAGES,
-                    alpha=ALPHA,
+                    alpha=DEFAULT_ALPHA,
                     n_hops=NUMBER_HOPS,
                     traversal_alg=trav_alg,
                 )
