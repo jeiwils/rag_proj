@@ -1,15 +1,13 @@
 """
 Module Overview
 ---------------
-Run multi-hop traversal over a QA dataset using LLM-guided graph expansion.
+Generate answers from *precomputed traversal results*.
 
-This script performs seeded retrieval for each question, then expands through
-a directed graph of OQ→IQ edges using a local LLM to guide traversal. Results 
-are saved per query and summarized globally.
-
-It supports both baseline traversal (no node revisits) and enhanced traversal 
-(allowing node revisits but not edge revisits). Outputs are stored *inside the 
-graph variant directory* alongside the graph structure and edge logs.
+This script never runs traversal. It only:
+1. Loads per-query traversal results (helpful_passages).
+2. Fetches passage text from the graph.
+3. Asks the LLM to generate answers using top-k passages.
+4. Saves predictions + EM/F1 evaluation.
 
 
 Inputs
@@ -18,21 +16,13 @@ Inputs
 ### data/graphs/{model}/{dataset}/{split}/{variant}/
 
 - `{dataset}_{split}_graph.gpickle`
-    Directed NetworkX graph. Nodes = passages, edges = OQ→IQ links.
+    Directed NetworkX graph (needed only for passage text lookup).
 
-### WILL THIS ALSO NEED INPUT FROM THE ACTUAL EDGES AND NODES.jsonl? ################################## 
-
-### data/representations/datasets/{dataset}/{split}/
-
-- `{dataset}_passages_emb.npy`, `{dataset}_faiss_passages.faiss`, `{dataset}_passages.jsonl`
-    Dense passage embeddings, FAISS index, and passage metadata (including keywords and IDs).
+- `traversal/per_query_traversal_results.jsonl`
+    Saved traversal results with helpful_passages per query.
 
 ### data/processed_datasets/{dataset}/{split}/questions.jsonl
-
-- Query set (e.g., dev split) with:
-    - `question_id`: unique identifier
-    - `question`: question text
-    - `gold_passages`: list of passage IDs with relevant information
+    Query set with `question_id`, `question`, and `gold_answer(s)`.
 
 Outputs
 -------
@@ -127,21 +117,15 @@ import os
 import re
 import string
 
-import numpy as np
-import faiss
+
+
 import networkx as nx
-from sentence_transformers import SentenceTransformer
+import pickle 
 
 from pathlib import Path
 from src.utils import load_jsonl
-from src.b_sparse_dense_representations import dataset_rep_paths, load_faiss_index
 from src.a2_text_prep import query_llm, strip_think, is_r1_like
-from src.d_traversal import (
-    select_seed_passages,
-    run_dev_set,
-    hoprag_traversal_algorithm,
-    enhanced_traversal_algorithm,
-)
+
 
 
 
@@ -444,161 +428,161 @@ def sweep_thresholds(edges: List[Dict], thresholds: List[float]):
 
 
 
-def run_dense_rag_baseline(
-    query_data: List[Dict],
-    passage_metadata: List[Dict],
-    passage_emb: np.ndarray,
-    passage_index,
-    emb_model,
-    server_configs: List[Dict] = SERVER_CONFIGS,
-    output_path=None,
-    seed_top_k=50,
-    alpha=0.5
-):
-    """
-    Dense RAG baseline: 
-    - retrieve top-k by cosine/Jaccard hybrid
-    - no traversal or graph
-    - rerank by cosine + jaccard
-    - generate answer
-    """
-    if output_path is None:
-        raise ValueError("output_path must be provided to run_dense_rag_baseline")
+# def run_dense_rag_baseline(
+#     query_data: List[Dict],
+#     passage_metadata: List[Dict],
+#     passage_emb: np.ndarray,
+#     passage_index,
+#     emb_model,
+#     server_configs: List[Dict] = SERVER_CONFIGS,
+#     output_path=None,
+#     seed_top_k=50,
+#     alpha=0.5
+# ):
+#     """
+#     Dense RAG baseline: 
+#     - retrieve top-k by cosine/Jaccard hybrid
+#     - no traversal or graph
+#     - rerank by cosine + jaccard
+#     - generate answer
+#     """
+#     if output_path is None:
+#         raise ValueError("output_path must be provided to run_dense_rag_baseline")
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "wt", encoding="utf-8") as f:
-        pass  # Clear file before writing
+#     os.makedirs(os.path.dirname(output_path), exist_ok=True)
+#     with open(output_path, "wt", encoding="utf-8") as f:
+#         pass  # Clear file before writing
 
-    for entry in query_data:
-        query_id = entry["question_id"]
-        query_text = entry["question"]
-        gold_answer = entry["gold_answer"]
-        gold_normalised = normalise_answer(gold_answer)
+#     for entry in query_data:
+#         query_id = entry["question_id"]
+#         query_text = entry["question"]
+#         gold_answer = entry["gold_answer"]
+#         gold_normalised = normalise_answer(gold_answer)
 
-        print(f"\n[Dense RAG] {query_id} - \"{query_text}\"")
+#         print(f"\n[Dense RAG] {query_id} - \"{query_text}\"")
 
-        # --- Embed query ---
-        query_emb = emb_model.encode(query_text, normalize_embeddings=True)
+#         # --- Embed query ---
+#         query_emb = emb_model.encode(query_text, normalize_embeddings=True)
 
-        # --- Retrieve top-k seed passages ---
-        seed_passages = select_seed_passages(
-            query_text=query_text,
-            query_emb=query_emb,
-            passage_metadata=passage_metadata,
-            passage_index=passage_index,
-            seed_top_k=seed_top_k,
-            alpha=alpha
-        )
+#         # --- Retrieve top-k seed passages ---
+#         seed_passages = select_seed_passages(
+#             query_text=query_text,
+#             query_emb=query_emb,
+#             passage_metadata=passage_metadata,
+#             passage_index=passage_index,
+#             seed_top_k=seed_top_k,
+#             alpha=alpha
+#         )
 
-        print(f"[Retrieved] {len(seed_passages)} passages")
+#         print(f"[Retrieved] {len(seed_passages)} passages")
 
-        # --- Generate answer from top passages ---
-        llm_output = ask_llm_with_passages(
-            query_text=query_text,
-            passage_ids=seed_passages,
-            graph=None,  # don't use graph — will look up text manually below
-            server_url=server_configs[0]["server_url"],
-            max_tokens=128,
-            model_name=server_configs[0]["model"]
-        )
+#         # --- Generate answer from top passages ---
+#         llm_output = ask_llm_with_passages(
+#             query_text=query_text,
+#             passage_ids=seed_passages,
+#             graph=None,  # don't use graph — will look up text manually below
+#             server_url=server_configs[0]["server_url"],
+#             max_tokens=128,
+#             model_name=server_configs[0]["model"]
+#         )
 
-        pred_answer = llm_output["normalised_answer"]
-        raw_answer = llm_output["raw_answer"]
+#         pred_answer = llm_output["normalised_answer"]
+#         raw_answer = llm_output["raw_answer"]
 
-        # --- Evaluate ---
-        em = compute_exact_match(pred_answer, gold_normalised)
-        f1 = compute_f1(pred_answer, gold_normalised)
+#         # --- Evaluate ---
+#         em = compute_exact_match(pred_answer, gold_normalised)
+#         f1 = compute_f1(pred_answer, gold_normalised)
 
-        # --- Save ---
-        result = {
-            "query_id": query_id,
-            "question": query_text,
-            "gold_answer": gold_answer,
-            "predicted_answer": raw_answer,
-            "normalised_pred": pred_answer,
-            "normalised_gold": gold_normalised,
-            "retrieved_passages": seed_passages,
-            "EM": em,
-            "F1": round(f1, 4),
-            "method": "dense_rag"
-        }
+#         # --- Save ---
+#         result = {
+#             "query_id": query_id,
+#             "question": query_text,
+#             "gold_answer": gold_answer,
+#             "predicted_answer": raw_answer,
+#             "normalised_pred": pred_answer,
+#             "normalised_gold": gold_normalised,
+#             "retrieved_passages": seed_passages,
+#             "EM": em,
+#             "F1": round(f1, 4),
+#             "method": "dense_rag"
+#         }
 
-        append_jsonl(output_path, result)
+#         append_jsonl(output_path, result)
 
-    print(f"\n[Done] Saved dense RAG results to {output_path}")
+#     print(f"\n[Done] Saved dense RAG results to {output_path}")
 
 
 
-def run_pipeline(
-    mode: str,
-    query_data: List[Dict],
-    graph: Optional[nx.DiGraph],
-    passage_metadata: List[Dict],
-    passage_emb: np.ndarray,
-    passage_index,
-    emb_model,
-    server_configs: List[Dict] = SERVER_CONFIGS,
-    output_path="results/dev_results.jsonl",
-    seed_top_k=50,
-    alpha=0.5,
-    n_hops=2
-):
-    """
-    Dispatcher to run any of the 3 pipelines:
-    - 'dense': Dense-only baseline (no graph)
-    - 'hoprag': Standard HopRAG
-    - 'enhanced': Enhanced HopRAG
-    """
-    output_paths = {
-        "results": Path(output_path),
-        "visited_passages": Path(output_path).with_name("visited_passages.json"),
-        "stats": Path(output_path).with_name("traversal_stats.json"),
-    }
+# def run_pipeline(
+#     mode: str,
+#     query_data: List[Dict],
+#     graph: Optional[nx.DiGraph],
+#     passage_metadata: List[Dict],
+#     passage_emb: np.ndarray,
+#     passage_index,
+#     emb_model,
+#     server_configs: List[Dict] = SERVER_CONFIGS,
+#     output_path="results/dev_results.jsonl",
+#     seed_top_k=50,
+#     alpha=0.5,
+#     n_hops=2
+# ):
+#     """
+#     Dispatcher to run any of the 3 pipelines:
+#     - 'dense': Dense-only baseline (no graph)
+#     - 'hoprag': Standard HopRAG
+#     - 'enhanced': Enhanced HopRAG
+#     """
+#     output_paths = {
+#         "results": Path(output_path),
+#         "visited_passages": Path(output_path).with_name("visited_passages.json"),
+#         "stats": Path(output_path).with_name("traversal_stats.json"),
+#     }
 
-    if mode == "dense":
-        run_dense_rag_baseline(
-            query_data=query_data,
-            passage_metadata=passage_metadata,
-            passage_emb=passage_emb,
-            passage_index=passage_index,
-            emb_model=emb_model,
-            server_configs=server_configs,
-            output_path=output_path,
-            seed_top_k=seed_top_k,
-            alpha=alpha
-        )
-    elif mode == "hoprag":
-        run_dev_set(
-            query_data=query_data,
-            graph=graph,
-            passage_metadata=passage_metadata,
-            passage_emb=passage_emb,
-            passage_index=passage_index,
-            emb_model=emb_model,
-            server_configs=server_configs,
-            output_paths=output_paths,
-            seed_top_k=seed_top_k,
-            alpha=alpha,
-            n_hops=n_hops,
-            traversal_alg=hoprag_traversal_algorithm,
-        )
-    elif mode == "enhanced":
-        run_dev_set(
-            query_data=query_data,
-            graph=graph,
-            passage_metadata=passage_metadata,
-            passage_emb=passage_emb,
-            passage_index=passage_index,
-            emb_model=emb_model,
-            server_configs=server_configs,
-            output_paths=output_paths,
-            seed_top_k=seed_top_k,
-            alpha=alpha,
-            n_hops=n_hops,
-            traversal_alg=enhanced_traversal_algorithm,
-        )
-    else:
-        raise ValueError(f"Unknown mode: {mode}")
+#     if mode == "dense":
+#         run_dense_rag_baseline(
+#             query_data=query_data,
+#             passage_metadata=passage_metadata,
+#             passage_emb=passage_emb,
+#             passage_index=passage_index,
+#             emb_model=emb_model,
+#             server_configs=server_configs,
+#             output_path=output_path,
+#             seed_top_k=seed_top_k,
+#             alpha=alpha
+#         )
+#     elif mode == "hoprag":
+#         run_dev_set(
+#             query_data=query_data,
+#             graph=graph,
+#             passage_metadata=passage_metadata,
+#             passage_emb=passage_emb,
+#             passage_index=passage_index,
+#             emb_model=emb_model,
+#             server_configs=server_configs,
+#             output_paths=output_paths,
+#             seed_top_k=seed_top_k,
+#             alpha=alpha,
+#             n_hops=n_hops,
+#             traversal_alg=hoprag_traversal_algorithm,
+#         )
+#     elif mode == "enhanced":
+#         run_dev_set(
+#             query_data=query_data,
+#             graph=graph,
+#             passage_metadata=passage_metadata,
+#             passage_emb=passage_emb,
+#             passage_index=passage_index,
+#             emb_model=emb_model,
+#             server_configs=server_configs,
+#             output_paths=output_paths,
+#             seed_top_k=seed_top_k,
+#             alpha=alpha,
+#             n_hops=n_hops,
+#             traversal_alg=enhanced_traversal_algorithm,
+#         )
+#     else:
+#         raise ValueError(f"Unknown mode: {mode}")
 
 
 
@@ -613,83 +597,98 @@ if __name__ == "__main__":
     MODELS = ["qwen-7b"]
     VARIANTS = ["baseline", "enhanced"]  # matches the traversal variants
 
-    emb_model = SentenceTransformer("BAAI/bge-base-en-v1.5")
-    server_configs = SERVER_CONFIGS
-    seed_top_k = 50
-    alpha = 0.5
-    n_hops = 2
+
 
     for dataset in DATASETS:
         for split in SPLITS:
-            # --- Load data for this dataset + split ---
-            rep_paths = dataset_rep_paths(dataset, split)
-            passage_metadata = list(load_jsonl(rep_paths["passages_jsonl"]))
-            passage_emb = np.load(rep_paths["passages_emb"])
-            passage_index = load_faiss_index(rep_paths["passages_index"])
-
-            query_path = str(processed_dataset_paths(dataset, split)["questions"])
-            query_data = list(load_jsonl(query_path))
-
             for model in MODELS:
-                # --- Run DENSE baseline ---
-                result_paths = get_result_paths(model, dataset, split, variant="baseline"
-                )  # Dense doesn't depend on variant but keep structure unified
-
-                print(
-                    f"[Run] dataset={dataset} model={model} variant=baseline split={split}"
-                )
-                run_pipeline(
-                    mode="dense",
-                    query_data=query_data,
-                    graph=None,
-                    passage_metadata=passage_metadata,
-                    passage_emb=passage_emb,
-                    passage_index=passage_index,
-                    emb_model=emb_model,
-                    server_configs=server_configs,
-                    output_path=result_paths["answers"],
-                    seed_top_k=seed_top_k,
-                    alpha=alpha,
-                )
-                print(
-                    f"[Done] dataset={dataset} model={model} variant=baseline split={split}"
-                )
-                # --- Run HopRAG and Enhanced ---
                 for variant in VARIANTS:
-                    print(
-                        f"[Run] dataset={dataset} model={model} variant={variant} split={split}"
-                    )
+                    print(f"[Answers-only] dataset={dataset} model={model} variant={variant} split={split}")
+                    metrics = generate_answers_from_traversal(model, dataset, split, variant)
+                    print(f"[Answers-only] {variant} EM={metrics['EM']:.2f} F1={metrics['F1']:.2f}")
+    print("\n✅ Answers-only complete.")
 
-                    graph_path = os.path.join(
-                        "data",
-                        "graphs",
-                        model,
-                        dataset,
-                        split,
-                        variant,
-                        f"{dataset}_{split}_graph.gpickle",
-                    )
+
+
+
+
+
+
+
+
+
+
+    # for dataset in DATASETS:
+    #     for split in SPLITS:
+    #         # --- Load data for this dataset + split ---
+    #         rep_paths = dataset_rep_paths(dataset, split)
+    #         passage_metadata = list(load_jsonl(rep_paths["passages_jsonl"]))
+    #         passage_emb = np.load(rep_paths["passages_emb"])
+    #         passage_index = load_faiss_index(rep_paths["passages_index"])
+
+    #         query_path = str(processed_dataset_paths(dataset, split)["questions"])
+    #         query_data = list(load_jsonl(query_path))
+
+    #         for model in MODELS:
+    #             # --- Run DENSE baseline ---
+    #             result_paths = get_result_paths(model, dataset, split, variant="baseline"
+    #             )  # Dense doesn't depend on variant but keep structure unified
+
+    #             print(
+    #                 f"[Run] dataset={dataset} model={model} variant=baseline split={split}"
+    #             )
+    #             run_pipeline(
+    #                 mode="dense",
+    #                 query_data=query_data,
+    #                 graph=None,
+    #                 passage_metadata=passage_metadata,
+    #                 passage_emb=passage_emb,
+    #                 passage_index=passage_index,
+    #                 emb_model=emb_model,
+    #                 server_configs=server_configs,
+    #                 output_path=result_paths["answers"],
+    #                 seed_top_k=seed_top_k,
+    #                 alpha=alpha,
+    #             )
+    #             print(
+    #                 f"[Done] dataset={dataset} model={model} variant=baseline split={split}"
+    #             )
+    #             # --- Run HopRAG and Enhanced ---
+    #             for variant in VARIANTS:
+    #                 print(
+    #                     f"[Run] dataset={dataset} model={model} variant={variant} split={split}"
+    #                 )
+
+    #                 graph_path = os.path.join(
+    #                     "data",
+    #                     "graphs",
+    #                     model,
+    #                     dataset,
+    #                     split,
+    #                     variant,
+    #                     f"{dataset}_{split}_graph.gpickle",
+    #                 )
                     
-                    graph = nx.read_gpickle(graph_path)
+    #                 graph = nx.read_gpickle(graph_path)
 
-                    result_paths = get_result_paths(model, dataset, split, variant)
+    #                 result_paths = get_result_paths(model, dataset, split, variant)
 
-                    run_pipeline(
-                        mode=variant,
-                        query_data=query_data,
-                        graph=graph,
-                        passage_metadata=passage_metadata,
-                        passage_emb=passage_emb,
-                        passage_index=passage_index,
-                        emb_model=emb_model,
-                        server_configs=server_configs,
-                        output_path=result_paths["answers"],
-                        seed_top_k=seed_top_k,
-                        alpha=alpha,
-                        n_hops=n_hops,
-                    )
-                    print(
-                        f"[Done] dataset={dataset} model={model} variant={variant} split={split}"
-                    )
+    #                 run_pipeline(
+    #                     mode=variant,
+    #                     query_data=query_data,
+    #                     graph=graph,
+    #                     passage_metadata=passage_metadata,
+    #                     passage_emb=passage_emb,
+    #                     passage_index=passage_index,
+    #                     emb_model=emb_model,
+    #                     server_configs=server_configs,
+    #                     output_path=result_paths["answers"],
+    #                     seed_top_k=seed_top_k,
+    #                     alpha=alpha,
+    #                     n_hops=n_hops,
+    #                 )
+    #                 print(
+    #                     f"[Done] dataset={dataset} model={model} variant={variant} split={split}"
+    #                 )
 
-    print("\n✅ All pipelines complete.")
+    # print("\n✅ All pipelines complete.")

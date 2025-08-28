@@ -118,6 +118,7 @@ import faiss
 import networkx as nx
 from collections import defaultdict
 import json
+import pickle 
 from pathlib import Path
 import numpy as np
 
@@ -830,7 +831,8 @@ if __name__ == "__main__":
                 graph_path = Path(
                     f"data/graphs/{model}/{dataset}/{SPLIT}/{variant}/{dataset}_{SPLIT}_graph.gpickle"
                 )
-                graph_obj = nx.read_gpickle(graph_path)
+                with open(graph_path, "rb") as f:
+                    graph_obj = pickle.load(f)
                 trav_alg = variant_cfg[variant]
 
                 output_paths = get_traversal_paths(model, dataset, SPLIT, variant)

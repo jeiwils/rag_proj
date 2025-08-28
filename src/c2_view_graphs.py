@@ -5,14 +5,15 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import networkx as nx
-
+import pickle
 
 def load_graph(path: Path) -> nx.Graph:
     ext = path.suffix.lower()
     if ext == ".gpickle":
         return nx.read_gpickle(path)
     if ext == ".graphml":
-        return nx.read_graphml(path)
+        with open(path, "rb") as f:
+            return pickle.load(f)
     raise ValueError(f"Unsupported graph format: {ext}")
 
 
