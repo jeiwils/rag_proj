@@ -198,8 +198,10 @@ from tqdm import tqdm
 from datetime import datetime
 import json
 import networkx as nx
-from networkx.readwrite import gpickle as _gp
-from networkx.readwrite import graphml as _gml
+
+
+
+
 
 
 
@@ -647,16 +649,22 @@ def run_graph_pipeline(
     )
 
     # ---------- 7) Optional graph saves ----------
+
     graph_gpickle = str(graph_paths["graph_gpickle"])
     graph_graphml = graph_gpickle.replace(".gpickle", ".graphml")
 
     if save_graph:
-        _gp.write_gpickle(G, graph_gpickle)
+        nx.write_gpickle(G, graph_gpickle)
         print(f"[Graph] Saved -> {graph_gpickle}")
 
     if save_graphml:
-        _gml.write_graphml(G, graph_graphml)
-        print(f"[Graph] Saved -> {graph_graphml}")
+        # write_graphml is available at top-level in modern NetworkX
+        if hasattr(nx, "write_graphml"):
+            nx.write_graphml(G, graph_graphml)
+            print(f"[Graph] Saved -> {graph_graphml}")
+        else:
+            print("[Graph] GraphML writer not available; skipping GraphML.")
+
 
     return {
         "graph": G,
