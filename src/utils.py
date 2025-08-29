@@ -10,7 +10,7 @@ import unicodedata
 from typing import Any, Callable, Dict, Hashable, Iterable, Iterator, List, Optional, Set, Tuple
 
 
-from multiprocessing import Process
+from multiprocessing import Process, Pool 
 
 
 from pathlib import Path
@@ -438,7 +438,33 @@ def run_multiprocess(
         p.join()
 
 
+def pool_map(
+    func: Callable,
+    items: Iterable,
+    processes: Optional[int] = None,
+):
+    """Map ``func`` across ``items`` using a :class:`multiprocessing.Pool`.
 
+    This helper mirrors :func:`run_multiprocess` to provide a consistent
+    multiprocessing interface across the codebase.
+
+    Parameters
+    ----------
+    func:
+        Callable executed for each item.
+    items:
+        Iterable of work items passed to ``func``.
+    processes:
+        Number of worker processes. Defaults to ``None`` which lets
+        ``multiprocessing.Pool`` decide.
+
+    Returns
+    -------
+    List
+        Results returned by ``func``.
+    """
+    with Pool(processes) as pool:
+        return pool.map(func, items)
 
 
 
@@ -461,4 +487,5 @@ __all__ = [
     "model_shard_dir",
     "model_shard_paths",
     "run_multiprocess",
+    "pool_map",
 ]

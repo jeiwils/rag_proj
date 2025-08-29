@@ -110,7 +110,7 @@ import string
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-import multiprocessing as mp
+from functools import partial
 import networkx as nx
 
 from src.a2_text_prep import is_r1_like, query_llm, strip_think
@@ -122,6 +122,7 @@ from src.utils import (
     load_jsonl,
     processed_dataset_paths,
     save_jsonl,
+    pool_map,
 )
 
 
@@ -336,6 +337,12 @@ def generate_answers_from_traversal(
     -------
     Dict[str, float]
         Evaluation metrics (EM/F1) over the generated answers.
+
+    Notes
+    -----
+    Shared data for worker processes is passed via ``functools.partial`` and
+    tasks are distributed using :func:`src.utils.pool_map` to avoid global
+    state and maintain consistent multiprocessing patterns.
     """
 
     if server_url is None or model_name is None:
@@ -376,9 +383,16 @@ def generate_answers_from_traversal(
         _MODEL_NAME = m_name
         _TOP_K = top_k
 
-    def _generate_answer(item: Tuple[str, Dict]):
+    def _generate_answer(
+        item: Tuple[str, Dict],
+        q_dict: Dict[str, Dict],
+        p_lookup: Dict[str, str],
+        s_url: str,
+        m_name: str,
+        top_k: int,
+    ) -> Tuple[str, Dict, str]:
         qid, t_entry = item
-        q = _QUERIES[qid]
+        q = q_dict[qid]
         question = q["question"]
         gold_answer = q.get("gold_answer", "")  # resolve gold for consistency
         _ = normalise_answer(gold_answer)
@@ -389,16 +403,16 @@ def generate_answers_from_traversal(
             reverse=True,
         )
         passage_ids_sorted = [h["passage_id"] for h in helpful]
-        top_passages = passage_ids_sorted[:_TOP_K]
+        top_passages = passage_ids_sorted[:top_k]
 
         llm_out = ask_llm_with_passages(
             query_text=question,
             passage_ids=passage_ids_sorted,
             graph=None,
-            server_url=_SERVER_URL,
-            passage_lookup=_PASSAGE_LOOKUP,
-            model_name=_MODEL_NAME,
-            top_k_answer_passages=_TOP_K,
+            server_url=s_url,
+            passage_lookup=p_lookup,
+            model_name=m_name,
+            top_k_answer_passages=top_k,
         )
 
         answer_dict = {
@@ -413,15 +427,20 @@ def generate_answers_from_traversal(
     if num_workers is None:
         num_workers = os.cpu_count() or 1
 
-    with mp.Pool(
-        num_workers,
-        initializer=_init_worker,
-        initargs=(queries, passage_lookup, server_url, model_name, top_k_answer_passages),
-    ) as pool:
-        for qid, answer, norm_ans in pool.map(_generate_answer, traversal_records.items()):
-            answers.append(answer)
-            predictions[qid] = norm_ans
-            gold[qid] = [queries[qid].get("gold_answer", "")]
+    worker = partial(
+        _generate_answer,
+        q_dict=queries,
+        p_lookup=passage_lookup,
+        s_url=server_url,
+        m_name=model_name,
+        top_k=top_k_answer_passages,
+    )
+
+    results = pool_map(worker, traversal_records.items(), processes=num_workers)
+    for qid, answer, norm_ans in results:
+        answers.append(answer)
+        predictions[qid] = norm_ans
+        gold[qid] = [queries[qid].get("gold_answer", "")]
 
     result_paths["base"].mkdir(parents=True, exist_ok=True)
     save_jsonl(result_paths["answers"], answers)
