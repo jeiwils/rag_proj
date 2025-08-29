@@ -884,7 +884,7 @@ def process_traversal(cfg: Dict) -> None:
     output_paths = get_traversal_paths(graph_model, dataset, split, variant)
 
     urls = get_server_urls(model)
-    shards = split_jsonl_for_models(str(query_path), model, resume=RESUME)
+    shards = split_jsonl_for_models(str(query_path), model, resume=resume)
     emb_model = get_embedding_model()
 
     batch_configs = []
@@ -954,8 +954,8 @@ def process_traversal(cfg: Dict) -> None:
 
 if __name__ == "__main__":
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-    GRAPH_MODELS = ["qwen-7b"]  # e.g., graph generation model
-    TRAVERSAL_MODELS = ["deepseek-distill-qwen-7b"]  # LLM used during traversal
+    GRAPH_MODELS = ["qwen-7b"]
+    TRAVERSAL_MODELS = ["deepseek-distill-qwen-7b"]
     VARIANTS = ["baseline", "enhanced"]
 
     RESUME = True
@@ -989,6 +989,6 @@ if __name__ == "__main__":
     for cfg in configs:
         configs_by_model.setdefault(cfg["model"], []).append(cfg)
 
-    for model, model_configs in configs_by_model.items():
-        max_procs = {"14b": 1, "7b": 2}.get(model_size(model), 4)
-        pool_map(process_traversal, model_configs, processes=max_procs)
+    for _, model_configs in configs_by_model.items():
+        for cfg in model_configs:
+            process_traversal(cfg)
