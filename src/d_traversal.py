@@ -942,7 +942,7 @@ def process_traversal(cfg: Dict) -> None:
 
 if __name__ == "__main__":
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-    MODELS = ["qwen-7b"]
+    MODELS = ["deepseek-distill-qwen-7b"] #["qwen-7b"]
     VARIANTS = ["baseline", "enhanced"]
 
     RESUME = True

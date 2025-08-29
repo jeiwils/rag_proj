@@ -196,28 +196,6 @@ __all__ = [
 
 
 
-# def embed_and_save(
-#     input_jsonl,
-#     output_npy,
-#     output_jsonl,
-#     model,
-#     text_key,
-#     *,
-#     id_field="passage_id",
-#     done_ids: Set[str] | None = None,
-# ):
-#     if not text_key:
-#         raise ValueError("You must provide a valid text_key (e.g., 'text' or 'question').")
-
-#     data, texts = [], []
-#     with open(input_jsonl, "rt", encoding="utf-8") as f:
-#         for line in f:
-#             entry = json.loads(line)
-#             if done_ids and entry.get(id_field) in done_ids:
-#                 continue
-#             texts.append(entry[text_key])
-#             data.append(entry)
-
 
 def embed_and_save(
     input_jsonl,
