@@ -120,9 +120,11 @@ from src.utils import (
     get_traversal_paths,
     load_jsonl,
     processed_dataset_paths,
-    run_multiprocess
+    run_multiprocess,
 )
 
+from src.a2_text_prep import model_size 
+from src.utils import pool_map
 
 
 
@@ -971,4 +973,10 @@ if __name__ == "__main__":
             raise ValueError(f"Duplicate output path detected: {out_path}")
         result_paths.add(out_path)
 
-    run_multiprocess(process_traversal, configs)
+    configs_by_model: Dict[str, List[Dict]] = {}
+    for cfg in configs:
+        configs_by_model.setdefault(cfg["model"], []).append(cfg)
+
+    for model, model_configs in configs_by_model.items():
+        max_procs = {"14b": 1, "7b": 2}.get(model_size(model), 4)
+        pool_map(process_traversal, model_configs, processes=max_procs)
