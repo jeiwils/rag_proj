@@ -206,12 +206,11 @@ def clean_iqoq(questions: list[str]) -> list[str]:
             continue
         cleaned.append(q)
 
-    logging.debug(
-        "clean_iqoq filtered - not_question: %d, too_short: %d, banned: %d",
-        skipped_not_question,
-        skipped_too_short,
-        skipped_banned,
+    print(
+        f"clean_iqoq filtered - not_question: {skipped_not_question}, "
+        f"too_short: {skipped_too_short}, banned: {skipped_banned}"
     )
+    
     return cleaned
 
 # def clean_baseline(questions):
@@ -250,7 +249,7 @@ def clean_baseline(questions):
         try:
             obj = json.loads(s)
         except Exception as e:
-            logger.error("clean_baseline parse error: %s", e)
+            print(f"clean_baseline parse error: {e}")
             continue
 
         qlist = obj.get("Question List")

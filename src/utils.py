@@ -9,7 +9,7 @@ import re
 import unicodedata
 from typing import Any, Callable, Dict, Hashable, Iterable, Iterator, List, Optional, Set, Tuple
 
-import logging
+
 
 
 from pathlib import Path
@@ -214,8 +214,7 @@ def load_jsonl(path: str, log_skipped: bool = False) -> Iterator[Dict]:
     """Yield objects from a JSONL file one by one.
 
     Lines that are empty or fail to parse as JSON are skipped. If
-    ``log_skipped`` is ``True``, the number of skipped lines is logged at
-    debug level.
+    ``log_skipped`` is ``True``, the number of skipped lines is printed.
     """
     skipped = 0
     with open(path, "rt", encoding="utf-8") as f:
@@ -229,9 +228,9 @@ def load_jsonl(path: str, log_skipped: bool = False) -> Iterator[Dict]:
             except json.JSONDecodeError:
                 skipped += 1
                 if log_skipped:
-                    logging.debug("Skipping malformed JSON on line %d in %s", line_no, path)
+                    print(f"Skipping malformed JSON on line {line_no} in {path}")
     if log_skipped and skipped:
-        logging.debug("Skipped %d empty or malformed lines in %s", skipped, path)
+        print(f"Skipped {skipped} empty or malformed lines in {path}")
 
 def save_jsonl(path: str, data: List[Dict]) -> None:
     """Write a list of dictionaries to a JSONL file."""

@@ -407,7 +407,7 @@ def basic_graph_eval(
         ) -> dict:
     """
     Compute general graph-wide statistics: average degree, degree variance, Gini coefficient,
-    and top-k hub nodes. Used by both detailed and global graph logging.
+    and top-k hub nodes. Used by both detailed and global graph reporting.
     """
     degrees = np.array([deg for _, deg in G.degree()])
     avg_degree = float(np.mean(degrees)) if len(degrees) else 0.0
