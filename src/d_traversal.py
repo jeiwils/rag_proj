@@ -294,7 +294,7 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
     answer = query_llm(
         prompt,
         server_url=oq_server["server_url"],
-        max_tokens=5,
+        max_tokens=30,
         temperature=_temp_for(oq_server["model"], "edge_selection"),
         model_name=oq_server["model"],
         phase="edge_selection"
@@ -966,7 +966,7 @@ def process_traversal(cfg: Dict) -> None:
         graph_obj = pickle.load(f)
     trav_alg = variant_cfg[variant]
 
-    output_paths = get_traversal_paths(graph_model, dataset, split, variant)
+    output_paths = get_traversal_paths(model, dataset, split, variant)
 
     urls = get_server_urls(model)
     shards = split_jsonl_for_models(str(query_path), model, resume=resume)
