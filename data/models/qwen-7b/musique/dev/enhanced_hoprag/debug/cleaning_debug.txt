@@ -6,15 +6,15 @@ Split: dev
 Variant: enhanced
 HopRAG version: enhanced_hoprag
 Phase: cleaning
-Total time taken (seconds): 45.35
+Total time taken (seconds): 39.19
 
 Counts (IQ/OQ):
 - Raw IQ total: 67772
 - Raw OQ total: 89955
-- Clean IQ total: 65933
-- Clean OQ total: 85198
-- Dropped IQ total: 1839
-- Dropped OQ total: 4757
+- Clean IQ total: 62046
+- Clean OQ total: 78315
+- Dropped IQ total: 5726
+- Dropped OQ total: 11640
 
 Merged cleaned file:
 - data\models\qwen-7b\musique\dev\enhanced_hoprag\cleaned\iqoq.cleaned.jsonl

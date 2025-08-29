@@ -6,7 +6,7 @@ Split: dev
 Variant: baseline
 HopRAG version: baseline_hoprag
 Phase: cleaning
-Total time taken (seconds): 46.76
+Total time taken (seconds): 46.02
 
 Counts (IQ/OQ):
 - Raw IQ total: 16872
