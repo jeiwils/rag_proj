@@ -35,7 +35,7 @@ Inputs
 - `{dataset}_iqoq_emb.npy`
   – Dense IQ/OQ embeddings (`NumPy` array aligned with `vec_id` field).
 
-@@ -40,154 +43,154 @@ Inputs
+
 Outputs
 -------
 

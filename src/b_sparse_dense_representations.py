@@ -416,24 +416,50 @@ SPACY_MODEL = os.environ.get("SPACY_MODEL", "en_core_web_sm")
 nlp = spacy.load(SPACY_MODEL, disable=["parser", "textcat"])
 
 # Keep only these named-entity types
-KEEP_ENTS = {
-    "PERSON","ORG","GPE","LOC","NORP","FAC","PRODUCT","EVENT",
-    "WORK_OF_ART","LAW","LANGUAGE","DATE","TIME"
+DEFAULT_KEEP_ENTS = {
+    "PERSON",
+    "ORG",
+    "GPE",
+    "LOC",
+    "NORP",
+    "FAC",
+    "PRODUCT",
+    "EVENT",
+    "WORK_OF_ART",
+    "LAW",
+    "LANGUAGE",
+    "DATE",
+    "TIME",
+    "CARDINAL",
+    "ORDINAL",
 }
 
+KEEP_ENTS = {
+    e.strip()
+    for e in os.environ.get("KEEP_ENTS", "").split(",")
+    if e.strip()
+} or DEFAULT_KEEP_ENTS
+
+
+
 def normalise_text(s: str) -> str:
-    """
-    Normalise for keyword matching:
-    - apply clean_text (assumed defined elsewhere)
+    """Normalise text for keyword matching.
+
+    Steps:
+    - apply ``clean_text`` (assumed defined elsewhere)
     - lowercase
-    - collapse any whitespace to a single underscore
-    - collapse repeated underscores
+    - replace non-alphanumeric characters with underscores
+    - drop possessive ``_s`` suffixes
+    - collapse repeated underscores and trim any leading/trailing ones
     """
     if not s:
         return ""
     t = clean_text(s).lower()
-    t = re.sub(r"\s+", "_", t.strip())
+    t = re.sub(r"\W+", "_", t.strip())
+    t = re.sub(r"_s_", "_", t)
+    t = re.sub(r"_s$", "", t)
     t = re.sub(r"_+", "_", t)
+    t = t.strip("_")
     return t
 
 def extract_keywords(text: str) -> list[str]:
@@ -482,7 +508,7 @@ def add_keywords_to_passages_jsonl(
         targets = [r for r in rows if r.get("passage_id") in only_ids]
     else:
         targets = rows
-    texts = [r.get("text", "") for r in targets]
+    texts = [clean_text(r.get("text", "")) for r in targets]
 
     for r, doc in zip(targets, nlp.pipe(texts, batch_size=128, n_process=1)):
         kws = {
@@ -520,7 +546,7 @@ def add_keywords_to_iqoq_jsonl(
         targets = [r for r in rows if r.get("iqoq_id") in only_ids]
     else:
         targets = rows
-    texts = [r.get("text", "") for r in targets]  # <-- raw text
+    texts = [clean_text(r.get("text", "")) for r in targets]
 
     for r, doc in zip(targets, nlp.pipe(texts, batch_size=128, n_process=1)):
         kws = {
