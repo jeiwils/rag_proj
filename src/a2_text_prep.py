@@ -135,6 +135,7 @@ from src.utils import (
     model_shard_paths,
     processed_dataset_paths,
     save_jsonl,
+    run_multiprocess,
 )
 
 
@@ -284,31 +285,6 @@ def split_jsonl_for_models(path: str, model: str) -> list[str]:
 
 
 
-
-
-
-
-
-
-
-def run_multiprocess(
-        func: Callable, 
-        configs: List[Dict]):
-    """
-    Run a given function in parallel across multiple processes.
-    
-    Parameters:
-        func (Callable): The function to run in each process.
-        configs (List[Dict]): A list of dicts containing keyword arguments for each call.
-    """
-    processes = []
-    for cfg in configs:
-        p = Process(target=func, args=(cfg,))
-        p.start()
-        processes.append(p)
-
-    for p in processes:
-        p.join()
 
 
 
@@ -1095,7 +1071,6 @@ __all__ = [
     "split_jsonl",
     "split_jsonl_into_four",
     "split_jsonl_for_models",
-    "run_multiprocess",
     "query_llm",
     "write_debug_file",
     "get_conditioned_score",

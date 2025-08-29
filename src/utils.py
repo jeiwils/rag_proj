@@ -10,6 +10,7 @@ import unicodedata
 from typing import Any, Callable, Dict, Hashable, Iterable, Iterator, List, Optional, Set, Tuple
 
 
+from multiprocessing import Process
 
 
 from pathlib import Path
@@ -417,6 +418,31 @@ def model_shard_paths(model: str, dataset: str, split: str, stem: str, size: str
 
 
 
+def run_multiprocess(
+        func: Callable, 
+        configs: List[Dict]):
+    """
+    Run a given function in parallel across multiple processes.
+    
+    Parameters:
+        func (Callable): The function to run in each process.
+        configs (List[Dict]): A list of dicts containing keyword arguments for each call.
+    """
+    processes = []
+    for cfg in configs:
+        p = Process(target=func, args=(cfg,))
+        p.start()
+        processes.append(p)
+
+    for p in processes:
+        p.join()
+
+
+
+
+
+
+
 __all__ = [
     "SERVER_CONFIGS",
     "get_server_configs",
@@ -434,4 +460,5 @@ __all__ = [
     "processed_dataset_paths",
     "model_shard_dir",
     "model_shard_paths",
+    "run_multiprocess",
 ]

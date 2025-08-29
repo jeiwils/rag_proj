@@ -129,6 +129,7 @@ from src.utils import (
     get_traversal_paths,
     load_jsonl,
     processed_dataset_paths,
+    run_multiprocess
 )
 
 
@@ -583,8 +584,13 @@ def compute_hop_metrics(
     visited_cumulative = set()
     results = []
 
-    for hop_log in hop_trace:
-        visited_cumulative.update(hop_log["new_passages"])
+    for idx, hop_log in enumerate(hop_trace):
+        # include initial seed passages from the first hop so metrics
+        # reflect already visited nodes even if no new edges are chosen
+        if idx == 0:
+            visited_cumulative.update(hop_log.get("expanded_from", []))
+
+        visited_cumulative.update(hop_log.get("new_passages", []))
         tp = len(visited_cumulative & gold_set)
         fp = len(visited_cumulative - gold_set)
         fn = len(gold_set - visited_cumulative)
@@ -855,7 +861,7 @@ if __name__ == "__main__":
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     MODELS = ["deepseek-distill-qwen-7b"]#["qwen-7b"]
     VARIANTS = ["baseline", "enhanced"]
-    
+
     GRAPH_MODEL = "qwen-7b"
 
     RESUME = True

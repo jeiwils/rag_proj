@@ -6,7 +6,7 @@ Split: dev
 Variant: enhanced
 HopRAG version: enhanced_hoprag
 Phase: cleaning
-Total time taken (seconds): 70.46
+Total time taken (seconds): 74.05
 
 Counts (IQ/OQ):
 - Raw IQ total: 97585
