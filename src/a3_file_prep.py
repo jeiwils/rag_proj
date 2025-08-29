@@ -252,6 +252,18 @@ def clean_baseline(questions):
             print(f"clean_baseline parse error: {e}")
             continue
 
+        while isinstance(obj, str):
+            try:
+                obj = json.loads(obj)
+            except Exception as e:
+                print(f"clean_baseline parse error: {e}")
+                obj = None
+                break
+
+        if obj is None:
+            continue
+
+
         # Normalize the parsed object before extracting questions.
         qlist = None
         if isinstance(obj, dict):
