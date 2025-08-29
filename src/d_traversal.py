@@ -86,7 +86,7 @@ File Schema
     "avg_repeat_visits": float,
     "avg_none_count_per_query": float,
     "max_hop_depth_reached": int,
-    "hop_depth_counts": [int, int, ...]
+    "hop_depth_distribution": [int, int, ...]
   }
 }
 """
@@ -103,7 +103,7 @@ File Schema
 
 import json
 import pickle
-from collections import defaultdict
+from collections import Counter
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
@@ -275,6 +275,12 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
     candidate_edges: list of tuples (vk, edge_data)
     Returns the chosen edge tuple or None if no valid choice is made.
     """
+
+    candidate_edges = sorted(
+        candidate_edges,
+        key=lambda item: (item[1].get("oq_id", ""), item[0]),
+    )
+
     oq_options = [
         f"{i+1}. ({edge_data['oq_id']}) {edge_data['oq_text']}"
         for i, (_, edge_data) in enumerate(candidate_edges)
@@ -321,11 +327,14 @@ def hoprag_traversal_algorithm(
         (vk, graph[vj][vk])
         for vk in graph.successors(vj)
         if vk not in visited_passages
-        and (graph[vj][vk]["oq_id"], graph[vj][vk]["iq_id"]) not in state["Evisited"]
+        and (vj, vk, graph[vj][vk]["oq_id"], graph[vj][vk]["iq_id"]) not in state["Evisited"]
     ]
 
     if not candidates:
         return set()
+    
+    # Ensure deterministic ordering for edge options
+    candidates.sort(key=lambda item: (item[1].get("oq_id", ""), item[0]))
 
     chosen = llm_choose_edge(
         query_text=query_text,
@@ -341,7 +350,7 @@ def hoprag_traversal_algorithm(
         return set()
 
     chosen_vk, chosen_edge = chosen
-    state["Evisited"].add((chosen_edge["oq_id"], chosen_edge["iq_id"]))
+    state["Evisited"].add((vj, chosen_vk, chosen_edge["oq_id"], chosen_edge["iq_id"]))
     is_repeat = chosen_vk in visited_passages
 
     hop_log["edges_chosen"].append({
@@ -373,11 +382,14 @@ def enhanced_traversal_algorithm(
     candidates = [
         (vk, graph[vj][vk])
         for vk in graph.successors(vj)
-        if (graph[vj][vk]["oq_id"], graph[vj][vk]["iq_id"]) not in state["Evisited"]
+        if (vj, vk, graph[vj][vk]["oq_id"], graph[vj][vk]["iq_id"]) not in state["Evisited"]
     ]
 
     if not candidates:
         return set()
+
+     # Ensure deterministic ordering for edge options
+    candidates.sort(key=lambda item: (item[1].get("oq_id", ""), item[0]))
 
     chosen = llm_choose_edge(
         query_text=query_text,
@@ -393,7 +405,7 @@ def enhanced_traversal_algorithm(
         return set()
 
     chosen_vk, chosen_edge = chosen
-    state["Evisited"].add((chosen_edge["oq_id"], chosen_edge["iq_id"]))
+    state["Evisited"].add((vj, chosen_vk, chosen_edge["oq_id"], chosen_edge["iq_id"]))
     is_repeat = chosen_vk in visited_passages
 
     hop_log["edges_chosen"].append({
@@ -750,12 +762,12 @@ def compute_traversal_summary(
     total_queries = 0
     sum_precision = 0.0
     sum_recall = 0.0
-    hop_depth_counts = defaultdict(int)
     total_none = 0
     total_repeat = 0
     passage_coverage_all_gold_found = 0
     initial_retrieval_coverage = 0
     first_gold_hops = []
+    query_hop_depths: List[int] = []
 
     with open(results_path, "rt", encoding="utf-8") as f:
         for line in f:
@@ -789,13 +801,19 @@ def compute_traversal_summary(
                 # No hops were taken; treat coverage as zero
                 first_gold_hop = None
 
+
+            deepest_non_empty_hop = -1
             for hop_log in entry["hop_trace"]:
-                hop_depth_counts[hop_log["hop"]] += 1
                 total_none += hop_log["none_count"]
                 total_repeat += hop_log["repeat_visit_count"]
 
+                if hop_log.get("expanded_from") or hop_log.get("new_passages"):
+                    deepest_non_empty_hop = hop_log["hop"]
+
                 if first_gold_hop is None and set(hop_log.get("new_passages", [])) & gold_set:
                     first_gold_hop = hop_log["hop"]
+
+            query_hop_depths.append(deepest_non_empty_hop + 1)
 
             if first_gold_hop is not None:
                 first_gold_hops.append(first_gold_hop)
@@ -809,19 +827,22 @@ def compute_traversal_summary(
         else None
     )
 
+    hop_depth_counter = Counter(query_hop_depths)
+    max_depth = max(query_hop_depths) if query_hop_depths else 0
+    hop_depth_distribution = [hop_depth_counter.get(i, 0) for i in range(max_depth + 1)]
+
     return {
         "mean_precision": round(mean_precision, 4),
         "mean_recall": round(mean_recall, 4),
         "passage_coverage_all_gold_found": passage_coverage_all_gold_found,
         "initial_retrieval_coverage": initial_retrieval_coverage,
         "avg_hops_before_first_gold": avg_first_gold,
-        "avg_total_hops": round(sum(hop_depth_counts.values()) / total_queries, 2),
-        "avg_repeat_visits": round(total_repeat / total_queries, 2),
-        "avg_none_count_per_query": round(total_none / total_queries, 2),
-        "max_hop_depth_reached": max(hop_depth_counts) if hop_depth_counts else 0,
-        "hop_depth_counts": [hop_depth_counts[i] for i in sorted(hop_depth_counts)]
+        "avg_total_hops": round(sum(query_hop_depths) / total_queries, 2) if total_queries else 0,
+        "avg_repeat_visits": round(total_repeat / total_queries, 2) if total_queries else 0,
+        "avg_none_count_per_query": round(total_none / total_queries, 2) if total_queries else 0,
+        "max_hop_depth_reached": max_depth,
+        "hop_depth_distribution": hop_depth_distribution,
     }
-
 
 
 
@@ -832,7 +853,7 @@ if __name__ == "__main__":
 
     # Configuration lists
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-    MODELS = ["qwen-7b"]
+    MODELS = ["deepseek-distill-qwen-7b"]#["qwen-7b"]
     VARIANTS = ["baseline", "enhanced"]
 
     RESUME = True
@@ -869,12 +890,33 @@ if __name__ == "__main__":
                 print(
                     f"[Run] dataset={dataset} model={model} variant={variant} split={SPLIT}"
                 )
+                
+                # Use a single canonical graph source regardless of generation model
+                GRAPH_MODEL = "qwen-7b"
 
                 graph_path = Path(
-                    f"data/graphs/{model}/{dataset}/{SPLIT}/{variant}/{dataset}_{SPLIT}_graph.gpickle"
+                    f"data/graphs/{GRAPH_MODEL}/{dataset}/{SPLIT}/{variant}/{dataset}_{SPLIT}_graph.gpickle"
                 )
+                if not graph_path.exists():
+                    raise FileNotFoundError(
+                        f"Expected graph at {graph_path} but it was not found. "
+                        f"Make sure you built the {GRAPH_MODEL} graphs for dataset={dataset}, split={SPLIT}, variant={variant}."
+                    )
+
                 with open(graph_path, "rb") as f:
                     graph_obj = pickle.load(f)
+                print(f"[Graph] Loaded canonical graph from {graph_path}")
+
+
+                # graph_path = Path(
+                #     f"data/graphs/{model}/{dataset}/{SPLIT}/{variant}/{dataset}_{SPLIT}_graph.gpickle"
+                # )
+                # with open(graph_path, "rb") as f:
+                #     graph_obj = pickle.load(f)
+
+
+
+
                 trav_alg = variant_cfg[variant]
 
                 output_paths = get_traversal_paths(model, dataset, SPLIT, variant)

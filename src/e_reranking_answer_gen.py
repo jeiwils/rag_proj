@@ -86,7 +86,7 @@ Aggregated summary across all queries:
   "avg_repeat_visits": float,
   "avg_none_count_per_query": float,
   "max_hop_depth_reached": int,
-  "hop_depth_counts": List[int]
+  "hop_depth_distribution": List[int]
 }
 
 
