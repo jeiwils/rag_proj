@@ -7,6 +7,9 @@ Each OQ retrieves candidate IQs from a FAISS index, computes hybrid similarity
 (cosine + Jaccard), and retains the top-scoring IQ. The resulting OQ→IQ edges
 form a directed graph over passages for downstream reasoning and traversal.
 
+Graphs are currently built for the datasets `hotpotqa`, `musique`, and
+`2wikimultihopqa`.
+
 This module builds the graph, saves edge lists and NetworkX `.gpickle` files,
 and logs diagnostic summaries for structural and similarity-based evaluation.
 
@@ -32,11 +35,7 @@ Inputs
 - `{dataset}_iqoq_emb.npy`
   – Dense IQ/OQ embeddings (`NumPy` array aligned with `vec_id` field).
 
-- `{dataset}_faiss_iqoq.faiss`  
-  – FAISS index over IQ/OQ embeddings (inner product over normalized vectors).
-
-
-
+@@ -40,154 +43,154 @@ Inputs
 Outputs
 -------
 
@@ -62,13 +61,13 @@ File Schema
 ### `{dataset}_{split}_edges.jsonl`
 
 {
-  "oq_id": "hotpot_001_sent1_oq1",
-  "oq_parent": "hotpot_001_sent1",
+  "oq_id": "hotpotqa_001_sent1_oq1",
+  "oq_parent": "hotpotqa_001_sent1",
   "oq_vec_id": 12,
   "oq_text": "What year was the Battle of Hastings?",
 
-  "iq_id": "hotpot_002_sent4_iq0",
-  "iq_parent": "hotpot_002_sent4",
+  "iq_id": "hotpotqa_002_sent4_iq0",
+  "iq_parent": "hotpotqa_002_sent4",
   "iq_vec_id": 37,
 
   "sim_cos": 0.7215,
@@ -84,7 +83,7 @@ File Schema
 
 Node:
 {
-  "passage_id": "hotpot_001_sent1",
+  "passage_id": "hotpotqa_001_sent1",
   "text": "The Battle of Hastings took place in 1066...",
   "vec_id": 12,
   "keywords_passage": ["battle_of_hastings", "1066"]
@@ -92,8 +91,8 @@ Node:
 
 Edge:
 {
-  "oq_id": "hotpot_001_sent1_oq1",
-  "iq_id": "hotpot_002_sent4_iq0",
+  "oq_id": "hotpotqa_001_sent1_oq1",
+  "iq_id": "hotpotqa_002_sent4_iq0",
   "oq_text": "What year was the Battle of Hastings?",
   "sim_cos": 0.7215,
   "sim_jaccard": 0.5632,
@@ -110,14 +109,14 @@ Edge:
     "node_degree_variance": 0.97,
     "gini_degree": 0.27,
     "top_k_hub_nodes": [
-      {"node": "hotpot_002_sent4", "degree": 7},
-      {"node": "hotpot_001_sent3", "degree": 6}
+      {"node": "hotpotqa_002_sent4", "degree": 7},
+      {"node": "hotpotqa_001_sent3", "degree": 6}
     ]
   },
   "mode": "standard_pipeline",
-  "dataset": "hotpot",
+  "dataset": "hotpotqa",
   "split": "train",
-  "edges_file": "data/graphs/qwen-7b/hotpot/train/baseline/hotpot_train_edges.jsonl",
+  "edges_file": "data/graphs/qwen-7b/hotpotqa/train/baseline/hotpotqa_train_edges.jsonl",
   "params": {
     "top_k": 50,
     "sim_threshold": 0.65
@@ -129,7 +128,7 @@ Edge:
 ### {dataset}_{split}_graph_results.jsonl
 
 {
-  "dataset": "hotpot_train",
+  "dataset": "hotpotqa_train",
   "timestamp": "2025-08-13T14:22:31",
   "params": {
     "top_k": 50,
@@ -164,24 +163,11 @@ Edge:
   "gini_degree": 0.27,
 
   "top_k_hub_nodes": [
-    {"node": "hotpot_002_sent4", "degree": 7},
-    {"node": "hotpot_001_sent3", "degree": 6}
+    {"node": "hotpotqa_002_sent4", "degree": 7},
+    {"node": "hotpotqa_001_sent3", "degree": 6}
   ]
 }
 """
-
-
-
-
-
-
-### end of: 2 sets of graphs made with the train passage+iqoq set (is that right? not the dev set?)
-# - 1) standard hoprag
-# - 2) enhanced hoprag (with CS as part of IQOQ generation)
-
-
-
-# - neo4j for final graph build + test traversal # CHECK 
 
 
 
@@ -218,36 +204,22 @@ from src.utils import compute_resume_sets
 
 from pathlib import Path
 
+
+
+
+
 DEFAULT_TOP_K = 50
 DEFAULT_SIM_THRESHOLD = 0.60
-DEFAULT_ALPHA = 1.0
+DEFAULT_ALPHA = 1.0  # default for edge_budget_alpha
 
 DEFAULT_PARAMS = {
     "top_k": DEFAULT_TOP_K,
     "sim_threshold": DEFAULT_SIM_THRESHOLD,
-    "alpha": DEFAULT_ALPHA,
+    "alpha": DEFAULT_ALPHA,  # edge_budget_alpha
 }
 
 
 
-
-################ any point in this stuff??? How do I usually define this in the first 3 modules? 
-
-DATASET = "hotpot"
-SPLIT = "train"
-MODEL = "qwen-7b"
-VARIANT = "baseline"
-
-pass_paths = dataset_rep_paths(DATASET, SPLIT)
-PASSAGES_PATH = pass_paths["passages_jsonl"]
-
-
-iqoq_paths = model_rep_paths(MODEL, DATASET, SPLIT, VARIANT)
-IQOQ_PATH = iqoq_paths["iqoq_jsonl"]
-iqoq_emb_path = iqoq_paths["iqoq_emb"]
-
-
-###################################################
 
 
 
@@ -428,6 +400,9 @@ def build_networkx_graph(
 
 
 
+
+
+
 def basic_graph_eval(
         G: nx.DiGraph, 
         top_k_hubs: int = 5 # how many nodes with the most connections (by total degree) to log 
@@ -459,6 +434,9 @@ def basic_graph_eval(
         "gini_degree": round(gini_degree, 4),
         "top_k_hub_nodes": top_k_hub_nodes
     }
+
+
+
 
 
 
@@ -582,10 +560,10 @@ def graph_stats(
 
 
 def run_graph_pipeline(
-    dataset: str = DATASET,
-    split: str = SPLIT,
-    model: str = MODEL,
-    variant: str = VARIANT,
+    dataset: str,
+    split: str,
+    model: str,
+    variant: str,
     passages_file: str = None,
     iqoq_file: str = None,
     top_k: int = DEFAULT_TOP_K,
@@ -604,6 +582,11 @@ def run_graph_pipeline(
         4) build_networkx_graph(passages, edges)
         5) basic_graph_eval + append_global_result
         6) graph_stats -> append detailed stats jsonl
+
+
+    Args:
+        edge_budget_alpha: Optional float controlling the per-source edge budget.
+            Defaults to ``DEFAULT_ALPHA`` when ``None``.
     """
     # ---------- 1) Load metadata + embeddings ----------
     pass_paths = dataset_rep_paths(dataset, split)
@@ -698,6 +681,11 @@ def run_graph_pipeline(
 
     params_used = DEFAULT_PARAMS.copy()
     params_used.update({"top_k": top_k, "sim_threshold": sim_threshold})
+
+    params_used["alpha"] = (
+        edge_budget_alpha if edge_budget_alpha is not None else DEFAULT_ALPHA
+    )
+
     stats = graph_stats(
         G,
         save_path=stats_path,
@@ -731,6 +719,11 @@ def run_graph_pipeline(
         "global_log_path": global_path,
         "graph_results_path": stats_path,
     }
+
+
+
+
+
 
 
 if __name__ == "__main__":
