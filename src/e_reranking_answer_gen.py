@@ -18,7 +18,9 @@ Inputs
 - `{dataset}_{split}_graph.gpickle`
     Directed NetworkX graph (needed only for passage text lookup).
 
-- `traversal/per_query_traversal_results.jsonl`
+### data/traversal/{model}/{dataset}/{split}/{variant}/
+
+- `per_query_traversal_results.jsonl`
     Saved traversal results with helpful_passages per query.
 
 ### data/processed_datasets/{dataset}/{split}/questions.jsonl
@@ -27,7 +29,7 @@ Inputs
 Outputs
 -------
 
-### data/graphs/{model}/{dataset}/{split}/{variant}/traversal/
+### data/traversal/{model}/{dataset}/{split}/{variant}/
 
 - `per_query_traversal_results.jsonl`  
     One entry per query with hop trace, visited nodes, and precision/recall/F1 metrics.
@@ -97,9 +99,8 @@ Notes
 - `baseline` = no revisits to previously visited passages.
 - `enhanced` = allows passage revisits but avoids revisiting the same edge.
 - All outputs are saved in:
-  `data/graphs/{model}/{dataset}/{split}/{variant}/traversal/`
+  `data/traversal/{model}/{dataset}/{split}/{variant}/`
 """
-
 
 
 import json

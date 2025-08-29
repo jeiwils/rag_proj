@@ -374,14 +374,20 @@ def get_result_paths(model, dataset, split, variant):
     }
 
 def get_traversal_paths(model, dataset, split, variant):
-    base = Path(f"data/graphs/{model}/{dataset}/{split}/{variant}/traversal")
+    """Return standard paths for traversal artifacts.
+
+    Creates ``data/traversal/{model}/{dataset}/{split}/{variant}/`` if
+    necessary and returns paths to key traversal output files.
+    """
+
+    base = Path(f"data/traversal/{model}/{dataset}/{split}/{variant}")
+    base.mkdir(parents=True, exist_ok=True)
     return {
         "base": base,
         "results": base / "per_query_traversal_results.jsonl",
         "visited_passages": base / "visited_passages.json",
         "stats": base / "final_traversal_stats.json",
     }
-
 
 def processed_dataset_paths(dataset: str, split: str) -> Dict[str, Path]:
     """Return standard paths for processed dataset files.

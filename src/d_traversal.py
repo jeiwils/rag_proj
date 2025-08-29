@@ -4,18 +4,18 @@ Module Overview
 Run multi-hop traversal over a QA dataset using LLM-guided graph expansion.
 
 This script performs seeded retrieval for each question, then expands through
-a directed graph of OQ→IQ edges using a local LLM to guide traversal. Results 
+a directed graph of OQ→IQ edges using a local LLM to guide traversal. Results
 are saved per query and summarized globally.
 
-It supports both baseline traversal (no node revisits) and enhanced traversal 
-(allowing node revisits but not edge revisits). Outputs are stored *inside the 
-graph variant directory* alongside the graph structure and edge logs.
+It supports both baseline traversal (no node revisits) and enhanced traversal
+(allowing node revisits but not edge revisits). Outputs are stored in
+``data/traversal/{model}/{dataset}/{split}/{variant}/``.
 
 
 Inputs
 ------
 
-### data/graphs/{model}/{dataset}/{split}/{variant}/
+### data/traversal/{model}/{dataset}/{split}/{variant}/
 
 - `{dataset}_{split}_graph.gpickle`  
     Directed NetworkX graph. Nodes = passages, edges = OQ→IQ links.
@@ -94,6 +94,8 @@ File Schema
 
 import json
 import pickle
+import re
+
 from collections import Counter
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
@@ -301,16 +303,15 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
     if is_r1_like(oq_server["model"]):
         answer = strip_think(answer)
     
-    # Extract integer choice
-    for token in answer.split():
-        if token.isdigit():
-            choice_idx = int(token) - 1
-            if 0 <= choice_idx < len(candidate_edges):
-                return candidate_edges[choice_idx]
+    # Extract the first integer from the LLM response
+    match = re.search(r"\d+", answer)
+    if match:
+        choice_idx = int(match.group()) - 1
+        if 0 <= choice_idx < len(candidate_edges):
+            return candidate_edges[choice_idx]
     
     # No valid choice -> no traversal
     return None
-
 
 
 def hoprag_traversal_algorithm(
@@ -318,16 +319,19 @@ def hoprag_traversal_algorithm(
     server_configs, ccount, next_Cqueue, hop_log, state,
     traversal_prompt: str,
 ):
+    # Consider all outgoing edges from ``vj``.  We rely solely on
+    # ``state['Evisited']`` to avoid traversing the exact same edge more
+    # than once; even if a target node has been visited, its edge is still a
+    # candidate (the node simply won't be re-queued below).
     candidates = [
         (vk, graph[vj][vk])
         for vk in graph.successors(vj)
-        if vk not in visited_passages
-        and (vj, vk, graph[vj][vk]["oq_id"], graph[vj][vk]["iq_id"]) not in state["Evisited"]
+        if (vj, vk, graph[vj][vk]["oq_id"], graph[vj][vk]["iq_id"]) not in state["Evisited"]
     ]
 
     if not candidates:
         return set()
-    
+
     # Ensure deterministic ordering for edge options
     candidates.sort(key=lambda item: (item[1].get("oq_id", ""), item[0]))
 
@@ -353,7 +357,7 @@ def hoprag_traversal_algorithm(
         "to": chosen_vk,
         "oq_id": chosen_edge["oq_id"],
         "iq_id": chosen_edge["iq_id"],
-        "repeat_visit": is_repeat
+        "repeat_visit": is_repeat,
     })
 
     ccount[chosen_vk] = ccount.get(chosen_vk, 0) + 1
@@ -366,6 +370,10 @@ def hoprag_traversal_algorithm(
     hop_log["new_passages"].append(chosen_vk)
     next_Cqueue.append(chosen_vk)
     return {chosen_vk}
+
+
+
+
 
 
 
@@ -421,6 +429,18 @@ def enhanced_traversal_algorithm(
 
     next_Cqueue.append(chosen_vk)
     return {chosen_vk}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def traverse_graph(
@@ -552,6 +572,14 @@ def compute_hop_metrics(
 
 
 
+
+
+
+
+
+
+
+
 def save_traversal_result( # helper for run_dev_set()
     question_id,
     gold_passages,
@@ -586,7 +614,18 @@ def save_traversal_result( # helper for run_dev_set()
 
 
 
+
+
+
+
+
+
+
+
+
+
 ### all together now!!!
+
 
 
 def run_traversal(
@@ -690,7 +729,33 @@ def run_traversal(
 
 
 
+
+
+
+
+
+
+
+
+
+
 ### overall metrics
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Backwards compatibility for older imports
@@ -798,6 +863,22 @@ def compute_traversal_summary(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def process_query_batch(cfg: Dict) -> None:
     """Run traversal on a shard of queries and write partial outputs."""
 
@@ -843,6 +924,10 @@ def process_query_batch(cfg: Dict) -> None:
         n_hops=DEFAULT_NUMBER_HOPS,
         traversal_alg=cfg["traversal_alg"],
     )
+
+
+
+
 
 
 
