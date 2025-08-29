@@ -117,7 +117,6 @@ Each debug file logs:
 import json
 import re
 import time
-from multiprocessing import Process
 from pathlib import Path
 from typing import Callable, Dict, List
 
@@ -125,7 +124,6 @@ import requests
 from tqdm import tqdm
 
 from src.utils import (
-    SERVER_CONFIGS,
     append_jsonl,
     compute_resume_sets,
     existing_ids,
@@ -180,19 +178,6 @@ HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding=
 
 
 
-
-def get_server_urls(model): ########### ISN'T THIS IMPORTED FROM CONFIGS? IS THIS NECESSARY???
-    """
-    Return all server URLs for a given model (e.g., 4 for 1.5B, 2 for 7B).
-
-
-    goes in the __main__ loop to activate all relevant servers 
-
-    """
-    urls = [config["server_url"] for config in SERVER_CONFIGS if config["model"] == model]
-    if not urls:
-        raise ValueError(f"Unknown model: {model}")
-    return urls
 
 
 
