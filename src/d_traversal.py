@@ -855,120 +855,236 @@ def compute_traversal_summary(
 
 
 
-if __name__ == "__main__":
 
-    # Configuration lists
-    DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-    MODELS = ["deepseek-distill-qwen-7b"]#["qwen-7b"]
-    VARIANTS = ["baseline", "enhanced"]
 
-    GRAPH_MODEL = "qwen-7b"
 
-    RESUME = True
-    SPLIT = "dev"
+
+
+
+
+def process_traversal(cfg: Dict) -> None:
+    """Load resources and run traversal for a single configuration."""
+
+    dataset = cfg["dataset"]
+    model = cfg["model"]
+    variant = cfg["variant"]
+    split = cfg["split"]
+    resume = cfg["resume"]
 
     variant_cfg = {
         "baseline": hoprag_traversal_algorithm,
         "enhanced": enhanced_traversal_algorithm,
     }
 
-    traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
-    seed_top_k = 50
-    number_hops = 2
+    print(f"[Run] dataset={dataset} model={model} variant={variant} split={split}")
 
+    paths = dataset_rep_paths(dataset, split)
+    passage_metadata = list(load_jsonl(paths["passages_jsonl"]))
+    passage_emb = np.load(paths["passages_emb"])
+    passage_index = faiss.read_index(paths["passages_index"])
+    query_path = processed_dataset_paths(dataset, split)["questions"]
+    query_data_full = [
+        {**q, "query_id": q["question_id"]} for q in load_jsonl(query_path)
+    ]
+
+    graph_path = Path(
+        f"data/graphs/{model}/{dataset}/{split}/{variant}/{dataset}_{split}_graph.gpickle"
+    )
+    with open(graph_path, "rb") as f:
+        graph_obj = pickle.load(f)
+    trav_alg = variant_cfg[variant]
+
+    output_paths = get_traversal_paths(model, dataset, split, variant)
+
+    done_ids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=str(output_paths["results"]),
+        items=query_data_full,
+        get_id=lambda q, i: q["question_id"],
+        phase_label=f"Traversal ({variant})",
+        id_field="question_id",
+    )
+    remaining_queries = [
+        q for q in query_data_full if q["question_id"] not in done_ids
+    ]
+    if not remaining_queries:
+        print("No new queries to process.")
+        return
 
     emb_model = get_embedding_model()
+    run_traversal(
+        query_data=remaining_queries,
+        graph=graph_obj,
+        passage_metadata=passage_metadata,
+        passage_emb=passage_emb,
+        passage_index=passage_index,
+        emb_model=emb_model,
+        server_configs=get_server_configs(model),
+        output_paths=output_paths,
+        seed_top_k=TOP_K_SEED_PASSAGES,
+        alpha=DEFAULT_ALPHA,
+        n_hops=NUMBER_HOPS,
+        traversal_alg=trav_alg,
+    )
 
-    for dataset in DATASETS:
-        # Load dataset-wide resources once per dataset
-        paths = dataset_rep_paths(dataset, SPLIT)
-        passage_metadata = list(load_jsonl(paths["passages_jsonl"]))
-        passage_emb = np.load(paths["passages_emb"])
-        passage_index = faiss.read_index(paths["passages_index"])
-        query_path = processed_dataset_paths(dataset, SPLIT)["questions"]
-        query_data_full = [
-            {**q, "query_id": q["question_id"]}
-            for q in load_jsonl(query_path)
-        ]
+    new_ids = {q["question_id"] for q in remaining_queries}
+    traversal_metrics = compute_traversal_summary(
+        output_paths["results"], include_ids=new_ids
+    )
+    append_global_result(
+        save_path=output_paths["stats"], traversal_eval=traversal_metrics
+    )
 
-        for model in MODELS:
-
-
-            for variant in VARIANTS:
-                print(
-                    f"[Run] dataset={dataset} model={model} variant={variant} split={SPLIT}"
-                )
-
-                # Use a single canonical graph source regardless of generation model
-
-                graph_path = Path(
-                    f"data/graphs/{GRAPH_MODEL}/{dataset}/{SPLIT}/{variant}/{dataset}_{SPLIT}_graph.gpickle"
-                )
-                if not graph_path.exists():
-                    raise FileNotFoundError(
-                        f"Expected graph at {graph_path} but it was not found. "
-                        f"Make sure you built the {GRAPH_MODEL} graphs for dataset={dataset}, split={SPLIT}, variant={variant}."
-                    )
-
-                with open(graph_path, "rb") as f:
-                    graph_obj = pickle.load(f)
-                print(f"[Graph] Loaded canonical graph from {graph_path}")
-
-
-                # graph_path = Path(
-                #     f"data/graphs/{model}/{dataset}/{SPLIT}/{variant}/{dataset}_{SPLIT}_graph.gpickle"
-                # )
-                # with open(graph_path, "rb") as f:
-                #     graph_obj = pickle.load(f)
+    print(f"[Done] dataset={dataset} model={model} variant={variant} split={split}")
 
 
 
 
-                trav_alg = variant_cfg[variant]
-
-                output_paths = get_traversal_paths(model, dataset, SPLIT, variant)
 
 
-                done_ids, _ = compute_resume_sets(
-                    resume=RESUME,
-                    out_path=str(output_paths["results"]),
-                    items=query_data_full,
-                    get_id=lambda q, i: q["question_id"],
-                    phase_label=f"Traversal ({variant})",
-                    id_field="question_id",
-                )
-                remaining_queries = [q for q in query_data_full if q["question_id"] not in done_ids]
-                if not remaining_queries:
-                    print("No new queries to process.")
-                    continue
 
-                run_traversal(
-                    query_data=remaining_queries,
-                    graph=graph_obj,
-                    passage_metadata=passage_metadata,
-                    passage_emb=passage_emb,
-                    passage_index=passage_index,
-                    emb_model=emb_model,
-                    server_configs=get_server_configs(model),
-                    output_paths=output_paths,
-                    seed_top_k=seed_top_k,
-                    alpha=DEFAULT_ALPHA,
-                    n_hops=number_hops,
-                    traversal_alg=trav_alg,
-                    traversal_prompt=traversal_prompt,
-                )
+if __name__ == "__main__":
+    DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
+    MODELS = ["qwen-7b"]
+    VARIANTS = ["baseline", "enhanced"]
 
-                new_ids = {q["question_id"] for q in remaining_queries}
-                traversal_metrics = compute_traversal_summary(
-                    output_paths["results"], include_ids=new_ids
-                )
-                append_global_result(
-                    save_path=output_paths["stats"],
-                    traversal_eval=traversal_metrics
-                )
+    RESUME = True
+    SPLIT = "dev"
 
-                print(
-                    f"[Done] dataset={dataset} model={model} variant={variant} split={SPLIT}"
-                )
+    configs = [
+        {"dataset": d, "model": m, "variant": v, "split": SPLIT, "resume": RESUME}
+        for d in DATASETS
+        for m in MODELS
+        for v in VARIANTS
+    ]
 
-    print("\nAll traversals completed.")
+    result_paths = set()
+    for cfg in configs:
+        out_path = get_traversal_paths(
+            cfg["model"], cfg["dataset"], cfg["split"], cfg["variant"]
+        )["results"]
+        if out_path in result_paths:
+            raise ValueError(f"Duplicate output path detected: {out_path}")
+        result_paths.add(out_path)
+
+    run_multiprocess(process_traversal, configs)
+
+
+
+# if __name__ == "__main__":
+
+#     # Configuration lists
+#     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
+#     MODELS = ["deepseek-distill-qwen-7b"]#["qwen-7b"]
+#     VARIANTS = ["baseline", "enhanced"]
+
+#     GRAPH_MODEL = "qwen-7b"
+
+#     RESUME = True
+#     SPLIT = "dev"
+
+#     variant_cfg = {
+#         "baseline": hoprag_traversal_algorithm,
+#         "enhanced": enhanced_traversal_algorithm,
+#     }
+
+#     traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
+#     seed_top_k = 50
+#     number_hops = 2
+
+
+#     emb_model = get_embedding_model()
+
+#     for dataset in DATASETS:
+#         # Load dataset-wide resources once per dataset
+#         paths = dataset_rep_paths(dataset, SPLIT)
+#         passage_metadata = list(load_jsonl(paths["passages_jsonl"]))
+#         passage_emb = np.load(paths["passages_emb"])
+#         passage_index = faiss.read_index(paths["passages_index"])
+#         query_path = processed_dataset_paths(dataset, SPLIT)["questions"]
+#         query_data_full = [
+#             {**q, "query_id": q["question_id"]}
+#             for q in load_jsonl(query_path)
+#         ]
+
+#         for model in MODELS:
+
+
+#             for variant in VARIANTS:
+#                 print(
+#                     f"[Run] dataset={dataset} model={model} variant={variant} split={SPLIT}"
+#                 )
+
+#                 # Use a single canonical graph source regardless of generation model
+
+#                 graph_path = Path(
+#                     f"data/graphs/{GRAPH_MODEL}/{dataset}/{SPLIT}/{variant}/{dataset}_{SPLIT}_graph.gpickle"
+#                 )
+#                 if not graph_path.exists():
+#                     raise FileNotFoundError(
+#                         f"Expected graph at {graph_path} but it was not found. "
+#                         f"Make sure you built the {GRAPH_MODEL} graphs for dataset={dataset}, split={SPLIT}, variant={variant}."
+#                     )
+
+#                 with open(graph_path, "rb") as f:
+#                     graph_obj = pickle.load(f)
+#                 print(f"[Graph] Loaded canonical graph from {graph_path}")
+
+
+#                 # graph_path = Path(
+#                 #     f"data/graphs/{model}/{dataset}/{SPLIT}/{variant}/{dataset}_{SPLIT}_graph.gpickle"
+#                 # )
+#                 # with open(graph_path, "rb") as f:
+#                 #     graph_obj = pickle.load(f)
+
+
+
+
+#                 trav_alg = variant_cfg[variant]
+
+#                 output_paths = get_traversal_paths(model, dataset, SPLIT, variant)
+
+
+#                 done_ids, _ = compute_resume_sets(
+#                     resume=RESUME,
+#                     out_path=str(output_paths["results"]),
+#                     items=query_data_full,
+#                     get_id=lambda q, i: q["question_id"],
+#                     phase_label=f"Traversal ({variant})",
+#                     id_field="question_id",
+#                 )
+#                 remaining_queries = [q for q in query_data_full if q["question_id"] not in done_ids]
+#                 if not remaining_queries:
+#                     print("No new queries to process.")
+#                     continue
+
+#                 run_traversal(
+#                     query_data=remaining_queries,
+#                     graph=graph_obj,
+#                     passage_metadata=passage_metadata,
+#                     passage_emb=passage_emb,
+#                     passage_index=passage_index,
+#                     emb_model=emb_model,
+#                     server_configs=get_server_configs(model),
+#                     output_paths=output_paths,
+#                     seed_top_k=seed_top_k,
+#                     alpha=DEFAULT_ALPHA,
+#                     n_hops=number_hops,
+#                     traversal_alg=trav_alg,
+#                     traversal_prompt=traversal_prompt,
+#                 )
+
+#                 new_ids = {q["question_id"] for q in remaining_queries}
+#                 traversal_metrics = compute_traversal_summary(
+#                     output_paths["results"], include_ids=new_ids
+#                 )
+#                 append_global_result(
+#                     save_path=output_paths["stats"],
+#                     traversal_eval=traversal_metrics
+#                 )
+
+#                 print(
+#                     f"[Done] dataset={dataset} model={model} variant={variant} split={SPLIT}"
+#                 )
+
+#     print("\nAll traversals completed.")
