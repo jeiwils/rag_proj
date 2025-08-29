@@ -20,35 +20,50 @@ from pathlib import Path
 
 
 
-
-
-SERVER_CONFIGS = [ 
-    # 1.5B models (4 servers for all datasets)
+SERVER_CONFIGS = [
+    # --- Legacy: Qwen 1.5B (4) ---
     {"server_url": "http://localhost:8000", "model": "qwen-1.5b"},
     {"server_url": "http://localhost:8001", "model": "qwen-1.5b"},
     {"server_url": "http://localhost:8002", "model": "qwen-1.5b"},
     {"server_url": "http://localhost:8003", "model": "qwen-1.5b"},
 
-    # 7B models (2 servers for all datasets)
+    # --- Legacy: Qwen 7B (2) ---
     {"server_url": "http://localhost:8004", "model": "qwen-7b"},
     {"server_url": "http://localhost:8005", "model": "qwen-7b"},
 
-    # 14B models (1 server for all datasets)
+    # --- Legacy: Qwen 14B (1) ---
     {"server_url": "http://localhost:8006", "model": "qwen-14b"},
-    
-    # Deepseek-distill-qwen models (4 servers for all datasets)
+
+    # --- Legacy: DeepSeek-Distill-Qwen 1.5B (4) ---
     {"server_url": "http://localhost:8007", "model": "deepseek-distill-qwen-1.5b"},
     {"server_url": "http://localhost:8008", "model": "deepseek-distill-qwen-1.5b"},
     {"server_url": "http://localhost:8009", "model": "deepseek-distill-qwen-1.5b"},
     {"server_url": "http://localhost:8010", "model": "deepseek-distill-qwen-1.5b"},
 
-    # Deepseek-distill-qwen 7B models (2 servers for all datasets)
+    # --- Legacy: DeepSeek-Distill-Qwen 7B (2) ---
     {"server_url": "http://localhost:8011", "model": "deepseek-distill-qwen-7b"},
     {"server_url": "http://localhost:8012", "model": "deepseek-distill-qwen-7b"},
 
-    # Deepseek-distill-qwen 14B models (1 server for all datasets)
+    # --- Legacy: DeepSeek-Distill-Qwen 14B (1) ---
     {"server_url": "http://localhost:8013", "model": "deepseek-distill-qwen-14b"},
+
+    # --- NEW: Graphing — Qwen2.5-7B (2) ---
+    {"server_url": "http://localhost:8014", "model": "qwen2.5-7b"},
+    {"server_url": "http://localhost:8015", "model": "qwen2.5-7b"},
+
+    # --- NEW: Traversal — DeepSeek-R1-Distill-Qwen-7B (2) ---
+    {"server_url": "http://localhost:8016", "model": "deepseek-r1-distill-qwen-7b"},
+    {"server_url": "http://localhost:8017", "model": "deepseek-r1-distill-qwen-7b"},
+
+    # --- NEW: Qwen2.5-7B-Instruct (2) ---
+    {"server_url": "http://localhost:8018", "model": "qwen2.5-7b-instruct"},
+    {"server_url": "http://localhost:8019", "model": "qwen2.5-7b-instruct"},
+
+    # --- NEW: Reader — Meta-Llama-3.1-8B-Instruct (2) ---
+    {"server_url": "http://localhost:8020", "model": "llama-3.1-8b-instruct"},
+    {"server_url": "http://localhost:8021", "model": "llama-3.1-8b-instruct"},
 ]
+
 
 def get_server_configs(model: str) -> List[Dict[str, str]]:
     """Return all server configuration dicts for ``model``.

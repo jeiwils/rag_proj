@@ -92,15 +92,6 @@ File Schema
 """
 
 
-
-
-
-### end of: 2 sets of traversals+metrics made with the dev query+gold set (is that right? not the train set?)
-# - 1) normal hoprag traversal algorithm (no node revisits)
-# - 2) enhanced hoprag traversal algorithm (allows node revists - no edge revisits)
-
-
-
 import json
 import pickle
 from collections import Counter
@@ -425,60 +416,6 @@ def enhanced_traversal_algorithm(
     next_Cqueue.append(chosen_vk)
     return {chosen_vk}
 
-
-# def traverse_graph(
-#     graph: nx.DiGraph,
-#     query_text: str,
-#     seed_passages: list,
-#     n_hops: int,
-#     server_configs: list,
-#     traversal_alg: Callable  # custom algorithm step (edge + queueing logic)
-# ):
-#     Cqueue = seed_passages[:]
-#     visited_passages = set(seed_passages)
-#     ccount = {pid: 1 for pid in Cqueue}
-#     hop_trace = []
-#     state = {
-#         "Evisited": set(),
-#         "none_count": 0,
-#         "repeat_visit_count": 0
-#     }
-
-#     for hop in range(n_hops):
-#         next_Cqueue = []
-#         hop_log = {
-#             "hop": hop,
-#             "expanded_from": list(Cqueue),
-#             "new_passages": [],
-#             "edges_chosen": [],
-#             "none_count": 0,
-#             "repeat_visit_count": 0
-#         }
-
-#         for vj in Cqueue:
-#             if vj not in graph:
-#                 continue
-
-#             new_nodes = traversal_alg(
-#                 vj=vj,
-#                 graph=graph,
-#                 query_text=query_text,
-#                 visited_passages=visited_passages,
-#                 server_configs=server_configs,
-#                 ccount=ccount,
-#                 next_Cqueue=next_Cqueue,
-#                 hop_log=hop_log,
-#                 state=state,
-#             )
-#             visited_passages.update(new_nodes)
-
-#         hop_trace.append(hop_log)
-#         Cqueue = next_Cqueue
-
-#     return list(visited_passages), ccount, hop_trace, {
-#         "none_count": state["none_count"],
-#         "repeat_visit_count": state["repeat_visit_count"]
-#     }
 
 def traverse_graph(
     graph: nx.DiGraph,
@@ -879,7 +816,8 @@ def process_traversal(cfg: Dict) -> None:
     """Load resources and run traversal for a single configuration."""
 
     dataset = cfg["dataset"]
-    model = cfg["model"]
+    graph_model = cfg["graph_model"]
+    model = cfg["model"]  # traversal model for LLM endpoint
     variant = cfg["variant"]
     split = cfg["split"]
     resume = cfg["resume"]
@@ -889,8 +827,10 @@ def process_traversal(cfg: Dict) -> None:
         "enhanced": enhanced_traversal_algorithm,
     }
 
-    print(f"[Run] dataset={dataset} model={model} variant={variant} split={split}")
-
+    print(
+        f"[Run] dataset={dataset} graph_model={graph_model} traversal_model={model} variant={variant} split={split}"
+    )
+    
     paths = dataset_rep_paths(dataset, split)
     passage_metadata = list(load_jsonl(paths["passages_jsonl"]))
     passage_emb = np.load(paths["passages_emb"])
@@ -901,13 +841,13 @@ def process_traversal(cfg: Dict) -> None:
     ]
 
     graph_path = Path(
-        f"data/graphs/{model}/{dataset}/{split}/{variant}/{dataset}_{split}_graph.gpickle"
+        f"data/graphs/{graph_model}/{dataset}/{split}/{variant}/{dataset}_{split}_graph.gpickle"
     )
     with open(graph_path, "rb") as f:
         graph_obj = pickle.load(f)
     trav_alg = variant_cfg[variant]
 
-    output_paths = get_traversal_paths(model, dataset, split, variant)
+    output_paths = get_traversal_paths(graph_model, dataset, split, variant)
 
     done_ids, _ = compute_resume_sets(
         resume=resume,
@@ -988,7 +928,9 @@ def process_traversal(cfg: Dict) -> None:
         save_path=output_paths["stats"], traversal_eval=traversal_metrics
     )
 
-    print(f"[Done] dataset={dataset} model={model} variant={variant} split={split}")
+    print(
+        f"[Done] dataset={dataset} graph_model={graph_model} traversal_model={model} variant={variant} split={split}"
+    )
 
 
 
@@ -998,29 +940,35 @@ def process_traversal(cfg: Dict) -> None:
 
 if __name__ == "__main__":
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-    MODELS = ["deepseek-distill-qwen-7b"] #["qwen-7b"]
+    GRAPH_MODELS = ["qwen-7b"]  # e.g., graph generation model
+    TRAVERSAL_MODELS = ["deepseek-distill-qwen-7b"]  # LLM used during traversal
     VARIANTS = ["baseline", "enhanced"]
 
     RESUME = True
     SPLIT = "dev"
 
     configs = [
-        {"dataset": d, "model": m, "variant": v, "split": SPLIT, "resume": RESUME}
+        {
+            "dataset": d,
+            "graph_model": gm,
+            "model": tm,
+            "variant": v,
+            "split": SPLIT,
+            "resume": RESUME,
+        }
         for d in DATASETS
-        for m in MODELS
+        for gm in GRAPH_MODELS
+        for tm in TRAVERSAL_MODELS
         for v in VARIANTS
     ]
 
     result_paths = set()
     for cfg in configs:
         out_path = get_traversal_paths(
-            cfg["model"], cfg["dataset"], cfg["split"], cfg["variant"]
+            cfg["graph_model"], cfg["dataset"], cfg["split"], cfg["variant"]
         )["results"]
         if out_path in result_paths:
             raise ValueError(f"Duplicate output path detected: {out_path}")
         result_paths.add(out_path)
 
     run_multiprocess(process_traversal, configs)
-
-
-
