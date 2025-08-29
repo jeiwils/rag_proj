@@ -924,9 +924,12 @@ def process_traversal(cfg: Dict) -> None:
         print("No new queries to process.")
         return
 
-    # Split remaining queries into two halves for parallel processing
-    mid = len(remaining_queries) // 2
-    query_batches = [remaining_queries[:mid], remaining_queries[mid:]]
+    # Determine number of batches based on available servers
+    server_configs = get_server_configs(model)
+    n_batches = len(server_configs)
+
+    # Split remaining queries across the server batches
+    query_batches = [list(b) for b in np.array_split(remaining_queries, n_batches)]
 
     emb_model = get_embedding_model()
 
@@ -948,7 +951,7 @@ def process_traversal(cfg: Dict) -> None:
                 "passage_emb": passage_emb,
                 "passage_index": passage_index,
                 "emb_model": emb_model,
-                "server_configs": get_server_configs(model),
+                "server_configs": [server_configs[i]],
                 "output_paths": batch_paths,
                 "traversal_alg": trav_alg,
             }
@@ -959,7 +962,7 @@ def process_traversal(cfg: Dict) -> None:
 
     # Merge partial results into final files
     with open(output_paths["results"], "wt", encoding="utf-8") as fout:
-        for i in range(len(query_batches)):
+        for i in range(n_batches):
             part_path = output_paths["base"] / f"results_part{i}.jsonl"
             if part_path.exists():
                 with open(part_path, "rt", encoding="utf-8") as fin:
@@ -968,7 +971,7 @@ def process_traversal(cfg: Dict) -> None:
                 part_path.unlink()
 
     merged_passages: Set[str] = set()
-    for i in range(len(query_batches)):
+    for i in range(n_batches):
         part_path = output_paths["base"] / f"visited_passages_part{i}.json"
         if part_path.exists():
             with open(part_path, "rt", encoding="utf-8") as fin:
