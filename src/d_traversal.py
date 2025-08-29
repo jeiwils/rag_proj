@@ -117,6 +117,7 @@ from src.utils import (
     append_jsonl,
     compute_resume_sets,
     get_server_configs,
+    get_server_urls,
     get_traversal_paths,
     load_jsonl,
     processed_dataset_paths,
@@ -796,11 +797,15 @@ def compute_traversal_summary(
 
 
 
+
 def process_query_batch(cfg: Dict) -> None:
-    """Run traversal on a subset of queries and write partial outputs."""
+    """Run traversal on a shard of queries and write partial outputs."""
 
     server_url = cfg["server_url"]
     model = cfg["model"]
+    input_path = cfg["input_path"]
+    resume = cfg.get("resume", False)
+    resume_path = cfg["resume_path"]
 
     server_config = next(
         (s for s in get_server_configs(model) if s["server_url"] == server_url),
@@ -809,8 +814,23 @@ def process_query_batch(cfg: Dict) -> None:
     if server_config is None:
         raise ValueError(f"Server URL {server_url} not found for model {model}")
 
+    queries = [{**q, "query_id": q["question_id"]} for q in load_jsonl(input_path)]
+
+    done_ids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=str(resume_path),
+        items=queries,
+        get_id=lambda q, i: q["question_id"],
+        phase_label="Traversal",
+        id_field="question_id",
+    )
+    if resume:
+        queries = [q for q in queries if q["question_id"] not in done_ids]
+    if not queries:
+        return
+
     run_traversal(
-        query_data=cfg["query_data"],
+        query_data=queries,
         graph=cfg["graph"],
         passage_metadata=cfg["passage_metadata"],
         passage_emb=cfg["passage_emb"],
@@ -823,6 +843,9 @@ def process_query_batch(cfg: Dict) -> None:
         n_hops=DEFAULT_NUMBER_HOPS,
         traversal_alg=cfg["traversal_alg"],
     )
+
+
+
 
 
 
@@ -844,15 +867,12 @@ def process_traversal(cfg: Dict) -> None:
     print(
         f"[Run] dataset={dataset} graph_model={graph_model} traversal_model={model} variant={variant} split={split}"
     )
-    
+
     paths = dataset_rep_paths(dataset, split)
     passage_metadata = list(load_jsonl(paths["passages_jsonl"]))
     passage_emb = np.load(paths["passages_emb"])
     passage_index = faiss.read_index(paths["passages_index"])
     query_path = processed_dataset_paths(dataset, split)["questions"]
-    query_data_full = [
-        {**q, "query_id": q["question_id"]} for q in load_jsonl(query_path)
-    ]
 
     graph_path = Path(
         f"data/graphs/{graph_model}/{dataset}/{split}/{variant}/{dataset}_{split}_graph.gpickle"
@@ -863,36 +883,12 @@ def process_traversal(cfg: Dict) -> None:
 
     output_paths = get_traversal_paths(graph_model, dataset, split, variant)
 
-    done_ids, _ = compute_resume_sets(
-        resume=resume,
-        out_path=str(output_paths["results"]),
-        items=query_data_full,
-        get_id=lambda q, i: q["question_id"],
-        phase_label=f"Traversal ({variant})",
-        id_field="question_id",
-    )
-    remaining_queries = [
-        q for q in query_data_full if q["question_id"] not in done_ids
-    ]
-    if not remaining_queries:
-        print("No new queries to process.")
-        return
-
-    # Determine number of batches based on available servers
-    server_configs = get_server_configs(model)
-    server_urls = [s["server_url"] for s in server_configs]
-    n_batches = len(server_urls)
-
-    # Split remaining queries across the server batches
-    query_batches = [list(b) for b in np.array_split(remaining_queries, n_batches)]
-
+    urls = get_server_urls(model)
+    shards = split_jsonl_for_models(str(query_path), model)
     emb_model = get_embedding_model()
 
-    # Prepare per-batch configurations
     batch_configs = []
-    for i, (batch, url) in enumerate(zip(query_batches, server_urls)):
-        if not batch:
-            continue
+    for i, (url, shard) in enumerate(zip(urls, shards)):
         batch_paths = {
             "base": output_paths["base"],
             "results": output_paths["base"] / f"results_part{i}.jsonl",
@@ -900,7 +896,7 @@ def process_traversal(cfg: Dict) -> None:
         }
         batch_configs.append(
             {
-                "query_data": batch,
+                "input_path": shard,
                 "graph": graph_obj,
                 "passage_metadata": passage_metadata,
                 "passage_emb": passage_emb,
@@ -910,24 +906,27 @@ def process_traversal(cfg: Dict) -> None:
                 "model": model,
                 "output_paths": batch_paths,
                 "traversal_alg": trav_alg,
+                "resume": resume,
+                "resume_path": output_paths["results"],
             }
         )
 
-    # Run traversal in parallel for each batch
     run_multiprocess(process_query_batch, batch_configs)
 
-    # Merge partial results into final files
-    with open(output_paths["results"], "wt", encoding="utf-8") as fout:
-        for i in range(n_batches):
+    new_ids: Set[str] = set()
+    with open(output_paths["results"], "at", encoding="utf-8") as fout:
+        for i in range(len(urls)):
             part_path = output_paths["base"] / f"results_part{i}.jsonl"
             if part_path.exists():
                 with open(part_path, "rt", encoding="utf-8") as fin:
                     for line in fin:
                         fout.write(line)
+                        obj = json.loads(line)
+                        new_ids.add(obj.get("question_id"))
                 part_path.unlink()
 
     merged_passages: Set[str] = set()
-    for i in range(n_batches):
+    for i in range(len(urls)):
         part_path = output_paths["base"] / f"visited_passages_part{i}.json"
         if part_path.exists():
             with open(part_path, "rt", encoding="utf-8") as fin:
@@ -936,7 +935,6 @@ def process_traversal(cfg: Dict) -> None:
     with open(output_paths["visited_passages"], "wt", encoding="utf-8") as fout:
         json.dump(sorted(merged_passages), fout, indent=2)
 
-    new_ids = {q["question_id"] for q in remaining_queries}
     traversal_metrics = compute_traversal_summary(
         output_paths["results"], include_ids=new_ids
     )

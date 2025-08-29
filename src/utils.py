@@ -463,31 +463,6 @@ def split_jsonl_into_four(path, out1, out2, out3, out4):
 
 
 
-# def split_jsonl_for_models(path: str, model: str) -> list[str]:
-#     """Split input JSONL into shards based on model size.
-
-#     Shards are placed under ``data/models/{model}/{dataset}/{split}/shards``.
-#     Output file names follow format: {split}_passages_shard{N}_{size}.jsonl
-#     """
-#     size = model_size(model)
-#     dataset = Path(path).parent.parent.name              # musique
-#     split_name = Path(path).parent.name                  # train or dev
-#     stem = f"{split_name}_passages"                      # ensures correct naming
-#     out_paths = model_shard_paths(model, dataset, split_name, stem, size)
-
-#     if RESUME and all(p.exists() for p in out_paths):
-#         return [str(p) for p in out_paths]
-
-#     if size == "1.5b":
-#         split_jsonl_into_four(path, *(str(p) for p in out_paths))
-#     elif size == "7b":
-#         split_jsonl(path, *(str(p) for p in out_paths))
-#     elif size == "14b":
-#         save_jsonl(str(out_paths[0]), load_jsonl(path))
-#     else:
-#         raise ValueError(f"Unsupported model size: {size}")
-
-#     return [str(p) for p in out_paths]
 
 
 def split_jsonl_into_four(path: str, out1: str, out2: str, out3: str, out4: str) -> None:
