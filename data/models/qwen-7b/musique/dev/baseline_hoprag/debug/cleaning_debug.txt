@@ -1,0 +1,20 @@
+Total shards: 2
+Total passages processed: 9998
+Model: qwen-7b
+Dataset: musique
+Split: dev
+Variant: baseline
+HopRAG version: baseline_hoprag
+Phase: cleaning
+Total time taken (seconds): 26.36
+
+Counts (IQ/OQ):
+- Raw IQ total: 10102
+- Raw OQ total: 10099
+- Clean IQ total: 46811
+- Clean OQ total: 49535
+- Dropped IQ total: -36709
+- Dropped OQ total: -39436
+
+Merged cleaned file:
+- data\models\qwen-7b\musique\dev\baseline_hoprag\cleaned\iqoq.cleaned.jsonl

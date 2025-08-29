@@ -1,0 +1,20 @@
+Total shards: 2
+Total passages processed: 21246
+Model: qwen-7b
+Dataset: hotpotqa
+Split: dev
+Variant: enhanced
+HopRAG version: enhanced_hoprag
+Phase: cleaning
+Total time taken (seconds): 96.17
+
+Counts (IQ/OQ):
+- Raw IQ total: 97585
+- Raw OQ total: 198138
+- Clean IQ total: 89645
+- Clean OQ total: 188244
+- Dropped IQ total: 7940
+- Dropped OQ total: 9894
+
+Merged cleaned file:
+- data\models\qwen-7b\hotpotqa\dev\enhanced_hoprag\cleaned\iqoq.cleaned.jsonl

@@ -210,7 +210,7 @@ def clean_iqoq(questions: list[str]) -> list[str]:
         f"clean_iqoq filtered - not_question: {skipped_not_question}, "
         f"too_short: {skipped_too_short}, banned: {skipped_banned}"
     )
-    
+
     return cleaned
 
 # def clean_baseline(questions):
@@ -252,15 +252,30 @@ def clean_baseline(questions):
             print(f"clean_baseline parse error: {e}")
             continue
 
-        qlist = obj.get("Question List")
-        if qlist is None:
-            for alt in ("questions", "question_list", "qlist"):
-                if alt in obj:
-                    qlist = obj[alt]
-                    break
+        # Normalize the parsed object before extracting questions.
+        qlist = None
+        if isinstance(obj, dict):
+            qlist = obj.get("Question List")
+            if qlist is None:
+                for alt in ("questions", "question_list", "qlist"):
+                    if alt in obj:
+                        qlist = obj[alt]
+                        break
+        elif isinstance(obj, list):
+            qlist = obj
+        elif isinstance(obj, str):
+            qlist = [obj]
+        else:
+            # Unsupported type; skip this snippet entirely
+            continue
 
         if isinstance(qlist, list):
             collected.extend(map(str, qlist))
+        elif isinstance(qlist, str):
+            collected.append(str(qlist))
+        else:
+            # Could not normalize questions; skip snippet
+            continue
 
     if collected:
         cleaned = clean_iqoq(collected)

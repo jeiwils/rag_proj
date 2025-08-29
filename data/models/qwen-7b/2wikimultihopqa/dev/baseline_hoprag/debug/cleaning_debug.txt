@@ -1,0 +1,20 @@
+Total shards: 2
+Total passages processed: 15982
+Model: qwen-7b
+Dataset: 2wikimultihopqa
+Split: dev
+Variant: baseline
+HopRAG version: baseline_hoprag
+Phase: cleaning
+Total time taken (seconds): 43.75
+
+Counts (IQ/OQ):
+- Raw IQ total: 16872
+- Raw OQ total: 17238
+- Clean IQ total: 43739
+- Clean OQ total: 59895
+- Dropped IQ total: -26867
+- Dropped OQ total: -42657
+
+Merged cleaned file:
+- data\models\qwen-7b\2wikimultihopqa\dev\baseline_hoprag\cleaned\iqoq.cleaned.jsonl
