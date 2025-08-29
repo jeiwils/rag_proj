@@ -121,10 +121,13 @@ from src.utils import (
     load_jsonl,
     processed_dataset_paths,
     run_multiprocess,
+    save_jsonl,
+    split_jsonl_for_models,
+    model_size,
+    pool_map, 
 )
 
-from src.a2_text_prep import model_size 
-from src.utils import pool_map
+
 
 
 
@@ -796,6 +799,16 @@ def compute_traversal_summary(
 def process_query_batch(cfg: Dict) -> None:
     """Run traversal on a subset of queries and write partial outputs."""
 
+    server_url = cfg["server_url"]
+    model = cfg["model"]
+
+    server_config = next(
+        (s for s in get_server_configs(model) if s["server_url"] == server_url),
+        None,
+    )
+    if server_config is None:
+        raise ValueError(f"Server URL {server_url} not found for model {model}")
+
     run_traversal(
         query_data=cfg["query_data"],
         graph=cfg["graph"],
@@ -803,14 +816,13 @@ def process_query_batch(cfg: Dict) -> None:
         passage_emb=cfg["passage_emb"],
         passage_index=cfg["passage_index"],
         emb_model=cfg["emb_model"],
-        server_configs=cfg["server_configs"],
+        server_configs=[server_config],
         output_paths=cfg["output_paths"],
         seed_top_k=DEFAULT_SEED_TOP_K,
         alpha=DEFAULT_ALPHA,
         n_hops=DEFAULT_NUMBER_HOPS,
         traversal_alg=cfg["traversal_alg"],
     )
-
 
 
 
@@ -868,7 +880,8 @@ def process_traversal(cfg: Dict) -> None:
 
     # Determine number of batches based on available servers
     server_configs = get_server_configs(model)
-    n_batches = len(server_configs)
+    server_urls = [s["server_url"] for s in server_configs]
+    n_batches = len(server_urls)
 
     # Split remaining queries across the server batches
     query_batches = [list(b) for b in np.array_split(remaining_queries, n_batches)]
@@ -877,7 +890,7 @@ def process_traversal(cfg: Dict) -> None:
 
     # Prepare per-batch configurations
     batch_configs = []
-    for i, batch in enumerate(query_batches):
+    for i, (batch, url) in enumerate(zip(query_batches, server_urls)):
         if not batch:
             continue
         batch_paths = {
@@ -893,7 +906,8 @@ def process_traversal(cfg: Dict) -> None:
                 "passage_emb": passage_emb,
                 "passage_index": passage_index,
                 "emb_model": emb_model,
-                "server_configs": [server_configs[i]],
+                "server_url": url,
+                "model": model,
                 "output_paths": batch_paths,
                 "traversal_alg": trav_alg,
             }

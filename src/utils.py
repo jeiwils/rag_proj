@@ -398,6 +398,118 @@ def processed_dataset_paths(dataset: str, split: str) -> Dict[str, Path]:
     }
 
 
+
+
+
+
+
+
+def model_size(model: str) -> str:
+    """
+    Normalizes 'qwen-1.5b' -> '1.5b', 'qwen-7b' -> '7b', 'deepseek-distill-qwen-14b' -> '14b'
+        
+    just a helper function for file naming         
+                
+    """
+    m = re.search(r'(\d+(?:\.\d+)?)b', model, re.I)
+    if not m:
+        raise ValueError(f"Cannot infer size from model name: {model}")
+    return m.group(1).lower() + "b"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def split_jsonl(path: str, out1: str, out2: str):
+    data = list(load_jsonl(path))  # Convert generator to list
+    half = len(data) // 2
+    save_jsonl(out1, data[:half])
+    save_jsonl(out2, data[half:])
+
+
+
+def split_jsonl_into_four(path, out1, out2, out3, out4):
+    data = list(load_jsonl(path))
+    total_rows = len(data)
+
+    if total_rows == 0:
+        save_jsonl(out1, []); save_jsonl(out2, []); save_jsonl(out3, []); save_jsonl(out4, [])
+        return
+
+    # Base size per chunk + how many leftovers to spread
+    base_size, leftovers = divmod(total_rows, 4)
+
+    # First `leftovers` chunks get one extra row
+    chunk_sizes = [(base_size + 1 if i < leftovers else base_size) for i in range(4)]
+
+    chunks, start = [], 0
+    for size in chunk_sizes:
+        end = start + size
+        chunks.append(data[start:end])
+        start = end
+
+    save_jsonl(out1, chunks[0]); save_jsonl(out2, chunks[1])
+    save_jsonl(out3, chunks[2]); save_jsonl(out4, chunks[3])
+
+
+
+# def split_jsonl_for_models(path: str, model: str) -> list[str]:
+#     """Split input JSONL into shards based on model size.
+
+#     Shards are placed under ``data/models/{model}/{dataset}/{split}/shards``.
+#     Output file names follow format: {split}_passages_shard{N}_{size}.jsonl
+#     """
+#     size = model_size(model)
+#     dataset = Path(path).parent.parent.name              # musique
+#     split_name = Path(path).parent.name                  # train or dev
+#     stem = f"{split_name}_passages"                      # ensures correct naming
+#     out_paths = model_shard_paths(model, dataset, split_name, stem, size)
+
+#     if RESUME and all(p.exists() for p in out_paths):
+#         return [str(p) for p in out_paths]
+
+#     if size == "1.5b":
+#         split_jsonl_into_four(path, *(str(p) for p in out_paths))
+#     elif size == "7b":
+#         split_jsonl(path, *(str(p) for p in out_paths))
+#     elif size == "14b":
+#         save_jsonl(str(out_paths[0]), load_jsonl(path))
+#     else:
+#         raise ValueError(f"Unsupported model size: {size}")
+
+#     return [str(p) for p in out_paths]
+
+
+def split_jsonl_into_four(path: str, out1: str, out2: str, out3: str, out4: str) -> None:
+    """Split ``path`` into four roughly equal JSONL shards."""
+    data = list(load_jsonl(path))
+    total_rows = len(data)
+    if total_rows == 0:
+        save_jsonl(out1, []); save_jsonl(out2, []); save_jsonl(out3, []); save_jsonl(out4, [])
+        return
+    base_size, leftovers = divmod(total_rows, 4)
+    chunk_sizes = [(base_size + 1 if i < leftovers else base_size) for i in range(4)]
+    chunks, start = [], 0
+    for size in chunk_sizes:
+        end = start + size
+        chunks.append(data[start:end])
+        start = end
+    save_jsonl(out1, chunks[0]); save_jsonl(out2, chunks[1])
+    save_jsonl(out3, chunks[2]); save_jsonl(out4, chunks[3])
+
+
+
+
 def model_shard_dir(model: str, dataset: str, split: str) -> Path:
     """Return directory for model-specific shards.
 
@@ -503,4 +615,8 @@ __all__ = [
     "model_shard_paths",
     "run_multiprocess",
     "pool_map",
+    "model_size",
+    "split_jsonl",
+    "split_jsonl_into_four",
+    "split_jsonl_for_models",
 ]

@@ -113,7 +113,7 @@ from typing import Dict, List, Optional, Tuple
 from functools import partial
 import networkx as nx
 
-from src.a2_text_prep import is_r1_like, query_llm, strip_think
+from src.a2_text_prep import is_r1_like, query_llm, strip_think, model_size
 from src.utils import (
     append_jsonl,
     get_result_paths,
@@ -334,7 +334,9 @@ def generate_answers_from_traversal(
         LLM server configuration. Defaults to the first server returned by
         :func:`get_server_configs` for ``traversal_model`` when not provided.
     num_workers:
-        Number of worker processes. Defaults to ``os.cpu_count()`` when ``None``.
+        Number of worker processes. When ``None``, uses :func:`model_size` to
+        choose ``1`` worker for ``14b`` models, ``2`` for ``7b`` models, and
+        ``4`` otherwise.
 
     Returns
     -------
@@ -428,7 +430,8 @@ def generate_answers_from_traversal(
         return qid, answer_dict, llm_out["normalised_answer"]
 
     if num_workers is None:
-        num_workers = os.cpu_count() or 1
+        size = model_size(traversal_model if model_name is None else model_name)
+        num_workers = {"14b": 1, "7b": 2}.get(size, 4)
 
     worker = partial(
         _generate_answer,
@@ -509,6 +512,7 @@ if __name__ == "__main__":
                             split,
                             variant,
                             top_k_answer_passages=TOP_K_ANSWER_PASSAGES,
+                            num_workers=None,
                         )
     print("\n✅ Answers-only complete.")
 
