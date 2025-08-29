@@ -106,31 +106,33 @@ Notes
 
 
 
-
-import numpy as np
-import faiss
-from typing import Dict, Iterable, List, Set
-from sentence_transformers import SentenceTransformer
-from src.utils import (
-    load_jsonl,
-    save_jsonl_safely,
-    pid_plus_title,
-    clean_text,
-    processed_dataset_paths,
-)
-from pathlib import Path
-import torch
-import os
 import json
+import os
 import re
+from pathlib import Path
+from typing import Dict, Iterable, List, Set
+
+import faiss
+import numpy as np
 import spacy
-from src.utils import existing_ids, compute_resume_sets
+import torch
+from sentence_transformers import SentenceTransformer
+
+from src.utils import (
+    clean_text,
+    compute_resume_sets,
+    existing_ids,
+    load_jsonl,
+    pid_plus_title,
+    processed_dataset_paths,
+    save_jsonl_safely,
+)
 
 
 
-RESUME = True
+RESUME = True ########## WHY SET HERE?
 
-_bge_model = None
+_bge_model = None ########## WHY SET HERE?
 
 
 def get_embedding_model():

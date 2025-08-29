@@ -114,27 +114,31 @@ Each debug file logs:
 
 
 
-
-from pathlib import Path
+import json
 import re
-import requests
+import time
 from multiprocessing import Process
+from pathlib import Path
+from typing import Callable, Dict, List
+
+import requests
+from tqdm import tqdm
+
 from src.utils import (
-    load_jsonl,
-    save_jsonl,
+    SERVER_CONFIGS,
     append_jsonl,
+    compute_resume_sets,
+    existing_ids,
+    get_server_urls,
+    load_jsonl,
     model_shard_dir,
     model_shard_paths,
     processed_dataset_paths,
+    save_jsonl,
 )
-from tqdm import tqdm
-from typing import Callable, List, Dict
-import time
-import json
-from src.utils import SERVER_CONFIGS, existing_ids, compute_resume_sets, get_server_urls
 
 
-RESUME = True  
+RESUME = True  #### WHY SET HERE????
 
 
 

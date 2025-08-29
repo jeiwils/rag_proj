@@ -171,41 +171,39 @@ Edge:
 
 
 
-
-
-
+import json
+import math
 import os
-from typing import List, Dict, Optional
+import pickle
+from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional
 
+import networkx as nx
 import numpy as np
 from tqdm import tqdm
-from datetime import datetime
-import json
-import networkx as nx
-import pickle 
-
-
-from collections import defaultdict
-
-import math
-
 
 from src.b_sparse_dense_representations import (
+    dataset_rep_paths,
     faiss_search_topk,
     jaccard_similarity,
     load_faiss_index,
-    dataset_rep_paths,
     model_rep_paths,
 )
+from src.utils import (
+    append_jsonl,
+    compute_resume_sets,
+    load_jsonl,
+    save_jsonl,
+)
 
-from src.utils import load_jsonl, save_jsonl, append_jsonl
-from src.utils import compute_resume_sets
-
-
-from pathlib import Path
 
 
 
+
+
+######### POTENTIALLY MOVE THESE TO ANOTHER, SEPARATE, CONFIGS???
 
 
 DEFAULT_TOP_K = 50

@@ -79,14 +79,16 @@ Fields
 
 
 import json
-from typing import List, Dict
+from typing import Dict, List
+
 from src.utils import (
     append_jsonl,
     clean_text,
-    pid_plus_title,
     compute_resume_sets,
+    pid_plus_title,
     processed_dataset_paths,
 )
+
 
 
 
