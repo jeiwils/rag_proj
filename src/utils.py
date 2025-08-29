@@ -517,7 +517,46 @@ def model_shard_paths(model: str, dataset: str, split: str, stem: str, size: str
 
 
 
+def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> List[str]:
+    """Split ``path`` into shards appropriate for ``model``.
 
+    Parameters
+    ----------
+    path:
+        Input JSONL file to shard.
+    model:
+        Model name whose size determines the number of shards.
+    resume:
+        When ``True``, existing shard files are reused and splitting is skipped
+        if all expected shards are already present.
+
+    Returns
+    -------
+    List[str]
+        Paths to the shard files produced (or reused).
+    """
+
+    size = model_size(model)
+    p = Path(path)
+    dataset = p.parent.parent.name
+    split = p.parent.name
+    stem = p.stem
+    out_paths = model_shard_paths(model, dataset, split, stem, size)
+
+    if resume and all(op.exists() for op in out_paths):
+        return [str(op) for op in out_paths]
+
+    if size == "1.5b":
+        split_jsonl_into_four(path, *(str(op) for op in out_paths))
+    elif size == "7b":
+        split_jsonl(path, str(out_paths[0]), str(out_paths[1]))
+    elif size == "14b":
+        data = list(load_jsonl(path))
+        save_jsonl(str(out_paths[0]), data)
+    else:
+        raise ValueError(f"Unsupported model size: {size}")
+
+    return [str(op) for op in out_paths]
 
 
 def run_multiprocess(

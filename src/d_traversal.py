@@ -884,7 +884,7 @@ def process_traversal(cfg: Dict) -> None:
     output_paths = get_traversal_paths(graph_model, dataset, split, variant)
 
     urls = get_server_urls(model)
-    shards = split_jsonl_for_models(str(query_path), model)
+    shards = split_jsonl_for_models(str(query_path), model, resume=RESUME)
     emb_model = get_embedding_model()
 
     batch_configs = []

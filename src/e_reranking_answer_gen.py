@@ -116,6 +116,7 @@ import networkx as nx
 from src.a2_text_prep import is_r1_like, query_llm, strip_think, model_size
 from src.utils import (
     append_jsonl,
+    compute_resume_sets,
     get_result_paths,
     get_server_configs,
     get_traversal_paths,
@@ -319,6 +320,7 @@ def generate_answers_from_traversal(
     server_url: str | None = None,
     model_name: str | None = None,
     num_workers: int | None = None,
+    resume: bool = False,
 ) -> Dict[str, float]:
     """Generate answers from pre-computed traversal outputs.
 
@@ -337,6 +339,9 @@ def generate_answers_from_traversal(
         Number of worker processes. When ``None``, uses :func:`model_size` to
         choose ``1`` worker for ``14b`` models, ``2`` for ``7b`` models, and
         ``4`` otherwise.
+    resume:
+        When ``True``, skip questions already present in the output file and
+        append newly generated answers instead of overwriting.
 
     Returns
     -------
@@ -442,6 +447,22 @@ def generate_answers_from_traversal(
         top_k=top_k_answer_passages,
     )
 
+    done_ids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=str(result_paths["answers"]),
+        items=traversal_records.values(),
+        get_id=lambda r, i: r["question_id"],
+        phase_label="Answer generation",
+        id_field="question_id",
+    )
+    if resume:
+        traversal_records = {
+            qid: rec for qid, rec in traversal_records.items() if qid not in done_ids
+        }
+    if not traversal_records:
+        print("No new queries to process.")
+        return {}
+
     results = pool_map(worker, traversal_records.items(), processes=num_workers)
     for qid, answer, norm_ans in results:
         answers.append(answer)
@@ -449,7 +470,10 @@ def generate_answers_from_traversal(
         gold[qid] = [queries[qid].get("gold_answer", "")]
 
     result_paths["base"].mkdir(parents=True, exist_ok=True)
-    save_jsonl(result_paths["answers"], answers)
+    if resume:
+        append_jsonl(result_paths["answers"], answers)
+    else:
+        save_jsonl(result_paths["answers"], answers)
 
     metrics = evaluate_answers(predictions, gold)
     with open(result_paths["summary"], "wt", encoding="utf-8") as f:

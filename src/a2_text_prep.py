@@ -873,7 +873,7 @@ if __name__ == "__main__":
         for model in ACTIVE_MODEL_NAMES:
             print(f"\n=== {dataset} | {model} ===")
             urls   = get_server_urls(model)                    # all servers for this model
-            shards = split_jsonl_for_models(input_path, model) # one shard per server
+            shards = split_jsonl_for_models(input_path, model, resume=RESUME) # one shard per server
 
 
 
