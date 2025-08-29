@@ -211,7 +211,8 @@ def clean_iqoq(questions: list[str]) -> list[str]:
         f"too_short: {skipped_too_short}, banned: {skipped_banned}"
     )
 
-    return cleaned
+    # Remove duplicates while preserving order
+    return list(dict.fromkeys(cleaned))
 
 # def clean_baseline(questions):
 #     """Parse baseline 'json {"Question List":[...]}' strings then clean."""
@@ -288,13 +289,14 @@ def clean_baseline(questions):
         elif isinstance(qlist, str):
             collected.append(str(qlist))
 
-    # 👇 add here
+    # 👇 normalize then deduplicate
     if collected:
-        # Deduplicate before cleaning to save work
-        collected = list(dict.fromkeys(collected))
-        return clean_iqoq(collected)
+        cleaned = clean_iqoq(collected)
+    else:
+        cleaned = clean_iqoq(list(map(str, seq)))
 
-    return clean_iqoq(list(map(str, seq)))
+    # Deduplicate after normalization
+    return list(dict.fromkeys(cleaned))
 
 
 
