@@ -160,48 +160,115 @@ from src.utils import (
 
 ### *   *   * ###
 
-def clean_iqoq(questions: list[str]) -> list[str]: 
+# def clean_iqoq(questions: list[str]) -> list[str]: 
+#     """
+#     Normalize and filter generated IQ/OQ strings.
+
+#     """
+#     cleaned = []
+
+#     for q in questions:
+#         q = q.strip()
+#         q = re.sub(r"^\d+[\.\)]\s*", "", q)      # remove numbering (e.g., '1. ...')
+#         q = re.sub(r"^[-*]\s*", "", q)           # remove bullets ('- ', '* ')
+#         if not q.endswith("?"):
+#             continue                             # skip if it’s not a question - will need to check this during debugging
+#         if len(q) < 5:
+#             continue                             # skip tiny junk 
+#         if q.lower() in {"n/a", "none", "no question generated"}:
+#             continue
+#         cleaned.append(q)
+
+#     return cleaned
+
+
+def clean_iqoq(questions: list[str]) -> list[str]:
     """
     Normalize and filter generated IQ/OQ strings.
 
     """
     cleaned = []
+    skipped_not_question = skipped_too_short = skipped_banned = 0
 
     for q in questions:
         q = q.strip()
         q = re.sub(r"^\d+[\.\)]\s*", "", q)      # remove numbering (e.g., '1. ...')
         q = re.sub(r"^[-*]\s*", "", q)           # remove bullets ('- ', '* ')
+        q = q.rstrip(" \"'“”‘’`)]}>,.!")
         if not q.endswith("?"):
+            skipped_not_question += 1
             continue                             # skip if it’s not a question - will need to check this during debugging
-        if len(q) < 5:
-            continue                             # skip tiny junk 
+        if len(re.findall(r"\w+", q)) < 1:
+            skipped_too_short += 1               # skip if no word tokens
+            continue
         if q.lower() in {"n/a", "none", "no question generated"}:
+            skipped_banned += 1
             continue
         cleaned.append(q)
 
+    logging.debug(
+        "clean_iqoq filtered - not_question: %d, too_short: %d, banned: %d",
+        skipped_not_question,
+        skipped_too_short,
+        skipped_banned,
+    )
     return cleaned
+
+# def clean_baseline(questions):
+#     """Parse baseline 'json {"Question List":[...]}' strings then clean."""
+#     if not questions:
+#         return []
+#     seq = questions if isinstance(questions, list) else [questions]
+#     collected = []
+#     for s in seq:
+#         s = re.sub(r"^\s*json\s*", "", str(s).strip(), flags=re.I)
+#         for b in re.findall(r"\{.*?\}", s, flags=re.S):
+#             try:
+#                 obj = json.loads(b)
+#             except Exception:
+#                 continue
+#             qlist = obj.get("Question List")
+#             if qlist is None:
+#                 for alt in ("questions","question_list","qlist"):
+#                     if alt in obj:
+#                         qlist = obj[alt]; break
+#             if isinstance(qlist, list):
+#                 collected.extend(map(str, qlist))
+#     return clean_iqoq(collected if collected else list(map(str, seq)))
+
 
 def clean_baseline(questions):
     """Parse baseline 'json {"Question List":[...]}' strings then clean."""
     if not questions:
         return []
+
     seq = questions if isinstance(questions, list) else [questions]
-    collected = []
+    collected: list[str] = []
+
     for s in seq:
-        s = re.sub(r"^\s*json\s*", "", str(s).strip(), flags=re.I)
-        for b in re.findall(r"\{.*?\}", s, flags=re.S):
-            try:
-                obj = json.loads(b)
-            except Exception:
-                continue
-            qlist = obj.get("Question List")
-            if qlist is None:
-                for alt in ("questions","question_list","qlist"):
-                    if alt in obj:
-                        qlist = obj[alt]; break
-            if isinstance(qlist, list):
-                collected.extend(map(str, qlist))
-    return clean_iqoq(collected if collected else list(map(str, seq)))
+        s = re.sub(r'^\s*json\s+', '', str(s), flags=re.I).strip()
+        try:
+            obj = json.loads(s)
+        except Exception as e:
+            logger.error("clean_baseline parse error: %s", e)
+            continue
+
+        qlist = obj.get("Question List")
+        if qlist is None:
+            for alt in ("questions", "question_list", "qlist"):
+                if alt in obj:
+                    qlist = obj[alt]
+                    break
+
+        if isinstance(qlist, list):
+            collected.extend(map(str, qlist))
+
+    if collected:
+        cleaned = clean_iqoq(collected)
+        cleaned = list(dict.fromkeys(cleaned))
+        return cleaned
+
+    return clean_iqoq(list(map(str, seq)))
 
 
 def clean_file(in_path, out_path, cleaner, resume: bool = False):
@@ -221,6 +288,7 @@ def clean_file(in_path, out_path, cleaner, resume: bool = False):
     total_raw_iq = total_raw_oq = 0
     total_clean_iq = total_clean_oq = 0
     skipped = 0
+    malformed_iq_types = malformed_oq_types = 0
 
     for i, e in enumerate(raw):
         pid = e.get("passage_id", f"idx:{i}")
@@ -229,8 +297,28 @@ def clean_file(in_path, out_path, cleaner, resume: bool = False):
             skipped += 1
             continue
 
-        raw_IQs = list(e.get("IQs") or [])
-        raw_OQs = list(e.get("OQs") or [])
+        raw_IQs = e.get("IQs")
+        if isinstance(raw_IQs, str):
+            raw_IQs = [raw_IQs]
+        else:
+            if raw_IQs is None:
+                raw_IQs = []
+            else:
+                if not isinstance(raw_IQs, (list, tuple, set)):
+                    malformed_iq_types += 1
+                raw_IQs = list(raw_IQs)
+
+        raw_OQs = e.get("OQs")
+        if isinstance(raw_OQs, str):
+            raw_OQs = [raw_OQs]
+        else:
+            if raw_OQs is None:
+                raw_OQs = []
+            else:
+                if not isinstance(raw_OQs, (list, tuple, set)):
+                    malformed_oq_types += 1
+                raw_OQs = list(raw_OQs)
+
         total_raw_iq += len(raw_IQs)
         total_raw_oq += len(raw_OQs)
 
@@ -250,6 +338,12 @@ def clean_file(in_path, out_path, cleaner, resume: bool = False):
     else:
         save_jsonl(out_path, cleaned)
 
+    if malformed_iq_types or malformed_oq_types:
+        print(
+            f"[clean_file] Malformed IQ types: {malformed_iq_types}, "
+            f"Malformed OQ types: {malformed_oq_types}"
+        )
+
     return {
         "shard_path": in_path,
         "out_path": out_path,
@@ -259,7 +353,10 @@ def clean_file(in_path, out_path, cleaner, resume: bool = False):
         "clean_iq": total_clean_iq,
         "clean_oq": total_clean_oq,
         "skipped": skipped,
+        "malformed_iq": malformed_iq_types,
+        "malformed_oq": malformed_oq_types,
     }
+
 
 def write_cleaning_debug(
     *, model: str, dataset: str, variant: str, split: str,
@@ -319,14 +416,35 @@ def merge_jsonl_files(in_paths, out_path, dedup_key=None, resume: bool = False):
     """
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
 
-    # Collect rows from all shards keyed by their identifier. The dict preserves
-    # insertion order so the earliest occurrence of a duplicate is kept.
-    rows_by_id = {}
+    # Collect rows from all shards keyed by their identifier. When duplicates
+    # are encountered, merge IQ/OQ lists while preserving question order and
+    # removing duplicates.  All entries will have ``num_iq``/``num_oq``
+    # recomputed after merging.
+    rows_by_id: dict[str, dict] = {}
     for p in in_paths:
         for i, row in enumerate(load_jsonl(p)):
-                k = row.get(dedup_key, f"idx:{i}") if dedup_key else f"idx:{i}"
-                if k not in rows_by_id:
-                    rows_by_id[k] = row
+            k = row.get(dedup_key, f"idx:{i}") if dedup_key else f"idx:{i}"
+            if k in rows_by_id and dedup_key:
+                existing = rows_by_id[k]
+                for field, count_field in (("IQs", "num_iq"), ("OQs", "num_oq")):
+                    combined = existing.get(field, []) + row.get(field, [])
+                    seen = set()
+                    deduped = []
+                    for q in combined:
+                        if q not in seen:
+                            deduped.append(q)
+                            seen.add(q)
+                    existing[field] = deduped
+                    existing[count_field] = len(deduped)
+            else:
+                rows_by_id[k] = row
+
+    # Ensure counts are accurate for entries that never encountered duplicates
+    for row in rows_by_id.values():
+        if "IQs" in row:
+            row["num_iq"] = len(row.get("IQs", []))
+        if "OQs" in row:
+            row["num_oq"] = len(row.get("OQs", []))
 
     shard_ids = set(rows_by_id.keys())
     existing = existing_ids(out_path, id_field=dedup_key) if resume else set()

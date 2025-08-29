@@ -207,7 +207,7 @@ from src.utils import (
 
 
 DEFAULT_TOP_K = 50
-DEFAULT_SIM_THRESHOLD = 0.60
+DEFAULT_SIM_THRESHOLD = 0.50
 DEFAULT_ALPHA = 1.0  # default for edge_budget_alpha
 
 DEFAULT_PARAMS = {
