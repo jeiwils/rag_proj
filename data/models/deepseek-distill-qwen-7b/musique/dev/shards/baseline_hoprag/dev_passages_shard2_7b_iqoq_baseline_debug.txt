@@ -1,0 +1,11 @@
+Total passages processed: 252
+Skipped due to resume: 4747
+Model used: deepseek-distill-qwen-7b
+Model size: 7b
+Dataset: musique
+Split: dev
+Phase: iqoq_baseline
+Total time taken: 5992.14 seconds
+
+Passages missing IQ: 1
+- 2hop__91626_96912_sent1

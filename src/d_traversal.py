@@ -118,8 +118,9 @@ import faiss
 import networkx as nx
 from collections import defaultdict
 import json
-import pickle 
+import pickle
 from pathlib import Path
+from tqdm import tqdm
 import numpy as np
 
 traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
@@ -634,7 +635,7 @@ def run_traversal(
         
     all_selected_passages = set()
 
-    for entry in query_data:
+    for entry in tqdm(query_data, desc="queries"): #    for entry in query_data:
         question_id = entry["question_id"]
         query_text = entry["question"]
         gold_passages = entry["gold_passages"]
