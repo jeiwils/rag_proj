@@ -186,16 +186,16 @@ def rerank_passages_by_helpfulness(
     top_k: int = 5
 ) -> List[Tuple[str, float]]:
     """
-    Compute helpfulness scores for candidate passages and return top-k ranked list.
-    
+    Compute helpfulness scores for candidate passages using query similarity and visit frequency,
+    returning the top-k ranked list.
+
     Returns:
         List of tuples: [(passage_id, helpfulness_score), ...]
     """
     reranked = []
     for pid in candidate_passages:
         node = graph.nodes.get(pid, {})
-        passage_text = node.get("text", "")
-        vertex_query_sim = node.get("query_sim", 0.0)  # make sure this is populated when building graph!
+        vertex_query_sim = node.get("query_sim", 0.0)  # precomputed similarity stored on the node
 
         score = compute_helpfulness(pid, vertex_query_sim, ccount)
         reranked.append((pid, score))
