@@ -115,6 +115,7 @@ import os
 import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Set
+import unicodedata
 
 import faiss
 import numpy as np
@@ -442,35 +443,32 @@ KEEP_ENTS = {
 
 
 
-def normalise_text(s: str) -> str:
-    """Normalise text for keyword matching.
+def strip_accents(t: str) -> str:
+    return ''.join(c for c in unicodedata.normalize('NFKD', t) if not unicodedata.combining(c))
 
-    Steps:
-    - apply ``clean_text`` (assumed defined elsewhere)
-    - lowercase
-    - replace non-alphanumeric characters with underscores
-    - drop possessive ``_s`` suffixes
-    - collapse repeated underscores and trim any leading/trailing ones
-    """
-    if not s:
-        return ""
+def normalise_text(s: str) -> str:
+    if not s: return ""
     t = clean_text(s).lower()
+    t = t.replace("’", "'")              # unify curly quote
+    t = strip_accents(t)                 # rashād -> rashad
     t = re.sub(r"\W+", "_", t.strip())
-    t = re.sub(r"_s_", "_", t)
+    t = re.sub(r"_s_", "_", t)           # drop possessive
     t = re.sub(r"_s$", "", t)
-    t = re.sub(r"_+", "_", t)
-    t = t.strip("_")
+    t = re.sub(r"_+", "_", t).strip("_")
     return t
+
 
 def extract_keywords(text: str) -> list[str]:
     if not text:
         return []
     doc = nlp(clean_text(text))
-    kws = {
-        normalise_text(ent.text)
-        for ent in doc.ents
-        if ent.label_ in KEEP_ENTS and ent.text.strip()
-    }
+    kws = set()
+    for ent in doc.ents:
+        if ent.label_ in KEEP_ENTS and ent.text.strip():
+            normalised = normalise_text(ent.text)
+            if normalised:
+                # Skip empty keywords which can occur when normalisation strips all characters
+                kws.add(normalised)
     return sorted(kws)
 
 
