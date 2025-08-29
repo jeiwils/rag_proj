@@ -250,6 +250,8 @@ def clean_baseline(questions):
             obj = json.loads(s)
         except Exception as e:
             print(f"clean_baseline parse error: {e}")
+            matches = re.findall(r'"((?:[^"\\]|\\.)+)"', s)  # quoted strings incl. escapes
+            collected.extend([m.strip() for m in matches if m.strip().endswith('?')])
             continue
 
         while isinstance(obj, str):
@@ -257,12 +259,13 @@ def clean_baseline(questions):
                 obj = json.loads(obj)
             except Exception as e:
                 print(f"clean_baseline parse error: {e}")
+                matches = re.findall(r'"((?:[^"\\]|\\.)+)"', s)
+                collected.extend([m.strip() for m in matches if m.strip().endswith('?')])
                 obj = None
                 break
 
         if obj is None:
             continue
-
 
         # Normalize the parsed object before extracting questions.
         qlist = None
@@ -278,23 +281,21 @@ def clean_baseline(questions):
         elif isinstance(obj, str):
             qlist = [obj]
         else:
-            # Unsupported type; skip this snippet entirely
             continue
 
         if isinstance(qlist, list):
             collected.extend(map(str, qlist))
         elif isinstance(qlist, str):
             collected.append(str(qlist))
-        else:
-            # Could not normalize questions; skip snippet
-            continue
 
+    # 👇 add here
     if collected:
-        cleaned = clean_iqoq(collected)
-        cleaned = list(dict.fromkeys(cleaned))
-        return cleaned
+        # Deduplicate before cleaning to save work
+        collected = list(dict.fromkeys(collected))
+        return clean_iqoq(collected)
 
     return clean_iqoq(list(map(str, seq)))
+
 
 
 def clean_file(in_path, out_path, cleaner, resume: bool = False):
