@@ -461,7 +461,7 @@ def normalise_text(s: str) -> str:
 def extract_keywords(text: str) -> list[str]:
     if not text:
         return []
-    doc = nlp(clean_text(text))
+    doc = nlp(text)
     kws = set()
     for ent in doc.ents:
         if ent.label_ in KEEP_ENTS and ent.text.strip():
@@ -506,7 +506,7 @@ def add_keywords_to_passages_jsonl(
         targets = [r for r in rows if r.get("passage_id") in only_ids]
     else:
         targets = rows
-    texts = [clean_text(r.get("text", "")) for r in targets]
+    texts = [r.get("text", "") for r in targets]
 
     for r, doc in zip(targets, nlp.pipe(texts, batch_size=128, n_process=1)):
         kws = {
@@ -544,7 +544,7 @@ def add_keywords_to_iqoq_jsonl(
         targets = [r for r in rows if r.get("iqoq_id") in only_ids]
     else:
         targets = rows
-    texts = [clean_text(r.get("text", "")) for r in targets]
+    texts = [r.get("text", "") for r in targets]
 
     for r, doc in zip(targets, nlp.pipe(texts, batch_size=128, n_process=1)):
         kws = {
