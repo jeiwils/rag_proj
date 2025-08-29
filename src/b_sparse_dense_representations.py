@@ -68,14 +68,18 @@ File Schema
   "passage_id": "{passage_id}",
   "text": "{passage_text}",
   "vec_id": 0,
-  "keywords_passage": ["{kw1}", "{kw2}", "..."]
+  "keywords_passage": ["{kw1}", "{kw2}", "..."],
+  "keywords_iq": [["{kw1}"], ["{kw2}"], "..."],
+  "keywords_oq": [["{kw1}"], ["{kw2}"], "..."]
 }
 
 Fields:
 - ``passage_id``: unique identifier for the passage.
 - ``text``: raw text of the passage.
 - ``vec_id``: embedding index position.
-- ``keywords_passage``: extracted named entities via spaCy.
+- ``keywords_passage``: extracted named entities via spaCy for the passage text.
+- ``keywords_iq``: extracted entities for each incoming question (if present).
+- ``keywords_oq``: extracted entities for each outgoing question (if present).
 
 
 ### iqoq.cleaned.jsonl
@@ -466,7 +470,7 @@ def extract_keywords(text: str) -> list[str]:
     for ent in doc.ents:
         if ent.label_ in KEEP_ENTS and ent.text.strip():
             normalised = normalise_text(ent.text)
-            if normalised:
+            if normalised.strip():
                 # Skip empty keywords which can occur when normalisation strips all characters
                 kws.add(normalised)
     return sorted(kws)
@@ -509,17 +513,18 @@ def add_keywords_to_passages_jsonl(
     texts = [r.get("text", "") for r in targets]
 
     for r, doc in zip(targets, nlp.pipe(texts, batch_size=128, n_process=1)):
-        kws = {
-            normalise_text(ent.text)
-            for ent in doc.ents
-            if ent.label_ in KEEP_ENTS and ent.text.strip()
-        }
+        kws = set()
+        for ent in doc.ents:
+            if ent.label_ in KEEP_ENTS and ent.text.strip():
+                normalised = normalise_text(ent.text)
+                if normalised.strip():
+                    kws.add(normalised)
         r["keywords_passage"] = sorted(kws)
         if merged_with_iqoq:
             kws_iq = [extract_keywords(q) for q in (r.get("IQs") or [])]
             kws_oq = [extract_keywords(q) for q in (r.get("OQs") or [])]
-            r["keywords_IQ"] = kws_iq
-            r["keywords_OQ"] = kws_oq
+            r["keywords_iq"] = kws_iq
+            r["keywords_oq"] = kws_oq
             union = set(r["keywords_passage"])
             for lst in kws_iq:
                 union.update(lst)
@@ -547,11 +552,12 @@ def add_keywords_to_iqoq_jsonl(
     texts = [r.get("text", "") for r in targets]
 
     for r, doc in zip(targets, nlp.pipe(texts, batch_size=128, n_process=1)):
-        kws = {
-            normalise_text(ent.text)
-            for ent in doc.ents
-            if ent.label_ in KEEP_ENTS and ent.text.strip()
-        }
+        kws = set()
+        for ent in doc.ents:
+            if ent.label_ in KEEP_ENTS and ent.text.strip():
+                normalised = normalise_text(ent.text)
+                if normalised.strip():
+                    kws.add(normalised)
         r[out_field] = sorted(kws)
 
     with open(iqoq_jsonl, "wt", encoding="utf-8") as f:
