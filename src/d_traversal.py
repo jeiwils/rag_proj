@@ -320,6 +320,8 @@ def hoprag_traversal_algorithm(
     candidates = [
         (vk, graph[vj][vk])
         for vk in graph.successors(vj)
+        if vk not in visited_passages
+        and (graph[vj][vk]["oq_id"], graph[vj][vk]["iq_id"]) not in state["Evisited"]
     ]
 
     if not candidates:
@@ -339,6 +341,7 @@ def hoprag_traversal_algorithm(
         return set()
 
     chosen_vk, chosen_edge = chosen
+    state["Evisited"].add((chosen_edge["oq_id"], chosen_edge["iq_id"]))
     is_repeat = chosen_vk in visited_passages
 
     hop_log["edges_chosen"].append({
