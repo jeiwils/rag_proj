@@ -855,6 +855,8 @@ if __name__ == "__main__":
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     MODELS = ["deepseek-distill-qwen-7b"]#["qwen-7b"]
     VARIANTS = ["baseline", "enhanced"]
+    
+    GRAPH_MODEL = "qwen-7b"
 
     RESUME = True
     SPLIT = "dev"
@@ -890,9 +892,8 @@ if __name__ == "__main__":
                 print(
                     f"[Run] dataset={dataset} model={model} variant={variant} split={SPLIT}"
                 )
-                
+
                 # Use a single canonical graph source regardless of generation model
-                GRAPH_MODEL = "qwen-7b"
 
                 graph_path = Path(
                     f"data/graphs/{GRAPH_MODEL}/{dataset}/{SPLIT}/{variant}/{dataset}_{SPLIT}_graph.gpickle"
