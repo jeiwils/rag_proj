@@ -137,13 +137,10 @@ from src.utils import (
 
 
 
-# traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
-
-
 # # TRAVERSAL TUNING
 
-# TOP_K_SEED_PASSAGES = 50 
-# NUMBER_HOPS = 2
+DEFAULT_SEED_TOP_K = 50
+DEFAULT_NUMBER_HOPS = 2
 
 
 
@@ -921,9 +918,9 @@ def process_traversal(cfg: Dict) -> None:
         emb_model=emb_model,
         server_configs=get_server_configs(model),
         output_paths=output_paths,
-        seed_top_k=TOP_K_SEED_PASSAGES,
+        seed_top_k=DEFAULT_SEED_TOP_K,
         alpha=DEFAULT_ALPHA,
-        n_hops=NUMBER_HOPS,
+        n_hops=DEFAULT_NUMBER_HOPS,
         traversal_alg=trav_alg,
     )
 

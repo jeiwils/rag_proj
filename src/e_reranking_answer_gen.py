@@ -110,6 +110,7 @@ import string
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import multiprocessing as mp
 import networkx as nx
 
 from src.a2_text_prep import is_r1_like, query_llm, strip_think
@@ -315,6 +316,7 @@ def generate_answers_from_traversal(
     top_k_answer_passages: int = 5,
     server_url: str | None = None,
     model_name: str | None = None,
+    num_workers: int | None = None, 
 ) -> Dict[str, float]:
     """Generate answers from pre-computed traversal outputs.
 
@@ -327,6 +329,8 @@ def generate_answers_from_traversal(
     server_url, model_name:
         LLM server configuration. Defaults to the first server returned by
         :func:`get_server_configs` for ``model`` when not provided.
+    num_workers:
+        Number of worker processes. Defaults to ``os.cpu_count()`` when ``None``.
 
     Returns
     -------
@@ -363,10 +367,21 @@ def generate_answers_from_traversal(
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
 
-    for qid, t_entry in traversal_records.items():
-        q = queries[qid]
+    def _init_worker(q_dict, p_lookup, s_url, m_name, top_k):
+        """Store shared data in globals for worker processes."""
+        global _QUERIES, _PASSAGE_LOOKUP, _SERVER_URL, _MODEL_NAME, _TOP_K
+        _QUERIES = q_dict
+        _PASSAGE_LOOKUP = p_lookup
+        _SERVER_URL = s_url
+        _MODEL_NAME = m_name
+        _TOP_K = top_k
+
+    def _generate_answer(item: Tuple[str, Dict]):
+        qid, t_entry = item
+        q = _QUERIES[qid]
         question = q["question"]
-        gold[qid] = [q.get("gold_answer", "")]
+        gold_answer = q.get("gold_answer", "")  # resolve gold for consistency
+        _ = normalise_answer(gold_answer)
 
         helpful = sorted(
             t_entry.get("helpful_passages", []),
@@ -374,29 +389,39 @@ def generate_answers_from_traversal(
             reverse=True,
         )
         passage_ids_sorted = [h["passage_id"] for h in helpful]
-        top_passages = passage_ids_sorted[:top_k_answer_passages]
+        top_passages = passage_ids_sorted[:_TOP_K]
 
         llm_out = ask_llm_with_passages(
             query_text=question,
             passage_ids=passage_ids_sorted,
             graph=None,
-            server_url=server_url,
-            passage_lookup=passage_lookup,
-            model_name=model_name,
-            top_k_answer_passages=top_k_answer_passages,
+            server_url=_SERVER_URL,
+            passage_lookup=_PASSAGE_LOOKUP,
+            model_name=_MODEL_NAME,
+            top_k_answer_passages=_TOP_K,
         )
 
+        answer_dict = {
+            "question_id": qid,
+            "question": question,
+            "raw_answer": llm_out["raw_answer"],
+            "normalised_answer": llm_out["normalised_answer"],
+            "used_passages": top_passages,
+        }
+        return qid, answer_dict, llm_out["normalised_answer"]
 
-        answers.append(
-            {
-                "question_id": qid,
-                "question": question,
-                "raw_answer": llm_out["raw_answer"],
-                "normalised_answer": llm_out["normalised_answer"],
-                "used_passages": top_passages,
-            }
-        )
-        predictions[qid] = llm_out["normalised_answer"]
+    if num_workers is None:
+        num_workers = os.cpu_count() or 1
+
+    with mp.Pool(
+        num_workers,
+        initializer=_init_worker,
+        initargs=(queries, passage_lookup, server_url, model_name, top_k_answer_passages),
+    ) as pool:
+        for qid, answer, norm_ans in pool.map(_generate_answer, traversal_records.items()):
+            answers.append(answer)
+            predictions[qid] = norm_ans
+            gold[qid] = [queries[qid].get("gold_answer", "")]
 
     result_paths["base"].mkdir(parents=True, exist_ok=True)
     save_jsonl(result_paths["answers"], answers)
