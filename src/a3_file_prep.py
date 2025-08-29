@@ -158,7 +158,7 @@ from src.utils import (
 
 
 
-
+### *   *   * ###
 
 def clean_iqoq(questions: list[str]) -> list[str]: 
     """
@@ -180,11 +180,6 @@ def clean_iqoq(questions: list[str]) -> list[str]:
         cleaned.append(q)
 
     return cleaned
-
-
-
-
-
 
 def clean_baseline(questions):
     """Parse baseline 'json {"Question List":[...]}' strings then clean."""
@@ -266,38 +261,6 @@ def clean_file(in_path, out_path, cleaner, resume: bool = False):
         "skipped": skipped,
     }
 
-
-def merge_jsonl_files(in_paths, out_path, dedup_key=None, resume: bool = False):
-    """Merge multiple JSONL files, optionally deduplicating by ``dedup_key``.
-
-    If ``resume`` is ``True``, existing IDs in ``out_path`` are loaded once and
-    compared against the union of IDs from all shard inputs. Only the missing
-    records are written, allowing interrupted runs to resume without reprocessing
-    previously merged entries.
-    """
-    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-
-    # Collect rows from all shards keyed by their identifier. The dict preserves
-    # insertion order so the earliest occurrence of a duplicate is kept.
-    rows_by_id = {}
-    for p in in_paths:
-        for i, row in enumerate(load_jsonl(p)):
-                k = row.get(dedup_key, f"idx:{i}") if dedup_key else f"idx:{i}"
-                if k not in rows_by_id:
-                    rows_by_id[k] = row
-
-    shard_ids = set(rows_by_id.keys())
-    existing = existing_ids(out_path, id_field=dedup_key) if resume else set()
-    pending_ids = shard_ids - existing if resume else shard_ids
-
-    mode = "a" if resume else "w"
-    with open(out_path, mode + "t", encoding="utf-8") as f:
-        for k, row in rows_by_id.items():
-            if k in pending_ids:
-                f.write(json.dumps(row, ensure_ascii=False) + "\n")
-
-
-
 def write_cleaning_debug(
     *, model: str, dataset: str, variant: str, split: str,
     hoprag_version: str, start_time: float,
@@ -343,26 +306,43 @@ def write_cleaning_debug(
 
 
 
+### *   *   * ###
+
+
+def merge_jsonl_files(in_paths, out_path, dedup_key=None, resume: bool = False):
+    """Merge multiple JSONL files, optionally deduplicating by ``dedup_key``.
+
+    If ``resume`` is ``True``, existing IDs in ``out_path`` are loaded once and
+    compared against the union of IDs from all shard inputs. Only the missing
+    records are written, allowing interrupted runs to resume without reprocessing
+    previously merged entries.
+    """
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+
+    # Collect rows from all shards keyed by their identifier. The dict preserves
+    # insertion order so the earliest occurrence of a duplicate is kept.
+    rows_by_id = {}
+    for p in in_paths:
+        for i, row in enumerate(load_jsonl(p)):
+                k = row.get(dedup_key, f"idx:{i}") if dedup_key else f"idx:{i}"
+                if k not in rows_by_id:
+                    rows_by_id[k] = row
+
+    shard_ids = set(rows_by_id.keys())
+    existing = existing_ids(out_path, id_field=dedup_key) if resume else set()
+    pending_ids = shard_ids - existing if resume else shard_ids
+
+    mode = "a" if resume else "w"
+    with open(out_path, mode + "t", encoding="utf-8") as f:
+        for k, row in rows_by_id.items():
+            if k in pending_ids:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 
+### *   *   * ###
 
 
-
-
-# def explode_passages(master_path: str, output_path: str):
-#     data = load_jsonl(master_path)
-#     out = []
-#     for e in data:
-#         out.append({
-#             "dataset": e.get("dataset"),
-#             "split": e.get("split"),
-#             "generation_model": e.get("generation_model"),
-#             "passage_id": e["passage_id"],
-#             "text": e.get("text", ""),
-#             "conditioned_score": e.get("cs_used"),
-#         })
-#     save_jsonl(output_path, out)
 
 def explode_passages(
     master_path: str, output_path: str, resume: bool = False
@@ -406,8 +386,6 @@ def explode_passages(
             append_jsonl(output_path, rec)
     else:
         save_jsonl(output_path, out)
-
-
 
 
 

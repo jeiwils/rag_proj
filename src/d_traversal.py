@@ -136,13 +136,13 @@ from src.utils import (
 
 
 
-traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
+# traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
 
 
-# TRAVERSAL TUNING
+# # TRAVERSAL TUNING
 
-TOP_K_SEED_PASSAGES = 50 
-NUMBER_HOPS = 2
+# TOP_K_SEED_PASSAGES = 50 
+# NUMBER_HOPS = 2
 
 
 
@@ -265,7 +265,8 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
         passage_text: str,  # from build_edges() -> build_networkx_graph() - the llm reads the passages
         candidate_edges: list,  # from hoprag_traversal_algorithm()
         # then the llm considers all possible OQs in the outgoing edges
-        server_configs: list  # from arg. in multi_hop_traverse()
+        server_configs: list,  # from arg. in multi_hop_traverse()
+        traversal_prompt: str,
         ):
     """
     Ask the local LLM to choose the best outgoing OQ edge to follow.
@@ -313,7 +314,8 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
 
 def hoprag_traversal_algorithm(
     vj, graph, query_text, visited_passages,
-    server_configs, ccount, next_Cqueue, hop_log, state
+    server_configs, ccount, next_Cqueue, hop_log, state,
+    traversal_prompt: str,
 ):
     candidates = [
         (vk, graph[vj][vk])
@@ -327,7 +329,8 @@ def hoprag_traversal_algorithm(
         query_text=query_text,
         passage_text=graph.nodes[vj]["text"],
         candidate_edges=candidates,
-        server_configs=server_configs
+        server_configs=server_configs,
+        traversal_prompt=traversal_prompt,
     )
 
     if chosen is None:
@@ -361,7 +364,8 @@ def hoprag_traversal_algorithm(
 
 def enhanced_traversal_algorithm(
     vj, graph, query_text, visited_passages,
-    server_configs, ccount, next_Cqueue, hop_log, state
+    server_configs, ccount, next_Cqueue, hop_log, state,
+    traversal_prompt: str,
 ):
     candidates = [
         (vk, graph[vj][vk])
@@ -376,7 +380,8 @@ def enhanced_traversal_algorithm(
         query_text=query_text,
         passage_text=graph.nodes[vj]["text"],
         candidate_edges=candidates,
-        server_configs=server_configs
+        server_configs=server_configs,
+        traversal_prompt=traversal_prompt,
     )
 
     if chosen is None:
@@ -472,6 +477,7 @@ def traverse_graph(
     server_configs: list,
     traversal_alg: Callable,  # custom algorithm step (edge + queueing logic)
     alpha: float = DEFAULT_ALPHA,
+    traversal_prompt: str = "",
 ):
     """Traverse the graph while recording query similarity for visited passages."""
 
@@ -529,6 +535,7 @@ def traverse_graph(
                 next_Cqueue=next_Cqueue,
                 hop_log=hop_log,
                 state=state,
+                traversal_prompt=traversal_prompt,
             )
             for new_pid in new_nodes:
                 _update_query_sim(new_pid)
@@ -633,7 +640,8 @@ def run_traversal(
     seed_top_k=50,
     alpha=0.5,
     n_hops=2,
-    traversal_alg=None
+    traversal_alg=None,
+    traversal_prompt: Optional[str] = None,
 ):
     """
     Run LLM-guided multi-hop traversal over a QA query set (e.g., train, dev).
@@ -647,6 +655,10 @@ def run_traversal(
     output_paths["base"].mkdir(parents=True, exist_ok=True)
         
     all_selected_passages = set()
+
+    if traversal_prompt is None:
+        traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
+
 
     for entry in tqdm(query_data, desc="queries"): #    for entry in query_data:
         question_id = entry["question_id"]
@@ -681,6 +693,7 @@ def run_traversal(
             server_configs=server_configs,
             traversal_alg=traversal_alg,
             alpha=alpha,
+            traversal_prompt=traversal_prompt,
         )
 
         print(f"[Traversal] Visited {len(visited_passages)} passages (None={stats['none_count']}, Repeat={stats['repeat_visit_count']})")
@@ -827,6 +840,11 @@ if __name__ == "__main__":
         "enhanced": enhanced_traversal_algorithm,
     }
 
+    traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
+    seed_top_k = 50
+    number_hops = 2
+
+
     emb_model = get_embedding_model()
 
     for dataset in DATASETS:
@@ -881,10 +899,11 @@ if __name__ == "__main__":
                     emb_model=emb_model,
                     server_configs=get_server_configs(model),
                     output_paths=output_paths,
-                    seed_top_k=TOP_K_SEED_PASSAGES,
+                    seed_top_k=seed_top_k,
                     alpha=DEFAULT_ALPHA,
-                    n_hops=NUMBER_HOPS,
+                    n_hops=number_hops,
                     traversal_alg=trav_alg,
+                    traversal_prompt=traversal_prompt,
                 )
 
                 new_ids = {q["question_id"] for q in remaining_queries}

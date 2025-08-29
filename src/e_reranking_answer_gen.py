@@ -127,9 +127,6 @@ from src.utils import (
 
 
 
-# ANSWER GENERATION
-
-TOP_K_ANSWER_PASSAGES = 5 
 
 ################################################################################################################
 # PASSAGE RERANKING AND ANSWER GENERATION 
@@ -170,7 +167,8 @@ def ask_llm_with_passages(
     server_url: str,
     max_tokens: int = 100,
     passage_lookup: Optional[Dict[str, str]] = None,  # optional for dense mode
-    model_name: str = ""
+    model_name: str = "",
+    top_k_answer_passages: int = 5,
 ) -> Dict[str, str]:
     """Generate an answer from top passages using an LLM server.
 
@@ -191,6 +189,8 @@ def ask_llm_with_passages(
         Mapping from ``passage_id`` to passage text when ``graph`` is ``None``.
     model_name : str, optional
         Identifier of the active model, passed to ``query_llm``.
+    top_k_answer_passages : int, optional
+        Number of passages from ``passage_ids`` to include, by default ``5``.
 
     Outputs
     -------
@@ -199,7 +199,7 @@ def ask_llm_with_passages(
     """
     passage_texts = []
 
-    for pid in passage_ids:
+    for pid in passage_ids[:top_k_answer_passages]:
         if graph:
             passage = graph.nodes[pid].get("text", "")
         elif passage_lookup:
@@ -312,7 +312,7 @@ def generate_answers_from_traversal(
     dataset: str,
     split: str,
     variant: str,
-    top_k: int = TOP_K_ANSWER_PASSAGES,
+    top_k_answer_passages: int = 5,
     server_url: str | None = None,
     model_name: str | None = None,
 ) -> Dict[str, float]:
@@ -322,7 +322,7 @@ def generate_answers_from_traversal(
     ----------
     model, dataset, split, variant:
         Identify the traversal directory produced by :mod:`d_traversal`.
-    top_k:
+    top_k_answer_passages:
         Number of passages to supply to the LLM per query.
     server_url, model_name:
         LLM server configuration. Defaults to the first server returned by
@@ -373,16 +373,19 @@ def generate_answers_from_traversal(
             key=lambda x: x["score"],
             reverse=True,
         )
-        top_passages = [h["passage_id"] for h in helpful[:top_k]]
+        passage_ids_sorted = [h["passage_id"] for h in helpful]
+        top_passages = passage_ids_sorted[:top_k_answer_passages]
 
         llm_out = ask_llm_with_passages(
             query_text=question,
-            passage_ids=top_passages,
+            passage_ids=passage_ids_sorted,
             graph=None,
             server_url=server_url,
             passage_lookup=passage_lookup,
             model_name=model_name,
+            top_k_answer_passages=top_k_answer_passages,
         )
+
 
         answers.append(
             {
@@ -594,15 +597,20 @@ if __name__ == "__main__":
     MODELS = ["qwen-7b"]
     VARIANTS = ["baseline", "enhanced"]  # matches the traversal variants
 
-
+    TOP_K_ANSWER_PASSAGES = 5
 
     for dataset in DATASETS:
         for split in SPLITS:
             for model in MODELS:
                 for variant in VARIANTS:
                     print(f"[Answers-only] dataset={dataset} model={model} variant={variant} split={split}")
-                    metrics = generate_answers_from_traversal(model, dataset, split, variant)
-                    print(f"[Answers-only] {variant} EM={metrics['EM']:.2f} F1={metrics['F1']:.2f}")
+                    metrics = generate_answers_from_traversal(
+                        model,
+                        dataset,
+                        split,
+                        variant,
+                        top_k_answer_passages=TOP_K_ANSWER_PASSAGES,
+                    )
     print("\n✅ Answers-only complete.")
 
 

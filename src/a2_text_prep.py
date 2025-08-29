@@ -143,44 +143,44 @@ RESUME = True  #### WHY SET HERE????
 
 
 
-CS_GRAMMAR = r'''
+CS_GRAMMAR = r''' #### WHY SET HERE????
 root ::= "CS: 0.00" | "CS: 0.25" | "CS: 0.50" | "CS: 0.75" | "CS: 1.00"
 '''
 
 
 
-MAX_TOKENS = {
+MAX_TOKENS = { #### WHY SET HERE????
     "cs": 200, # 50, 
     "iqoq_generation": 512, 
-    "edge_selection": 64, ################################# to tune
-    "answer_generation": 256 ########################### to tune 
+    "edge_selection": 64, 
+    "answer_generation": 256 
 }
 
-TEMPERATURE = {
+TEMPERATURE = { #### WHY SET HERE????
     "cs": 0.0, 
     "iqoq_generation": 0.1,
-    "edge_selection": 0.1, ################################# to tune
-    "answer_generation": 0.1 ################################# to tune
+    "edge_selection": 0.1, 
+    "answer_generation": 0.1 
 }
 
 
 
-CS_PROMPT = Path("data/prompts/cs_prompt.txt").read_text(encoding="utf-8")
+CS_PROMPT = Path("data/prompts/cs_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
 
-ENHANCED_IQ_PROMPT = Path("data/prompts/enhanced_iq_prompt.txt").read_text(encoding="utf-8")
-ENHANCED_OQ_PROMPT = Path("data/prompts/enhanced_oq_prompt.txt").read_text(encoding="utf-8") 
+ENHANCED_IQ_PROMPT = Path("data/prompts/enhanced_iq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
+ENHANCED_OQ_PROMPT = Path("data/prompts/enhanced_oq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
 
-HOPRAG_IQ_PROMPT = Path("data/prompts/hoprag_iq_prompt.txt").read_text(encoding="utf-8")
-HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding="utf-8") 
-
-
+HOPRAG_IQ_PROMPT = Path("data/prompts/hoprag_iq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
+HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
 
 
 
 
 
 
-def get_server_urls(model):
+
+
+def get_server_urls(model): ########### ISN'T THIS IMPORTED FROM CONFIGS? IS THIS NECESSARY???
     """
     Return all server URLs for a given model (e.g., 4 for 1.5B, 2 for 7B).
 
@@ -360,85 +360,6 @@ def _temp_for(model_name: str, phase: str) -> float: ############ I GUESS I SHOU
 
 
 
-
-
-
-# def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
-#               stop=None, grammar=None, model_name=""):
-
-
-# def query_llm(prompt, server_url, max_tokens=512, temperature=0.1,
-#               stop=None, grammar=None, model_name="", phase=None):
-#     # If DeepSeek, ensure everything is in the *user* prompt and (optionally) add '<think>\\n' guidance.
-#     if is_r1_like(model_name):
-#         prompt = _wrap_for_deepseek_user(prompt, phase or "")
-
-#     payload = {"prompt": prompt, "temperature": temperature, "n_predict": max_tokens}
-#     if stop:
-#         payload["stop"] = stop
-#     if grammar:
-#         payload["grammar"] = grammar
-#     if model_name:
-#         payload["model_name"] = model_name
-
-#     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
-#     resp.raise_for_status()
-#     out = resp.json().get("content", "")
-#     return out
-
-# def query_llm(
-#     prompt,
-#     server_url,
-#     max_tokens=512,
-#     temperature=0.1,
-#     stop=None,
-#     grammar=None,
-#     model_name="",
-#     phase=None,
-# ):
-#     """Query an LLM server and return the text content.
-
-#     DeepSeek-style models (``is_r1_like``) expect an OpenAI-like payload with
-#     ``messages`` rather than a single ``prompt``. All other models continue to
-#     use the existing ``prompt`` field payload. Responses may return the model's
-#     text in either ``content`` or ``message`` fields, so we check both.
-#     """
-
-#     # If DeepSeek, ensure everything is in the *user* prompt and (optionally)
-#     # add '<think>\n' guidance.
-#     if is_r1_like(model_name):
-#         prompt = _wrap_for_deepseek_user(prompt, phase or "")
-#         payload: Dict[str, object] = {
-#             "messages": [{"role": "user", "content": prompt}],
-#             "temperature": temperature,
-#             "n_predict": max_tokens,
-#         }
-#     else:
-#         payload = {
-#             "prompt": prompt,
-#             "temperature": temperature,
-#             "n_predict": max_tokens,
-#         }
-
-#     if stop:
-#         payload["stop"] = stop
-#     if grammar:
-#         payload["grammar"] = grammar
-#     if model_name:
-#         payload["model_name"] = model_name
-
-#     resp = requests.post(f"{server_url}/completion", json=payload, timeout=60)
-#     resp.raise_for_status()
-#     data = resp.json()
-#     if "content" in data:
-#         out = data["content"]
-#     else:
-#         message = data.get("message", {})
-#         if isinstance(message, dict):
-#             out = message.get("content", "")
-#         else:
-#             out = message or ""
-#     return out
 
 
 
