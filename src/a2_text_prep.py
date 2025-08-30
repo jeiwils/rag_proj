@@ -168,13 +168,11 @@ TEMPERATURE = { #### WHY SET HERE????
 
 CS_PROMPT = Path("data/prompts/cs_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
 
-ENHANCED_IQ_PROMPT = Path("data/prompts/enhanced_iq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
-ENHANCED_OQ_PROMPT = Path("data/prompts/enhanced_oq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
+HOPRAG_IQ_PROMPT = Path("data/prompts/enhanced_iq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
+HOPRAG_OQ_PROMPT = Path("data/prompts/enhanced_oq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
 
-HOPRAG_IQ_PROMPT = Path("data/prompts/hoprag_iq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
-HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
-
-
+# HOPRAG_IQ_PROMPT = Path("data/prompts/hoprag_iq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
+# HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
 
 
 
@@ -182,6 +180,57 @@ HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding=
 
 
 
+
+
+
+
+# --- ChatML builders (Qwen style) ---
+def chatml(system: str, user: str) -> str:
+    return (
+        "<|im_start|>system\n" + system.strip() + "\n<|im_end|>\n"
+        "<|im_start|>user\n"   + user.strip()    + "\n<|im_end|>\n"
+        "<|im_start|>assistant\n"
+    )
+
+def json_array_grammar(min_n: int, max_n: int) -> str:
+    # enforce [{"question":"..."}] with between min_n and max_n items
+    rep_min = max(0, min_n - 1)
+    rep_max = max(0, max_n - 1)
+    return (
+        "root    ::= ws \"[\" ws obj (ws \",\" ws obj){" + str(rep_min) + "," + str(rep_max) + "} ws \"]\" ws\n"
+        "obj     ::= \"{\" ws \"\\\"question\\\"\" ws \":\" ws string ws \"}\"\n"
+        "string  ::= \"\\\"\" chars \"\\\"\"\n"
+        "chars   ::= (escape | char)*\n"
+        "char    ::= [^\"\\\\\\x00-\\x1F]\n"
+        "escape  ::= \"\\\\\" ([\"\\\\/bfnrt] | \"u\" hex hex hex hex)\n"
+        "hex     ::= [0-9a-fA-F]\n"
+        "ws      ::= ([ \\t\\r\\n])*\n"
+    )
+
+
+
+IQ_SYSTEM = (
+    "You are an authoritative academic creating comprehension questions.\n"
+    'Output only valid English JSON in the exact shape: [{"question":"..."}]\n'
+    "At least 2 and at most 4 questions. All must be fully answerable using ONLY the passage.\n"
+    "Focus on factual details, definitions, roles, dates, explicit cause–effect, outcomes.\n"
+    "No commentary. No passage echoes."
+)
+
+OQ_SYSTEM = (
+    "You are a curious student/researcher creating exploratory questions.\n"
+    'Output only valid English JSON in the exact shape: [{"question":"..."}]\n'
+    "At least 4 and at most 6 questions. They must NOT be directly answerable from the passage.\n"
+    "Prefer Why/How/What led to/What changed/Implications/Compare. Avoid restating facts."
+)
+
+
+
+def iq_user_msg(passage: str, n_min=2, n_max=4) -> str:
+    return f"Mode: IQ\nMIN: {n_min}\nMAX: {n_max}\nPASSAGE:\n{passage}"
+
+def oq_user_msg(passage: str, n_min=4, n_max=6) -> str:
+    return f"Mode: OQ\nMIN: {n_min}\nMAX: {n_max}\nPASSAGE:\n{passage}"
 
 
 
@@ -454,10 +503,110 @@ def iqoq_ratio( ####################################### FOCUS ON THIS
 
 
 
+# def generate_iqoq(
+#     entry: dict,
+#     iq_prompt_template: str,
+#     oq_prompt_template: str,
+#     server_url: str,
+#     iq_tokens: int,
+#     oq_tokens: int,
+#     iq_temperature: float = 0.1,
+#     oq_temperature: float = 0.1,
+#     conditioned_score: float = None,
+#     use_ratio: bool = False,
+#     hoprag_version: str = "standard_hoprag",
+#     debug_dir: Path = None,
+#     model_name: str = ""
+# ):
+#     """
+#     Generates IQ and OQ lists for a passage.
+#     Returns (entry, missing_iq_ids, missing_oq_ids).
+#     """
+#     import re
+
+#     passage_text = entry["text"]
+
+#     if use_ratio and conditioned_score is not None:
+#         _, num_iq, num_oq = iqoq_ratio(conditioned_score)
+#     else:
+#         num_iq, num_oq = 2, 4
+
+#     # NEW: max (N+2)
+#     max_iq = num_iq + 2
+#     max_oq = num_oq + 2
+
+#     # Fill prompts (support both {{NUM_QUESTIONS}} and {{NUM_QUESTIONS+2}})
+#     iq_prompt_filled = (
+#         iq_prompt_template
+#         .replace("{{PASSAGE}}", passage_text)
+#         .replace("{{NUM_QUESTIONS}}", str(num_iq))
+#         .replace("{{NUM_QUESTIONS+2}}", str(max_iq))   # NEW
+#     )
+#     oq_prompt_filled = (
+#         oq_prompt_template
+#         .replace("{{PASSAGE}}", passage_text)
+#         .replace("{{NUM_QUESTIONS}}", str(num_oq))
+#         .replace("{{NUM_QUESTIONS+2}}", str(max_oq))   # NEW
+#     )
+
+#     # DeepSeek: prefer recommended temperature for generative phases
+#     try:
+#         if is_r1_like(model_name):
+#             iq_temperature = _temp_for(model_name, "iqoq_generation")
+#             oq_temperature = _temp_for(model_name, "iqoq_generation")
+
+#         iq_response = query_llm(
+#             iq_prompt_filled,
+#             server_url,
+#             max_tokens=iq_tokens,
+#             temperature=iq_temperature,
+#             model_name=model_name,
+#             phase="iqoq_generation",
+#         )
+#         oq_response = query_llm(
+#             oq_prompt_filled,
+#             server_url,
+#             max_tokens=oq_tokens,
+#             temperature=oq_temperature,
+#             model_name=model_name,
+#             phase="iqoq_generation",
+#         )
+
+#         if is_r1_like(model_name):
+#             iq_response = strip_think(iq_response)
+#             oq_response = strip_think(oq_response)
+
+#     except Exception as e:
+#         print(f"[ERROR] LLM failed for {entry.get('passage_id','?')}: {e}")
+#         pid = entry.get("passage_id", "?")
+#         return None, [pid], [pid]
+
+#     missing_iq_this, missing_oq_this = [], []
+#     if not iq_response.strip():
+#         missing_iq_this.append(entry.get("passage_id", "?"))
+#     if not oq_response.strip():
+#         missing_oq_this.append(entry.get("passage_id", "?"))
+#     if missing_iq_this or missing_oq_this:
+#         return None, missing_iq_this, missing_oq_this
+
+#     entry["IQs"] = [q for q in iq_response.split("\n") if q.strip()]
+#     entry["OQs"] = [q for q in oq_response.split("\n") if q.strip()]
+#     entry["num_iq"] = num_iq           # your target N (baseline/enhanced)
+#     entry["num_oq"] = num_oq
+#     entry["cs_used"] = conditioned_score if use_ratio else None
+#     entry["hoprag_version"] = hoprag_version
+
+#     return entry, [], []
+
+
+
+
+
+
 def generate_iqoq(
     entry: dict,
-    iq_prompt_template: str,
-    oq_prompt_template: str,
+    iq_prompt_template: str,   # ignored (kept for backward-compat)
+    oq_prompt_template: str,   # ignored (kept for backward-compat)
     server_url: str,
     iq_tokens: int,
     oq_tokens: int,
@@ -470,55 +619,53 @@ def generate_iqoq(
     model_name: str = ""
 ):
     """
-    Generates IQ and OQ lists for a passage.
+    Generates IQ and OQ lists for a passage using ChatML + JSON grammar.
     Returns (entry, missing_iq_ids, missing_oq_ids).
     """
-    import re
-
     passage_text = entry["text"]
 
+    # Decide counts
     if use_ratio and conditioned_score is not None:
         _, num_iq, num_oq = iqoq_ratio(conditioned_score)
     else:
         num_iq, num_oq = 2, 4
 
-    # NEW: max (N+2)
+    # Allow up to +2 each (your existing policy)
     max_iq = num_iq + 2
     max_oq = num_oq + 2
 
-    # Fill prompts (support both {{NUM_QUESTIONS}} and {{NUM_QUESTIONS+2}})
-    iq_prompt_filled = (
-        iq_prompt_template
-        .replace("{{PASSAGE}}", passage_text)
-        .replace("{{NUM_QUESTIONS}}", str(num_iq))
-        .replace("{{NUM_QUESTIONS+2}}", str(max_iq))   # NEW
-    )
-    oq_prompt_filled = (
-        oq_prompt_template
-        .replace("{{PASSAGE}}", passage_text)
-        .replace("{{NUM_QUESTIONS}}", str(num_oq))
-        .replace("{{NUM_QUESTIONS+2}}", str(max_oq))   # NEW
-    )
+    # Build ChatML prompts
+    iq_prompt = chatml(IQ_SYSTEM, iq_user_msg(passage_text, num_iq, max_iq))
+    oq_prompt = chatml(OQ_SYSTEM, oq_user_msg(passage_text, num_oq, max_oq))
 
-    # DeepSeek: prefer recommended temperature for generative phases
+    # Build grammars (force clean JSON arrays)
+    iq_grammar = json_array_grammar(num_iq, max_iq)
+    oq_grammar = json_array_grammar(num_oq, max_oq)
+
+    # Temperatures (allow mid diversity unless you override)
+    if is_r1_like(model_name):
+        iq_temperature = _temp_for(model_name, "iqoq_generation")
+        oq_temperature = _temp_for(model_name, "iqoq_generation")
+
+    # Query (use /completion; grammar only supported there)
     try:
-        if is_r1_like(model_name):
-            iq_temperature = _temp_for(model_name, "iqoq_generation")
-            oq_temperature = _temp_for(model_name, "iqoq_generation")
-
         iq_response = query_llm(
-            iq_prompt_filled,
+            iq_prompt,
             server_url,
             max_tokens=iq_tokens,
             temperature=iq_temperature,
+            stop=["<|im_end|>", "</s>", "\n\n\n"],
+            grammar=iq_grammar,
             model_name=model_name,
             phase="iqoq_generation",
         )
         oq_response = query_llm(
-            oq_prompt_filled,
+            oq_prompt,
             server_url,
             max_tokens=oq_tokens,
             temperature=oq_temperature,
+            stop=["<|im_end|>", "</s>", "\n\n\n"],
+            grammar=oq_grammar,
             model_name=model_name,
             phase="iqoq_generation",
         )
@@ -532,28 +679,33 @@ def generate_iqoq(
         pid = entry.get("passage_id", "?")
         return None, [pid], [pid]
 
-    missing_iq_this, missing_oq_this = [], []
-    if not iq_response.strip():
-        missing_iq_this.append(entry.get("passage_id", "?"))
-    if not oq_response.strip():
-        missing_oq_this.append(entry.get("passage_id", "?"))
-    if missing_iq_this or missing_oq_this:
-        return None, missing_iq_this, missing_oq_this
+    # Must be valid JSON arrays like [{"question":"..."}]
+    try:
+        iq_list = json.loads(iq_response)
+        oq_list = json.loads(oq_response)
+    except Exception as e:
+        print(f"[PARSE ERROR] {entry.get('passage_id','?')}: {e}")
+        pid = entry.get("passage_id", "?")
+        return None, [pid], [pid]
 
-    entry["IQs"] = [q for q in iq_response.split("\n") if q.strip()]
-    entry["OQs"] = [q for q in oq_response.split("\n") if q.strip()]
-    entry["num_iq"] = num_iq           # your target N (baseline/enhanced)
+    # Extract strings
+    IQs = [d.get("question","").strip() for d in iq_list if isinstance(d, dict)]
+    OQs = [d.get("question","").strip() for d in oq_list if isinstance(d, dict)]
+
+    # Minimal sanity
+    if not IQs:
+        return None, [entry.get("passage_id","?")], []
+    if not OQs:
+        return None, [], [entry.get("passage_id","?")]
+
+    entry["IQs"] = IQs
+    entry["OQs"] = OQs
+    entry["num_iq"] = num_iq
     entry["num_oq"] = num_oq
     entry["cs_used"] = conditioned_score if use_ratio else None
     entry["hoprag_version"] = hoprag_version
 
     return entry, [], []
-
-
-
-
-
-
 
 
 
@@ -732,7 +884,7 @@ def process_server_task(config: dict):
                     cs = 0.5
 
                 out, mi, mo = generate_iqoq(
-                    p, ENHANCED_IQ_PROMPT, ENHANCED_OQ_PROMPT, server_url,
+                    p, "", "", server_url, #p, ENHANCED_IQ_PROMPT, ENHANCED_OQ_PROMPT, server_url,
                     iq_tokens=iq_tokens, oq_tokens=oq_tokens,
                     iq_temperature=TEMPERATURE["iqoq_generation"],
                     oq_temperature=TEMPERATURE["iqoq_generation"],
@@ -847,11 +999,11 @@ if __name__ == "__main__":
 
     RESUME = True
 
-    ACTIVE_MODEL_NAMES   = ["wen2.5-7b-instruct"] # ["deepseek-distill-qwen-7b"]#["qwen-7b"] # #, "qwen-14"] #["qwen-1.5b", "qwen-7b", 
+    ACTIVE_MODEL_NAMES   = ["qwen2.5-7b-instruct"] # ["deepseek-distill-qwen-7b"]#["qwen-7b"] # #, "qwen-14"] #["qwen-1.5b", "qwen-7b", 
     DATASETS = ["musique","2wikimultihopqa", "hotpotqa"]
     SPLIT = "dev"             # or "dev"
 
-    RUN_CS        = True        # enhanced scoring step
+    RUN_CS        = False        # enhanced scoring step
     RUN_BASELINE  = True        # hopRAG baseline IQ/OQ
     RUN_ENHANCED  = False        # enhanced IQ/OQ
 

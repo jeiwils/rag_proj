@@ -386,7 +386,7 @@ if __name__ == "__main__":
     RESUME = True
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     SPLITS = ["dev"]
-    MAX_EXAMPLES = 500
+    MAX_EXAMPLES = 250
 
     for dataset in DATASETS:
         for split in SPLITS:
