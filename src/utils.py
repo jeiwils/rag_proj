@@ -498,6 +498,7 @@ def model_shard_dir(model: str, dataset: str, split: str) -> Path:
     return base
 
 
+
 def model_shard_paths(model: str, dataset: str, split: str, stem: str, size: str) -> List[Path]:
     """Return shard file paths for a given model size.
 
@@ -508,10 +509,10 @@ def model_shard_paths(model: str, dataset: str, split: str, stem: str, size: str
     stem:
         Base filename (typically input JSONL stem).
     size:
-        Model size string (``"1.5b"``, ``"7b"`` or ``"14b"``).
+        Model size string (``"1.5b"``, ``"7b"``, ``"8b"`` or ``"14b"``).
     """
     out_dir = model_shard_dir(model, dataset, split)
-    counts = {"1.5b": 4, "7b": 2, "14b": 1}
+    counts = {"1.5b": 4, "7b": 2, "8b": 2, "14b": 1}
     n_shards = counts.get(size)
     if n_shards is None:
         raise ValueError(f"Unsupported model size: {size}")
@@ -521,6 +522,9 @@ def model_shard_paths(model: str, dataset: str, split: str, stem: str, size: str
 
 def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> List[str]:
     """Split ``path`` into shards appropriate for ``model``.
+
+    Supported model sizes and shard counts:
+    ``1.5b`` → 4 shards, ``7b``/``8b`` → 2 shards, ``14b`` → 1 shard.
 
     Parameters
     ----------
@@ -552,6 +556,8 @@ def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> Li
         split_jsonl_into_four(path, *(str(op) for op in out_paths))
     elif size == "7b":
         split_jsonl(path, str(out_paths[0]), str(out_paths[1]))
+    elif size == "8b":
+        split_jsonl(path, str(out_paths[0]), str(out_paths[1]))
     elif size == "14b":
         data = list(load_jsonl(path))
         save_jsonl(str(out_paths[0]), data)
@@ -559,6 +565,9 @@ def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> Li
         raise ValueError(f"Unsupported model size: {size}")
 
     return [str(op) for op in out_paths]
+
+
+
 
 
 def run_multiprocess(

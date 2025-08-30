@@ -31,8 +31,8 @@ Sharded output files written to:
 
 data/models/{model}/{dataset}/{split}/shards/
     - {split}_passages_shard{N}_{size}.jsonl
-        → Raw input shards split by model size (1.5b → 4 shards, 7b → 2, 14b → 1).
-
+        → Raw input shards split by model size (1.5b → 4 shards, 7b → 2, 8b → 2, 14b → 1).
+        
 data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/
 
 

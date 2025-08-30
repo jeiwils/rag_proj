@@ -95,6 +95,7 @@ File Schema
 import json
 import pickle
 import re
+import inspect
 
 from collections import Counter
 from pathlib import Path
@@ -257,19 +258,22 @@ def select_seed_passages(  # helper for run_dev_set()
 ### COMPONENT 2 - traversal 
 
 
+########################## THIS SHOULD NOW GET CONDITIONED SCORE FROM OQ-IQ PARENT
 def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
         query_text: str,  # from hoprag_traversal_algorithm() - the llm reads the query
         passage_text: str,  # from build_edges() -> build_networkx_graph() - the llm reads the passages
         candidate_edges: list,  # from hoprag_traversal_algorithm()
         # then the llm considers all possible OQs in the outgoing edges
+        graph: nx.DiGraph,  # to lookup node-level data like conditioned_score
         server_configs: list,  # from arg. in multi_hop_traverse()
         traversal_prompt: str,
         ):
     """
     Ask the local LLM to choose the best outgoing OQ edge to follow.
     Uses the OQ worker (assumed server_configs[1]).
-    
+
     candidate_edges: list of tuples (vk, edge_data)
+    graph: directed graph to lookup destination node attributes (e.g., conditioned_score)
     Returns the chosen edge tuple or None if no valid choice is made.
     """
 
@@ -278,10 +282,12 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
         key=lambda item: (item[1].get("oq_id", ""), item[0]),
     )
 
-    oq_options = [
-        f"{i+1}. ({edge_data['oq_id']}) {edge_data['oq_text']}"
-        for i, (_, edge_data) in enumerate(candidate_edges)
-    ]
+    oq_options = []
+    for i, (vk, edge_data) in enumerate(candidate_edges):
+        node_score = graph.nodes[vk].get("conditioned_score", 0.0)
+        oq_options.append(
+            f"{i+1}. ({edge_data['oq_id']}, {node_score:.3f}) {edge_data['oq_text']}"
+        )
 
     prompt = traversal_prompt.format(
         query_text=query_text,
@@ -307,11 +313,8 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
     match = re.search(r"\d+", answer)
     if match:
         choice_idx = int(match.group()) - 1
-        if 0 <= choice_idx < len(candidate_edges):
-            return candidate_edges[choice_idx]
-    
-    # No valid choice -> no traversal
-    return None
+
+
 
 
 def hoprag_traversal_algorithm(
