@@ -97,7 +97,8 @@ Notes
 
 - Traversals are run on the `dev` split, not `train`.
 - `baseline` = no revisits to previously visited passages.
-- `enhanced` = allows passage revisits but avoids revisiting the same edge.
+- `enhanced` = prioritises edges by destination `conditioned_score` but also
+  avoids revisiting nodes.
 - All outputs are saved in:
   `data/traversal/{model}/{dataset}/{split}/{variant}/`
 """

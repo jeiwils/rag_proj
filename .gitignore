@@ -30,6 +30,7 @@ data/raw_datasets/
 data/models/*
 data/graphs/*
 data/representations/models/*
+data/results
 *.faiss
 *.npy
 *.npz

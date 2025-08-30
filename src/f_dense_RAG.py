@@ -11,7 +11,7 @@ produce an answer from those passages.
 from typing import Dict, List
 
 import json
-import tqdm
+from tqdm import tqdm
 
 from src.b_sparse_dense_representations import (
     dataset_rep_paths,

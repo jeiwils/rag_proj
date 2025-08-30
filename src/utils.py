@@ -362,7 +362,7 @@ def resolve_root(model: str, dataset: str, split: str, variant: str) -> Optional
 
 
 def get_result_paths(model, dataset, split, variant):
-    base = Path(f"results/{model}/{dataset}/{split}/{variant}")
+    base = Path(f"data/results/{model}/{dataset}/{split}/{variant}")
     return {
         "base": base,
         "answers": base / f"answer_per_query_{variant}_{split}.jsonl",
