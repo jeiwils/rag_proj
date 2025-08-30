@@ -18,22 +18,6 @@ def downsample(
     *,
     output_dir: str | None = None,
 ) -> None:
-    """Downsample ``num_questions`` from the given dataset and split.
-
-    Parameters
-    ----------
-    dataset:
-        Name of the dataset to downsample.
-    split:
-        Dataset split (e.g., "train", "dev").
-    num_questions:
-        Number of questions to retain.
-    seed:
-        Random seed used when shuffling questions.
-    output_dir:
-        Directory to which the downsampled dataset will be written.  If ``None``,
-        a folder ``data/processed_datasets/{dataset}/{split}_subset`` is used.
-    """
     paths = processed_dataset_paths(dataset, split)
     questions_path = paths["questions"]
     passages_path = paths["passages"]
@@ -44,10 +28,11 @@ def downsample(
     selected_questions = questions[:num_questions]
     selected_ids = {q["question_id"] for q in selected_questions}
 
+    # ✅ Fix for MuSiQue: strip "_sentN" to recover question_id
     passages = [
         p
         for p in load_jsonl(str(passages_path))
-        if p["passage_id"].split("__")[0] in selected_ids
+        if p["passage_id"].rsplit("_sent", 1)[0] in selected_ids
     ]
 
     if output_dir is None:
