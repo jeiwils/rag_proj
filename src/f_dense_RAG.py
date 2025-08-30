@@ -11,7 +11,6 @@ produce an answer from those passages.
 from typing import Dict, List
 
 import json
-import numpy as np
 import tqdm
 
 from src.b_sparse_dense_representations import (
@@ -30,7 +29,7 @@ from src.utils import (
     get_server_configs,
     load_jsonl,
     processed_dataset_paths,
-    save_jsonl,
+    append_jsonl,
 )
 
 
@@ -78,7 +77,11 @@ def run_dense_rag(
     query_path = processed_dataset_paths(dataset, split)["questions"]
     queries = list(load_jsonl(query_path))
 
-    answers: List[Dict[str, str]] = []
+    paths = get_result_paths(reader_model, dataset, split, "dense")
+    paths["base"].mkdir(parents=True, exist_ok=True)
+    if paths["answers"].exists():
+        paths["answers"].unlink()
+
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
 
@@ -86,6 +89,8 @@ def run_dense_rag(
         q_id = q["question_id"]
         q_text = q["question"]
         gold[q_id] = [q.get("gold_answer", "")]
+
+        print(f"\n[Query] {q_id} - \"{q_text}\"")
 
         q_emb = encoder.encode([q_text], normalize_embeddings=True)
         idxs, _ = faiss_search_topk(q_emb, index, top_k=top_k)
@@ -100,20 +105,17 @@ def run_dense_rag(
             top_k_answer_passages=top_k,
         )
 
-        answers.append(
+        append_jsonl(
+            str(paths["answers"]),
             {
                 "question_id": q_id,
                 "question": q_text,
                 "raw_answer": llm_out["raw_answer"],
                 "normalised_answer": llm_out["normalised_answer"],
                 "used_passages": passage_ids,
-            }
+            },
         )
         predictions[q_id] = llm_out["normalised_answer"]
-
-    paths = get_result_paths(reader_model, dataset, split, "dense")
-    paths["base"].mkdir(parents=True, exist_ok=True)
-    save_jsonl(paths["answers"], answers)
 
     metrics = evaluate_answers(predictions, gold)
     with open(paths["summary"], "w", encoding="utf-8") as f:
@@ -124,25 +126,27 @@ def run_dense_rag(
 
 
 
+
+
+
+
 if __name__ == "__main__":
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     SPLITS = ["dev"]
-    HOPRAG_VERSIONS = ["baseline", "enhanced"]
     READER_MODELS = ["llama-3.1-8b-instruct"]
     TOP_K = DEFAULT_SEED_TOP_K
 
     for dataset in DATASETS:
         for split in SPLITS:
-            for hop_version in HOPRAG_VERSIONS:
-                for reader in READER_MODELS:
-                    print(
-                        f"[Dense RAG] dataset={dataset} split={split} hoprag_version={hop_version} reader={reader} top_k={TOP_K}"
-                    )
-                    metrics = run_dense_rag(
-                        dataset,
-                        split,
-                        reader_model=reader,
-                        top_k=TOP_K,
-                    )
-                    print(metrics)
+            for reader in READER_MODELS:
+                print(
+                    f"[Dense RAG] dataset={dataset} split={split} reader={reader} top_k={TOP_K}"
+                )
+                metrics = run_dense_rag(
+                    dataset,
+                    split,
+                    reader_model=reader,
+                    top_k=TOP_K,
+                )
+                print(metrics)
     print("\n✅ Dense RAG complete.")
