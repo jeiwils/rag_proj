@@ -158,10 +158,10 @@ MAX_TOKENS = { #### WHY SET HERE????
 }
 
 TEMPERATURE = { #### WHY SET HERE????
-    "cs": 0.0, 
-    "iqoq_generation": 0.1,
-    "edge_selection": 0.1, 
-    "answer_generation": 0.1 
+    "cs": 0.6, #0.0, 
+    "iqoq_generation": 0.6, # 0.1,
+    "edge_selection": 0.6, #0.1, 
+    "answer_generation": 0.6, #0.1 
 }
 
 
@@ -847,11 +847,11 @@ if __name__ == "__main__":
 
     RESUME = True
 
-    ACTIVE_MODEL_NAMES   = ["deepseek-distill-qwen-7b"]#["qwen-7b"] # #, "qwen-14"] #["qwen-1.5b", "qwen-7b", 
+    ACTIVE_MODEL_NAMES   = ["wen2.5-7b-instruct"] # ["deepseek-distill-qwen-7b"]#["qwen-7b"] # #, "qwen-14"] #["qwen-1.5b", "qwen-7b", 
     DATASETS = ["musique","2wikimultihopqa", "hotpotqa"]
     SPLIT = "dev"             # or "dev"
 
-    RUN_CS        = False        # enhanced scoring step
+    RUN_CS        = True        # enhanced scoring step
     RUN_BASELINE  = True        # hopRAG baseline IQ/OQ
     RUN_ENHANCED  = False        # enhanced IQ/OQ
 
