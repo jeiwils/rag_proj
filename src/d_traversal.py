@@ -314,7 +314,9 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
     match = re.search(r"\d+", answer)
     if match:
         choice_idx = int(match.group()) - 1
-
+        if 0 <= choice_idx < len(candidate_edges):
+            return candidate_edges[choice_idx]
+    return None
 
 
 
@@ -349,6 +351,7 @@ def hoprag_traversal_algorithm(
         query_text=query_text,
         passage_text=graph.nodes[vj]["text"],
         candidate_edges=candidates,
+        graph=graph,
         server_configs=server_configs,
         traversal_prompt=traversal_prompt,
     )
@@ -426,6 +429,7 @@ def enhanced_traversal_algorithm(
         query_text=query_text,
         passage_text=graph.nodes[vj]["text"],
         candidate_edges=candidates,
+        graph=graph,
         server_configs=server_configs,
         traversal_prompt=traversal_prompt,
     )

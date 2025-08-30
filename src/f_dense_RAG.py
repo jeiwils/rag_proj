@@ -168,6 +168,7 @@ if __name__ == "__main__":
                     split,
                     reader_model=reader,
                     top_k=TOP_K,
+                    resume=True,
                 )
                 print(metrics)
-    print("\n✅ Dense RAG complete.")
+    print("\nDense RAG complete.")
