@@ -273,9 +273,14 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
     Ask the local LLM to choose the best outgoing OQ edge to follow.
     Uses the OQ worker (assumed server_configs[1]).
 
-    candidate_edges: list of tuples (vk, edge_data)
-    graph: directed graph to lookup destination node attributes (e.g., conditioned_score)
-    Returns the chosen edge tuple or None if no valid choice is made.
+    ``candidate_edges`` should already be sorted by the caller for
+    deterministic behaviour.  Each entry is a tuple ``(vk, edge_data)`` where
+    ``vk`` is the destination vertex and ``edge_data`` contains the edge
+    metadata.  ``graph`` is used to look up attributes on the destination
+    nodes (e.g., ``conditioned_score``).
+
+    Returns:
+        The chosen edge tuple or ``None`` if no valid choice is made.
     """
 
     candidate_edges = sorted(
@@ -417,7 +422,11 @@ def enhanced_traversal_algorithm(
     if not candidates:
         return set()
 
-    # 2) Sort by conditioned_score depending on hop depth
+    # 2) Sort for deterministic conditioned_score prioritisation
+    #    First ensure a stable base order using (oq_id, destination id), then
+    #    order by conditioned_score depending on hop depth.  This keeps ties
+    #    deterministic without requiring ``llm_choose_edge`` to re-sort.
+    candidates.sort(key=lambda it: (it[1].get("oq_id", ""), it[0]))
     reverse = hop == 0  # descending when hop==0, else ascending
     candidates.sort(
         key=lambda it: graph.nodes[it[0]].get("conditioned_score", 0.0),
