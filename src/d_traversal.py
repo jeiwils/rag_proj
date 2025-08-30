@@ -321,7 +321,13 @@ def hoprag_traversal_algorithm(
     vj, graph, query_text, visited_passages,
     server_configs, ccount, next_Cqueue, hop_log, state,
     traversal_prompt: str,
+    hop: int = 0,
+    **kwargs,
 ):
+    """Baseline HopRAG traversal step that respects existing edge visitation.
+
+    ``hop`` is accepted for interface compatibility but is not used.
+    """
     # Consider all outgoing edges from ``vj``.  We rely solely on
     # ``state['Evisited']`` to avoid traversing the exact same edge more
     # than once; even if a target node has been visited, its edge is still a
@@ -386,7 +392,17 @@ def enhanced_traversal_algorithm(
     vj, graph, query_text, visited_passages,
     server_configs, ccount, next_Cqueue, hop_log, state,
     traversal_prompt: str,
+    hop: int,
 ):
+    """Enhanced traversal allowing revisits with hop-aware conditioned score bias.
+
+    At hop 0, candidates are sorted by ``conditioned_score`` in descending order to
+    emphasise edges whose destination nodes were scored highly during graph
+    construction.  For subsequent hops, the order is reversed (ascending) so that
+    lower scored edges are explored first.  Only the top ``N`` candidates after
+    sorting are shown to the LLM for selection.
+    """
+
     # 1) Gather untraversed outgoing edges
     candidates = []
     for vk in graph.successors(vj):
@@ -398,10 +414,13 @@ def enhanced_traversal_algorithm(
     if not candidates:
         return set()  # 2) If none, skip this passage
 
-    # (Optional) keep the candidate menu small for stability
-    # e.g., prefer targets whose node query_sim is higher (if already populated)
-    candidates.sort(key=lambda it: graph.nodes[it[0]].get("query_sim", 0.0), reverse=True)
-    candidates = candidates[:5]  # cap menu size shown to the LLM
+    # Sort by conditioned_score depending on hop depth and keep the top N entries
+    reverse = hop == 0  # descending at hop 0, ascending otherwise
+    candidates.sort(
+        key=lambda it: graph.nodes[it[0]].get("conditioned_score", 0.0),
+        reverse=reverse,
+    )
+    candidates = candidates[:5]  # cap menu size shown to the LLM ################################# WHY????
 
     # 3) Ask LLM to pick the most helpful outgoing OQ (your "priority bias")
     chosen = llm_choose_edge(
@@ -525,6 +544,8 @@ def traverse_graph(
                 hop_log=hop_log,
                 state=state,
                 traversal_prompt=traversal_prompt,
+                hop=hop,  # expose hop depth to traversal algorithm
+
             )
             for new_pid in new_nodes:
                 _update_query_sim(new_pid)
