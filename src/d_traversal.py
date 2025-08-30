@@ -515,7 +515,9 @@ def traverse_graph(
         node["query_sim"] = round(sim_hybrid, 4)
 
     Cqueue = seed_passages[:]
-    visited_passages = set(seed_passages)
+    for pid in Cqueue:
+        _update_query_sim(pid)
+    visited_passages = set()
     ccount = {pid: 1 for pid in Cqueue}
     hop_trace = []
     state = {
@@ -524,8 +526,6 @@ def traverse_graph(
         "repeat_visit_count": 0,
     }
 
-    for pid in visited_passages:
-        _update_query_sim(pid)
 
     for hop in range(n_hops):
         next_Cqueue = []
@@ -541,6 +541,8 @@ def traverse_graph(
         for vj in Cqueue:
             if vj not in graph:
                 continue
+
+            visited_passages.add(vj)
 
             new_nodes = traversal_alg(
                 vj=vj,
@@ -562,6 +564,8 @@ def traverse_graph(
 
         hop_trace.append(hop_log)
         Cqueue = next_Cqueue
+
+    visited_passages.update(seed_passages)
 
     return list(visited_passages), ccount, hop_trace, {
         "none_count": state["none_count"],
