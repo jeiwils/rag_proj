@@ -1050,7 +1050,7 @@ def process_traversal(cfg: Dict) -> None:
 if __name__ == "__main__":
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     GRAPH_MODELS = ["qwen-7b"]
-    TRAVERSAL_MODELS = ["qwen2.5-7b-instruct"] #["deepseek-distill-qwen-7b"] # 
+    TRAVERSAL_MODELS = ["deepseek-distill-qwen-7b"] # ["qwen2.5-7b-instruct"] #
     VARIANTS = ["baseline", "enhanced"]
 
     RESUME = True

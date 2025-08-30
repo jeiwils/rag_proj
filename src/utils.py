@@ -51,10 +51,6 @@ SERVER_CONFIGS = [
     {"server_url": "http://localhost:8014", "model": "qwen2.5-7b"},
     {"server_url": "http://localhost:8015", "model": "qwen2.5-7b"},
 
-    # --- NEW: Traversal — DeepSeek-R1-Distill-Qwen-7B (2) ---
-    {"server_url": "http://localhost:8016", "model": "deepseek-r1-distill-qwen-7b"},
-    {"server_url": "http://localhost:8017", "model": "deepseek-r1-distill-qwen-7b"},
-
     # --- NEW: Qwen2.5-7B-Instruct (2) ---
     {"server_url": "http://localhost:8018", "model": "qwen2.5-7b-instruct"},
     {"server_url": "http://localhost:8019", "model": "qwen2.5-7b-instruct"},
