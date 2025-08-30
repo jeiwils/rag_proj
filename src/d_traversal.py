@@ -273,8 +273,10 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
     Ask the local LLM to choose the best outgoing OQ edge to follow.
     Uses the OQ worker (assumed server_configs[1]).
 
-    ``candidate_edges`` should already be sorted by the caller for
-    deterministic behaviour.  Each entry is a tuple ``(vk, edge_data)`` where
+    ``candidate_edges`` **must** already be sorted by the caller in whatever
+    deterministic order is desired (e.g., ``conditioned_score``).  The function
+    preserves this ordering and presents options to the LLM using their
+    existing positions.  Each entry is a tuple ``(vk, edge_data)`` where
     ``vk`` is the destination vertex and ``edge_data`` contains the edge
     metadata.  ``graph`` is used to look up attributes on the destination
     nodes (e.g., ``conditioned_score``).
@@ -282,12 +284,6 @@ def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
     Returns:
         The chosen edge tuple or ``None`` if no valid choice is made.
     """
-
-    candidate_edges = sorted(
-        candidate_edges,
-        key=lambda item: (item[1].get("oq_id", ""), item[0]),
-    )
-
     oq_options = []
     for i, (vk, edge_data) in enumerate(candidate_edges):
         node_score = graph.nodes[vk].get("conditioned_score", 0.0)
@@ -422,10 +418,10 @@ def enhanced_traversal_algorithm(
     if not candidates:
         return set()
 
-    # 2) Sort for deterministic conditioned_score prioritisation
+    # 2) Sort for deterministic conditioned_score prioritisation.
     #    First ensure a stable base order using (oq_id, destination id), then
     #    order by conditioned_score depending on hop depth.  This keeps ties
-    #    deterministic without requiring ``llm_choose_edge`` to re-sort.
+    #    deterministic; ``llm_choose_edge`` preserves the ordering provided.
     candidates.sort(key=lambda it: (it[1].get("oq_id", ""), it[0]))
     reverse = hop == 0  # descending when hop==0, else ascending
     candidates.sort(
@@ -1059,7 +1055,7 @@ def process_traversal(cfg: Dict) -> None:
 
     merged_passages: Set[str] = set()
     for i in range(len(urls)):
-        part_path = output_paths["base"] / f"visited_passages_part{i}.json"
+        part_path = output_paths["base"] / f"visited_passages_part{i}.json" ########### what's this for???
         if part_path.exists():
             with open(part_path, "rt", encoding="utf-8") as fin:
                 merged_passages.update(json.load(fin))
@@ -1110,9 +1106,13 @@ if __name__ == "__main__":
 
     result_paths = set()
     for cfg in configs:
-        out_path = get_traversal_paths(
-            cfg["graph_model"], cfg["dataset"], cfg["split"], cfg["variant"]
-        )["results"]
+
+        out_path = ( ################################# any way to do this more clearnly???
+            Path(
+                f"data/traversal/{cfg['model']}/{cfg['dataset']}/{cfg['split']}/{cfg['variant']}"
+            )
+            / "per_query_traversal_results.jsonl"
+        )
         if out_path in result_paths:
             raise ValueError(f"Duplicate output path detected: {out_path}")
         result_paths.add(out_path)

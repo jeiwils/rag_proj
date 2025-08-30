@@ -1,1 +1,0 @@
-{"timestamp": "2025-08-30T05:32:59", "traversal_eval": {"mean_precision": 0.0004, "mean_recall": 0.007, "passage_coverage_all_gold_found": 2, "initial_retrieval_coverage": 1, "avg_hops_before_first_gold": 0.6, "avg_total_hops": 3.43, "avg_repeat_visits": 5.51, "avg_none_count_per_query": 5.05, "max_hop_depth_reached": 4, "hop_depth_distribution": [0, 0, 56, 172, 272]}}
