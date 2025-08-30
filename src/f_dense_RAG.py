@@ -12,6 +12,7 @@ from typing import Dict, List
 
 import json
 import numpy as np
+import tqdm
 
 from src.b_sparse_dense_representations import (
     dataset_rep_paths,
@@ -75,12 +76,13 @@ def run_dense_rag(
     encoder = get_embedding_model()
 
     query_path = processed_dataset_paths(dataset, split)["questions"]
+    queries = list(load_jsonl(query_path))
 
     answers: List[Dict[str, str]] = []
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
 
-    for q in load_jsonl(query_path):
+    for q in tqdm(queries, desc="queries"):
         q_id = q["question_id"]
         q_text = q["question"]
         gold[q_id] = [q.get("gold_answer", "")]
