@@ -138,8 +138,8 @@ from src.utils import (
 
 # # TRAVERSAL TUNING
 
-DEFAULT_SEED_TOP_K = 50
-DEFAULT_NUMBER_HOPS = 2
+DEFAULT_SEED_TOP_K = 20
+DEFAULT_NUMBER_HOPS = 4
 
 
 
@@ -368,10 +368,12 @@ def hoprag_traversal_algorithm(
         return set()
 
     hop_log["new_passages"].append(chosen_vk)
-    next_Cqueue.append(chosen_vk)
-    return {chosen_vk}
-
-
+    # only enqueue if it's actually new (or if you explicitly want limited revisits)
+    if not is_repeat:
+        next_Cqueue.append(chosen_vk)
+        return {chosen_vk}
+    else:
+        return set()
 
 
 
@@ -382,18 +384,23 @@ def enhanced_traversal_algorithm(
     server_configs, ccount, next_Cqueue, hop_log, state,
     traversal_prompt: str,
 ):
-    candidates = [
-        (vk, graph[vj][vk])
-        for vk in graph.successors(vj)
-        if (vj, vk, graph[vj][vk]["oq_id"], graph[vj][vk]["iq_id"]) not in state["Evisited"]
-    ]
+    # 1) Gather untraversed outgoing edges
+    candidates = []
+    for vk in graph.successors(vj):
+        edata = graph[vj][vk]
+        sig = (vj, vk, edata["oq_id"], edata["iq_id"])
+        if sig not in state["Evisited"]:
+            candidates.append((vk, edata))
 
     if not candidates:
-        return set()
+        return set()  # 2) If none, skip this passage
 
-     # Ensure deterministic ordering for edge options
-    candidates.sort(key=lambda item: (item[1].get("oq_id", ""), item[0]))
+    # (Optional) keep the candidate menu small for stability
+    # e.g., prefer targets whose node query_sim is higher (if already populated)
+    candidates.sort(key=lambda it: graph.nodes[it[0]].get("query_sim", 0.0), reverse=True)
+    candidates = candidates[:5]  # cap menu size shown to the LLM
 
+    # 3) Ask LLM to pick the most helpful outgoing OQ (your "priority bias")
     chosen = llm_choose_edge(
         query_text=query_text,
         passage_text=graph.nodes[vj]["text"],
@@ -407,28 +414,31 @@ def enhanced_traversal_algorithm(
         state["none_count"] += 1
         return set()
 
-    chosen_vk, chosen_edge = chosen
-    state["Evisited"].add((vj, chosen_vk, chosen_edge["oq_id"], chosen_edge["iq_id"]))
-    is_repeat = chosen_vk in visited_passages
+    vk, edata = chosen
 
+    # 4) Mark edge as traversed
+    sig = (vj, vk, edata["oq_id"], edata["iq_id"])
+    state["Evisited"].add(sig)
+
+    # 5) Hop to vk, always add to next frontier (enhanced allows revisits)
+    next_Cqueue.append(vk)
+
+    # 6) Visit accounting + logging
+    is_repeat = vk in visited_passages
+    ccount[vk] = ccount.get(vk, 0) + 1
     hop_log["edges_chosen"].append({
-        "from": vj,
-        "to": chosen_vk,
-        "oq_id": chosen_edge["oq_id"],
-        "iq_id": chosen_edge["iq_id"],
+        "from": vj, "to": vk,
+        "oq_id": edata["oq_id"], "iq_id": edata["iq_id"],
         "repeat_visit": is_repeat
     })
-
-    ccount[chosen_vk] = ccount.get(chosen_vk, 0) + 1
-
     if is_repeat:
         hop_log["repeat_visit_count"] += 1
         state["repeat_visit_count"] += 1
+        return set()          # already known node; do not mark as "new"
     else:
-        hop_log["new_passages"].append(chosen_vk)
+        hop_log["new_passages"].append(vk)
+        return {vk}           # new node to mark as visited upstream
 
-    next_Cqueue.append(chosen_vk)
-    return {chosen_vk}
 
 
 

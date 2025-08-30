@@ -328,8 +328,8 @@ def generate_answers_from_traversal(
     Parameters
     ----------
     graph_model, traversal_model, dataset, split, variant:
-        ``graph_model`` identifies the graph and traversal outputs, while
-        ``traversal_model`` determines server configuration and result
+        ``graph_model`` identifies the graph, while ``traversal_model``
+        determines traversal outputs, server configuration, and result
         directory.
     top_k_answer_passages:
         Number of passages to supply to the LLM per query.
@@ -361,7 +361,7 @@ def generate_answers_from_traversal(
         server_url = server_url or server["server_url"]
         model_name = model_name or server["model"]
 
-    traversal_paths = get_traversal_paths(graph_model, dataset, split, variant)
+    traversal_paths = get_traversal_paths(traversal_model, dataset, split, variant)
     result_paths = get_result_paths(traversal_model, dataset, split, variant)
 
     traversal_file = traversal_paths["results"]
