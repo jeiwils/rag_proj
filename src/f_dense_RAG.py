@@ -25,11 +25,12 @@ from src.e_reranking_answer_gen import (
     evaluate_answers,
 )
 from src.utils import (
+    append_jsonl,
+    compute_resume_sets,
     get_result_paths,
     get_server_configs,
     load_jsonl,
     processed_dataset_paths,
-    append_jsonl,
 )
 
 
@@ -39,6 +40,7 @@ def run_dense_rag(
     reader_model: str,
     server_url: str | None = None,
     top_k: int = DEFAULT_SEED_TOP_K,
+    resume: bool = False,
 ) -> Dict[str, float]:
     """Answer queries using dense retrieval over passages and evaluate EM/F1.
 
@@ -58,6 +60,11 @@ def run_dense_rag(
     top_k: int, optional
         Number of passages to retrieve for each query. Defaults to
         ``DEFAULT_SEED_TOP_K`` from :mod:`src.d_traversal`.
+    resume: bool, optional
+        Resume a previously interrupted run by reusing existing answers and
+        skipping already processed questions. When ``True``,
+        :func:`src.utils.compute_resume_sets` determines which question IDs
+        have been completed.
 
     Returns
     -------
@@ -78,8 +85,16 @@ def run_dense_rag(
     queries = list(load_jsonl(query_path))
 
     paths = get_result_paths(reader_model, dataset, split, "dense")
+    done_ids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=str(paths["answers"]),
+        items=queries,
+        get_id=lambda q, i: q["question_id"],
+        phase_label="Dense RAG",
+        id_field="question_id",
+    )
     paths["base"].mkdir(parents=True, exist_ok=True)
-    if paths["answers"].exists():
+    if not resume and paths["answers"].exists():
         paths["answers"].unlink()
 
     predictions: Dict[str, str] = {}
@@ -87,6 +102,8 @@ def run_dense_rag(
 
     for q in tqdm(queries, desc="queries"):
         q_id = q["question_id"]
+        if resume and q_id in done_ids:
+            continue
         q_text = q["question"]
         gold[q_id] = [q.get("gold_answer", "")]
 
@@ -116,6 +133,10 @@ def run_dense_rag(
             },
         )
         predictions[q_id] = llm_out["normalised_answer"]
+
+    if not gold:
+        print("No new queries to process.")
+        return {}
 
     metrics = evaluate_answers(predictions, gold)
     with open(paths["summary"], "w", encoding="utf-8") as f:
