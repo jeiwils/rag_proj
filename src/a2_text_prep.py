@@ -184,6 +184,28 @@ def chatml(system: str, user: str) -> str:
         "<|im_start|>assistant\n"
     )
 
+def build_prompt(model_name: str, system: str, user: str):
+    """Return an LLM prompt formatted for the given model.
+
+    Parameters
+    ----------
+    model_name: str
+        Identifier for the active model. If the name contains "llama" the
+        OpenAI style chat format is used, otherwise the prompt is returned in
+        Qwen-style ChatML.
+    system: str
+        System message content.
+    user: str
+        User message content.
+    """
+    if "llama" in model_name.lower():
+        messages = []
+        if system.strip():
+            messages.append({"role": "system", "content": system.strip()})
+        messages.append({"role": "user", "content": user.strip()})
+        return messages
+    return chatml(system, user)
+
 def question_list_grammar(min_n: int, max_n: int) -> str:
     """Enforce a JSON object {"Question List": ["..."]} with bounds."""
     rep_min = max(0, min_n - 1)
@@ -253,7 +275,6 @@ def _temp_for(model_name: str, phase: str) -> float: ############ I GUESS I SHOU
 
 
 
-
 def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
               stop=None, grammar=None, model_name="", phase=None):
     # If you want R1-style guidance inside the *user* message:
@@ -262,16 +283,23 @@ def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
                 "Begin your output with '<think>\\n' for internal reasoning, "
                 "then give the final answer.\n\n" + p)
 
-    use_chat = ("deepseek" in model_name.lower())  # your is_r1_like() is fine too
+    is_deepseek = "deepseek" in model_name.lower()
+    use_chat = isinstance(prompt, list) or is_deepseek
     if use_chat:
         endpoint = "/v1/chat/completions"
+        if isinstance(prompt, list):
+            messages = prompt
+        else:
+            content = _wrap_for_deepseek_user(prompt) if is_deepseek else prompt
+            messages = [{"role": "user", "content": content}]
         payload = {
             "model": "local",  # required by the spec; llama.cpp ignores the value
-            "messages": [{"role": "user", "content": _wrap_for_deepseek_user(prompt)}],
+            "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        if stop: payload["stop"] = stop
+        if stop:
+            payload["stop"] = stop
     else:
         endpoint = "/completion"
         payload = {
@@ -279,8 +307,10 @@ def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
             "n_predict": max_tokens,
             "temperature": temperature,
         }
-        if stop: payload["stop"] = stop
-        if grammar: payload["grammar"] = grammar  # grammar works on /completion
+        if stop:
+            payload["stop"] = stop
+        if grammar:
+            payload["grammar"] = grammar  # grammar works on /completion
 
     r = requests.post(f"{server_url}{endpoint}", json=payload, timeout=60)
     r.raise_for_status()
@@ -294,6 +324,7 @@ def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
         content = data.get("content", data.get("message", ""))
 
     usage = data.get("usage") if isinstance(data, dict) else None
+    prompt_text = "".join(m.get("content", "") for m in prompt) if isinstance(prompt, list) else prompt
     if usage:
         prompt_tokens = usage.get("prompt_tokens", 0)
         completion_tokens = usage.get("completion_tokens", 0)
@@ -302,10 +333,10 @@ def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
             enc = tiktoken.encoding_for_model(model_name)
         except Exception:
             enc = tiktoken.get_encoding("cl100k_base")
-        prompt_tokens = len(enc.encode(prompt))
+        prompt_tokens = len(enc.encode(prompt_text))
         completion_tokens = len(enc.encode(content))
     else:
-        prompt_tokens = len(prompt.split())
+        prompt_tokens = len(prompt_text.split())
         completion_tokens = len(content.split())
         logger.debug("tiktoken not available; using word counts as approximation")
     total_tokens = prompt_tokens + completion_tokens
@@ -541,9 +572,13 @@ def generate_iqoq(
     max_iq = num_iq + 2
     max_oq = num_oq + 2
 
-    # Build ChatML prompts from the baseline templates
-    iq_prompt = chatml("", iq_prompt_template.format(sentences=passage_text))
-    oq_prompt = chatml("", oq_prompt_template.format(sentences=passage_text))
+    # Build prompts from the baseline templates with model-aware formatting
+    iq_prompt = build_prompt(
+        model_name, "", iq_prompt_template.format(sentences=passage_text)
+    )
+    oq_prompt = build_prompt(
+        model_name, "", oq_prompt_template.format(sentences=passage_text)
+    )
 
     # Build grammars (force clean Question List JSON)
     iq_grammar = question_list_grammar(num_iq, max_iq)
@@ -906,7 +941,7 @@ if __name__ == "__main__":
 
     RESUME = True
 
-    ACTIVE_MODEL_NAMES   = ["qwen2.5-7b-instruct"] # ["deepseek-distill-qwen-7b"]#["qwen-7b"] # #, "qwen-14"] #["qwen-1.5b", "qwen-7b", 
+    ACTIVE_MODEL_NAMES   = ["llama-3.1-8b-instruct"] # ["deepseek-distill-qwen-7b"]#["qwen-7b"] # #, "qwen-14"] #["qwen-1.5b", "qwen-7b", 
     DATASETS = ["musique","2wikimultihopqa", "hotpotqa"]
     SPLIT = "dev"             # or "dev"
 

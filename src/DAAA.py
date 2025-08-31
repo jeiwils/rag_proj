@@ -1,6 +1,7 @@
 import json
 import random
 from pathlib import Path
+import logging 
 
 from src.utils import load_jsonl, processed_dataset_paths
 
@@ -24,15 +25,24 @@ def downsample(
 
     rng = random.Random(seed)
     questions = list(load_jsonl(str(questions_path)))
+
+    passage_ids_all = {p["passage_id"] for p in load_jsonl(str(passages_path))}
+    questions = [
+        q
+        for q in questions
+        if all(pid in passage_ids_all for pid in q["gold_passages"])
+    ]
+    if len(questions) < num_questions:
+        logging.warning(
+            "Only %d questions available after filtering; requested %d",
+            len(questions),
+            num_questions,
+        )
+
     rng.shuffle(questions)
     selected_questions = questions[:num_questions]
     selected_ids = {q["question_id"] for q in selected_questions}
 
-    passages = [
-        p
-        for p in load_jsonl(str(passages_path))
-        if p["passage_id"].rsplit("_sent", 1)[0] in selected_ids
-    ]
 
     def question_id_from_passage(pid: str) -> str:
         """Return the question ID portion of a passage identifier.
@@ -59,7 +69,7 @@ def downsample(
     for q in selected_questions:
         missing_ids = [pid for pid in q["gold_passages"] if pid not in passage_ids]
         if missing_ids:
-            missing[q["question_id"]] = missing_ids
+            logging.warning("Missing passages: %s", missing)
     if missing:
         raise ValueError(f"Missing passages: {missing}")
 
