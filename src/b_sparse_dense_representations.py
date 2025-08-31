@@ -561,7 +561,7 @@ if __name__ == "__main__":
     print(f"[BGE] Loaded {BGE_MODEL} on {DEVICE}")
 
     # Config
-    MODELS   = ["qwen-7b"] #, "deepseek-distill-qwen-7b"]
+    MODELS   = ["qwen2.5-7b-instruct"]  # ["deepseek-dis
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     VARIANTS = ["baseline", "enhanced"]
     SPLIT = "dev"

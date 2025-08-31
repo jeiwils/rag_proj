@@ -726,7 +726,7 @@ def run_graph_pipeline(
 
 if __name__ == "__main__":
     
-    MODELS   = ["qwen-7b"]  # , "deepseek-distill-qwen-7b"]
+    MODELS   = ["qwen2.5-7b-instruct"]  # ["deepseek-dis
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     VARIANTS = ["baseline", "enhanced"]
     SPLIT    = "dev"

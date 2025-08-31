@@ -859,7 +859,7 @@ def iter_jobs(datasets, models, variants, skip):
 if __name__ == "__main__":
     # --- config ---
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-    MODEL_TO_PROCESS   = ["qwen-7b"]  # ["deepseek-distill-qwen-7b"]
+    MODEL_TO_PROCESS   = ["qwen2.5-7b-instruct"]  # ["deepseek-distill-qwen-7b"]
     SPLIT = "dev"
 
     # All models we know about (from your SERVER_CONFIGS)
