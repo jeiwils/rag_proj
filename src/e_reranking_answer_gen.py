@@ -126,6 +126,8 @@ from src.utils import (
     processed_dataset_paths,
     save_jsonl,
     pool_map,
+    compute_hits_at_k,
+
 )
 
 
@@ -220,7 +222,7 @@ def ask_llm_with_passages(
         + f"\n\nQuestion: {query_text}\nAnswer:"
     )
 
-    raw = query_llm(
+    raw, _ = query_llm(
         prompt,
         server_url=server_url,
         max_tokens=max_tokens,
@@ -385,6 +387,8 @@ def generate_answers_from_traversal(
     answers: List[Dict] = []
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
+    hits: Dict[str, float] = {}
+
 
     def _init_worker(q_dict, p_lookup, s_url, m_name, top_k):
         """Store shared data in globals for worker processes."""
@@ -416,6 +420,7 @@ def generate_answers_from_traversal(
         )
         passage_ids_sorted = [h["passage_id"] for h in helpful]
         top_passages = passage_ids_sorted[:top_k]
+        hits_val = compute_hits_at_k(passage_ids_sorted, q.get("gold_passages", []), top_k)
 
         llm_out = ask_llm_with_passages(
             query_text=question,
@@ -433,6 +438,8 @@ def generate_answers_from_traversal(
             "raw_answer": llm_out["raw_answer"],
             "normalised_answer": llm_out["normalised_answer"],
             "used_passages": top_passages,
+            "hits_at_k": hits_val,
+
         }
         return qid, answer_dict, llm_out["normalised_answer"]
 
@@ -470,6 +477,7 @@ def generate_answers_from_traversal(
         answers.append(answer)
         predictions[qid] = norm_ans
         gold[qid] = [queries[qid].get("gold_answer", "")]
+        hits[qid] = answer.get("hits_at_k", 0.0)
 
     result_paths["base"].mkdir(parents=True, exist_ok=True)
     if resume:
@@ -478,6 +486,8 @@ def generate_answers_from_traversal(
         save_jsonl(result_paths["answers"], answers)
 
     metrics = evaluate_answers(predictions, gold)
+    if hits:
+        metrics["hits_at_k"] = round(sum(hits.values()) / len(hits), 4)
     with open(result_paths["summary"], "wt", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 

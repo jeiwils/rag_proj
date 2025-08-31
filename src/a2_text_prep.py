@@ -111,8 +111,10 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, List
 
+import logging
 import requests
 from tqdm import tqdm
+import tiktoken
 
 from src.utils import (
     append_jsonl,
@@ -132,7 +134,10 @@ from src.utils import (
 
 RESUME = True  #### WHY SET HERE????
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
+TOKEN_TOTALS = {"prompt": 0, "completion": 0, "total": 0}
 
 
 CS_GRAMMAR = r''' #### WHY SET HERE????
@@ -283,10 +288,44 @@ def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
 
     if use_chat:
         # OpenAI-style response
-        return data["choices"][0]["message"]["content"]
+        content = data["choices"][0]["message"]["content"]
     else:
         # llama.cpp completion response
-        return data.get("content", data.get("message", ""))
+        content = data.get("content", data.get("message", ""))
+
+    usage = data.get("usage") if isinstance(data, dict) else None
+    if usage:
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+    elif tiktoken is not None:
+        try:
+            enc = tiktoken.encoding_for_model(model_name)
+        except Exception:
+            enc = tiktoken.get_encoding("cl100k_base")
+        prompt_tokens = len(enc.encode(prompt))
+        completion_tokens = len(enc.encode(content))
+    else:
+        prompt_tokens = len(prompt.split())
+        completion_tokens = len(content.split())
+        logger.debug("tiktoken not available; using word counts as approximation")
+    total_tokens = prompt_tokens + completion_tokens
+
+    logger.debug(
+        f"{phase or 'query'} tokens - prompt: {prompt_tokens}, completion: {completion_tokens}, total: {total_tokens}"
+    )
+    TOKEN_TOTALS["prompt"] += prompt_tokens
+    TOKEN_TOTALS["completion"] += completion_tokens
+    TOKEN_TOTALS["total"] += total_tokens
+    logger.debug(
+        f"Cumulative tokens - prompt: {TOKEN_TOTALS['prompt']}, "
+        f"completion: {TOKEN_TOTALS['completion']}, total: {TOKEN_TOTALS['total']}"
+    )
+
+    return content, {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total_tokens,
+    }
     
 
 
@@ -465,100 +504,6 @@ def iqoq_ratio( ####################################### FOCUS ON THIS
 
 
 
-# def generate_iqoq(
-#     entry: dict,
-#     iq_prompt_template: str,
-#     oq_prompt_template: str,
-#     server_url: str,
-#     iq_tokens: int,
-#     oq_tokens: int,
-#     iq_temperature: float = 0.1,
-#     oq_temperature: float = 0.1,
-#     conditioned_score: float = None,
-#     use_ratio: bool = False,
-#     hoprag_version: str = "standard_hoprag",
-#     debug_dir: Path = None,
-#     model_name: str = ""
-# ):
-#     """
-#     Generates IQ and OQ lists for a passage.
-#     Returns (entry, missing_iq_ids, missing_oq_ids).
-#     """
-#     import re
-
-#     passage_text = entry["text"]
-
-#     if use_ratio and conditioned_score is not None:
-#         _, num_iq, num_oq = iqoq_ratio(conditioned_score)
-#     else:
-#         num_iq, num_oq = 2, 4
-
-#     # NEW: max (N+2)
-#     max_iq = num_iq + 2
-#     max_oq = num_oq + 2
-
-#     # Fill prompts (support both {{NUM_QUESTIONS}} and {{NUM_QUESTIONS+2}})
-#     iq_prompt_filled = (
-#         iq_prompt_template
-#         .replace("{{PASSAGE}}", passage_text)
-#         .replace("{{NUM_QUESTIONS}}", str(num_iq))
-#         .replace("{{NUM_QUESTIONS+2}}", str(max_iq))   # NEW
-#     )
-#     oq_prompt_filled = (
-#         oq_prompt_template
-#         .replace("{{PASSAGE}}", passage_text)
-#         .replace("{{NUM_QUESTIONS}}", str(num_oq))
-#         .replace("{{NUM_QUESTIONS+2}}", str(max_oq))   # NEW
-#     )
-
-#     # DeepSeek: prefer recommended temperature for generative phases
-#     try:
-#         if is_r1_like(model_name):
-#             iq_temperature = _temp_for(model_name, "iqoq_generation")
-#             oq_temperature = _temp_for(model_name, "iqoq_generation")
-
-#         iq_response = query_llm(
-#             iq_prompt_filled,
-#             server_url,
-#             max_tokens=iq_tokens,
-#             temperature=iq_temperature,
-#             model_name=model_name,
-#             phase="iqoq_generation",
-#         )
-#         oq_response = query_llm(
-#             oq_prompt_filled,
-#             server_url,
-#             max_tokens=oq_tokens,
-#             temperature=oq_temperature,
-#             model_name=model_name,
-#             phase="iqoq_generation",
-#         )
-
-#         if is_r1_like(model_name):
-#             iq_response = strip_think(iq_response)
-#             oq_response = strip_think(oq_response)
-
-#     except Exception as e:
-#         print(f"[ERROR] LLM failed for {entry.get('passage_id','?')}: {e}")
-#         pid = entry.get("passage_id", "?")
-#         return None, [pid], [pid]
-
-#     missing_iq_this, missing_oq_this = [], []
-#     if not iq_response.strip():
-#         missing_iq_this.append(entry.get("passage_id", "?"))
-#     if not oq_response.strip():
-#         missing_oq_this.append(entry.get("passage_id", "?"))
-#     if missing_iq_this or missing_oq_this:
-#         return None, missing_iq_this, missing_oq_this
-
-#     entry["IQs"] = [q for q in iq_response.split("\n") if q.strip()]
-#     entry["OQs"] = [q for q in oq_response.split("\n") if q.strip()]
-#     entry["num_iq"] = num_iq           # your target N (baseline/enhanced)
-#     entry["num_oq"] = num_oq
-#     entry["cs_used"] = conditioned_score if use_ratio else None
-#     entry["hoprag_version"] = hoprag_version
-
-#     return entry, [], []
 
 
 
@@ -611,7 +556,7 @@ def generate_iqoq(
 
     # Query (use /completion; grammar only supported there)
     try:
-        iq_response = query_llm(
+        iq_response, _ = query_llm(
             iq_prompt,
             server_url,
             max_tokens=iq_tokens,
@@ -621,7 +566,7 @@ def generate_iqoq(
             model_name=model_name,
             phase="iqoq_generation",
         )
-        oq_response = query_llm(
+        oq_response, _ = query_llm(
             oq_prompt,
             server_url,
             max_tokens=oq_tokens,

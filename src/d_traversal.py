@@ -130,6 +130,7 @@ from src.utils import (
     split_jsonl_for_models,
     model_size,
     pool_map, 
+    compute_hits_at_k,
 )
 
 
@@ -270,7 +271,7 @@ def llm_choose_edge(
             question=edge_data["oq_text"],
         )
 
-        answer = query_llm(
+        answer, _ = query_llm(
             prompt,
             server_url=oq_server["server_url"],
             max_tokens=30,
@@ -324,6 +325,18 @@ def hoprag_traversal_algorithm(
 
     # Ensure deterministic ordering for edge options
     candidates.sort(key=lambda item: (item[1].get("oq_id", ""), item[0]))
+
+    hop_log["candidate_edges"].extend(
+        [
+            (
+                vj,
+                vk,
+                edge_data.get("oq_id"),
+                edge_data.get("iq_id"),
+            )
+            for vk, edge_data in candidates
+        ]
+    )
 
     # LLM evaluates each edge's auxiliary question and returns the first
     # marked "Relevant and Necessary". Other edges are ignored.
@@ -407,6 +420,18 @@ def enhanced_traversal_algorithm(
         reverse=reverse,
     )
 
+
+    hop_log["candidate_edges"].extend(
+        [
+            (
+                vj,
+                vk,
+                edge_data.get("oq_id"),
+                edge_data.get("iq_id"),
+            )
+            for vk, edge_data in candidates
+        ]
+    )
     # 3) Ask LLM to pick the next edge
     #    The model evaluates each candidate and returns the first whose
     #    auxiliary question is deemed "Relevant and Necessary".
@@ -513,6 +538,7 @@ def traverse_graph(
             "expanded_from": list(Cqueue),
             "new_passages": [],
             "edges_chosen": [],
+            "candidate_edges": [],
             "none_count": 0,
             "repeat_visit_count": 0,
         }
@@ -604,8 +630,6 @@ def compute_hop_metrics(
 
 
 
-
-
 def save_traversal_result( # helper for run_dev_set()
     question_id,
     gold_passages,
@@ -614,6 +638,7 @@ def save_traversal_result( # helper for run_dev_set()
     hop_trace,
     traversal_alg,
     helpful_passages,
+    hits_at_k,
     output_path="dev_results.jsonl"
 ):
     """
@@ -634,6 +659,7 @@ def save_traversal_result( # helper for run_dev_set()
             {"passage_id": pid, "score": round(score, 4)}
             for pid, score in helpful_passages
         ],
+        "hits_at_k": hits_at_k,
     }
 
     append_jsonl(str(output_path), result_entry)
@@ -708,6 +734,8 @@ def run_traversal(
 
         print(f"[Seeds] Retrieved {len(seed_passages)} passages.")
 
+        hits_val = compute_hits_at_k(seed_passages, gold_passages, seed_top_k)
+
         # --- Traverse ---
         visited_passages, ccount, hop_trace, stats = traverse_graph(
             graph=graph,
@@ -740,6 +768,7 @@ def run_traversal(
             hop_trace=hop_trace,
             traversal_alg=traversal_alg,
             helpful_passages=helpful_passages,
+            hits_at_k=hits_val,
             output_path=output_paths["results"],
         )
 
@@ -799,6 +828,8 @@ def compute_traversal_summary(
     total_queries = 0
     sum_precision = 0.0
     sum_recall = 0.0
+    
+    sum_hits = 0.0
     total_none = 0
     total_repeat = 0
     passage_coverage_all_gold_found = 0
@@ -817,6 +848,8 @@ def compute_traversal_summary(
             final = entry["final_metrics"]
             sum_precision += final["precision"]
             sum_recall += final["recall"]
+            sum_hits += entry.get("hits_at_k", 0.0)
+
 
             if set(entry["gold_passages"]).issubset(set(entry["visited_passages"])):
                 passage_coverage_all_gold_found += 1
@@ -857,6 +890,7 @@ def compute_traversal_summary(
 
     mean_precision = sum_precision / total_queries if total_queries else 0
     mean_recall = sum_recall / total_queries if total_queries else 0
+    mean_hits = sum_hits / total_queries if total_queries else 0
 
     avg_first_gold = (
         round(sum(first_gold_hops) / len(first_gold_hops), 2)
@@ -871,6 +905,7 @@ def compute_traversal_summary(
     return {
         "mean_precision": round(mean_precision, 4),
         "mean_recall": round(mean_recall, 4),
+        "mean_hits_at_k": round(mean_hits, 4),
         "passage_coverage_all_gold_found": passage_coverage_all_gold_found,
         "initial_retrieval_coverage": initial_retrieval_coverage,
         "avg_hops_before_first_gold": avg_first_gold,

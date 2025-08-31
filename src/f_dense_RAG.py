@@ -31,6 +31,8 @@ from src.utils import (
     get_server_configs,
     load_jsonl,
     processed_dataset_paths,
+    compute_hits_at_k,
+
 )
 
 
@@ -99,6 +101,8 @@ def run_dense_rag(
 
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
+    hits_at_k_scores: Dict[str, float] = {}
+
 
     for q in tqdm(queries, desc="queries"):
         q_id = q["question_id"]
@@ -112,6 +116,7 @@ def run_dense_rag(
         q_emb = encoder.encode([q_text], normalize_embeddings=True)
         idxs, _ = faiss_search_topk(q_emb, index, top_k=top_k)
         passage_ids = [passages[i]["passage_id"] for i in idxs]
+        hits_val = compute_hits_at_k(passage_ids, q.get("gold_passages", []), top_k)
         llm_out = ask_llm_with_passages(
             query_text=q_text,
             passage_ids=passage_ids,
@@ -130,19 +135,24 @@ def run_dense_rag(
                 "raw_answer": llm_out["raw_answer"],
                 "normalised_answer": llm_out["normalised_answer"],
                 "used_passages": passage_ids,
+                "hits_at_k": hits_val,
             },
         )
         predictions[q_id] = llm_out["normalised_answer"]
+        hits_at_k_scores[q_id] = hits_val
 
     if not gold:
         print("No new queries to process.")
         return {}
 
     metrics = evaluate_answers(predictions, gold)
+    if hits_at_k_scores:
+        metrics["hits_at_k"] = round(sum(hits_at_k_scores.values()) / len(hits_at_k_scores), 4)
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
     return metrics
+
 
 
 

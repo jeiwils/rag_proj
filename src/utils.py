@@ -620,6 +620,30 @@ def pool_map(
 
 
 
+def compute_hits_at_k(pred_passages: List[str], gold_passages: List[str], k: int) -> float:
+    """Return whether any of the top-``k`` predicted passages match a gold passage.
+
+    Parameters
+    ----------
+    pred_passages:
+        Retrieved passages ordered by relevance.
+    gold_passages:
+        Gold passage identifiers.
+    k:
+        Evaluation cutoff.
+
+    Returns
+    -------
+    float
+        ``1.0`` if any gold passage is found in the first ``k`` predictions,
+        otherwise ``0.0``.
+    """
+
+    if k <= 0:
+        return 0.0
+
+    gold_set = set(gold_passages)
+    return float(any(pid in gold_set for pid in pred_passages[:k]))
 
 __all__ = [
     "SERVER_CONFIGS",
@@ -644,4 +668,5 @@ __all__ = [
     "split_jsonl",
     "split_jsonl_into_four",
     "split_jsonl_for_models",
+    "compute_hits_at_k"
 ]
