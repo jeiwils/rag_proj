@@ -10,6 +10,7 @@ produce an answer from those passages.
 
 from typing import Dict, List
 
+import time
 import json
 from tqdm import tqdm
 
@@ -32,6 +33,7 @@ from src.utils import (
     load_jsonl,
     processed_dataset_paths,
     compute_hits_at_k,
+    log_wall_time   
 
 )
 
@@ -162,6 +164,7 @@ def run_dense_rag(
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     SPLITS = ["dev"]
     READER_MODELS = ["llama-3.1-8b-instruct"]
@@ -182,3 +185,4 @@ if __name__ == "__main__":
                 )
                 print(metrics)
     print("\nDense RAG complete.")
+    log_wall_time(__file__, start_time)

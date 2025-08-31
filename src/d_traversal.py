@@ -97,6 +97,7 @@ import json
 import pickle
 import re
 import inspect
+import time 
 
 from collections import Counter
 from pathlib import Path
@@ -131,6 +132,7 @@ from src.utils import (
     model_size,
     pool_map, 
     compute_hits_at_k,
+    log_wall_time,
 )
 
 
@@ -1099,6 +1101,8 @@ def process_traversal(cfg: Dict) -> None:
 
 
 if __name__ == "__main__":
+    start_time = time.time()
+
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     GRAPH_MODELS = ["qwen-7b"]
     TRAVERSAL_MODELS = ["qwen2.5-7b-instruct"]# ["deepseek-distill-qwen-7b"] #  #
@@ -1142,3 +1146,4 @@ if __name__ == "__main__":
     for _, model_configs in configs_by_model.items():
         for cfg in model_configs:
             process_traversal(cfg)
+    log_wall_time(__file__, start_time)

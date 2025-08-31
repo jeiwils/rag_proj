@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import time
 import json
 import os
 import re
@@ -645,6 +646,79 @@ def compute_hits_at_k(pred_passages: List[str], gold_passages: List[str], k: int
     gold_set = set(gold_passages)
     return float(any(pid in gold_set for pid in pred_passages[:k]))
 
+
+
+
+def log_wall_time(
+    script_name: str,
+    start_time: float,
+    log_file: str | Path | None = None,
+) -> float:
+    """Append elapsed wall time for ``script_name`` to ``wall_time.log``.
+
+    Parameters
+    ----------
+    script_name:
+        Name or path of the running script (e.g. ``__file__``).
+    start_time:
+        Timestamp captured at the start of the script via :func:`time.time`.
+    log_file:
+        Optional path to the log file. Defaults to ``wall_time.log`` in the
+        repository root.
+
+    Returns
+    -------
+    float
+        The elapsed wall time in seconds.
+    """
+
+    elapsed = time.time() - start_time
+    log_path = (
+        Path(log_file)
+        if log_file is not None
+        else Path(__file__).resolve().parent.parent / "wall_time.log"
+    )
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(f"{script_name}\t{elapsed:.2f}\n")
+    return elapsed
+
+
+def aggregate_wall_times(log_file: str | Path | None = None) -> Dict[str, float]:
+    """Aggregate total wall times per script from ``log_file``.
+
+    Parameters
+    ----------
+    log_file:
+        Optional path to the log file. Defaults to ``wall_time.log`` in the
+        repository root.
+
+    Returns
+    -------
+    Dict[str, float]
+        Mapping of script names to total elapsed seconds across runs.
+    """
+
+    log_path = (
+        Path(log_file)
+        if log_file is not None
+        else Path(__file__).resolve().parent.parent / "wall_time.log"
+    )
+    totals: Dict[str, float] = {}
+    if not log_path.exists():
+        return totals
+    with open(log_path, "r", encoding="utf-8") as f:
+        for line in f:
+            parts = line.strip().split("\t")
+            if len(parts) != 2:
+                continue
+            name, sec = parts
+            try:
+                totals[name] = totals.get(name, 0.0) + float(sec)
+            except ValueError:
+                continue
+    return totals
+
+
 __all__ = [
     "SERVER_CONFIGS",
     "get_server_configs",
@@ -668,5 +742,7 @@ __all__ = [
     "split_jsonl",
     "split_jsonl_into_four",
     "split_jsonl_for_models",
-    "compute_hits_at_k"
+    "compute_hits_at_k",
+    "log_wall_time",
+    "aggregate_wall_times",
 ]
