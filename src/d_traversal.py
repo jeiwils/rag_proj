@@ -253,6 +253,8 @@ def llm_choose_edge(
         graph: nx.DiGraph,
         server_configs: list,
         traversal_prompt: str,
+        token_totals: Optional[Dict[str, int]] = None,
+
         ):
     """
     Ask the local LLM to evaluate each outgoing OQ edge individually.
@@ -275,7 +277,7 @@ def llm_choose_edge(
             question=edge_data["oq_text"],
         )
 
-        answer, _ = query_llm(
+        answer, usage = query_llm(
             prompt,
             server_url=oq_server["server_url"],
             max_tokens=30,
@@ -283,6 +285,15 @@ def llm_choose_edge(
             model_name=oq_server["model"],
             phase="edge_selection",
         )
+
+        if token_totals is not None and usage:
+            prompt_tokens = usage.get("prompt_tokens", 0)
+            completion_tokens = usage.get("completion_tokens", 0)
+            token_totals["prompt_tokens"] += prompt_tokens
+            token_totals["completion_tokens"] += completion_tokens
+            token_totals["total_tokens"] += usage.get(
+                "total_tokens", prompt_tokens + completion_tokens
+            )
 
         if is_r1_like(oq_server["model"]):
             answer = strip_think(answer)
@@ -303,11 +314,20 @@ def llm_choose_edge(
 
 
 
+
 def hoprag_traversal_algorithm(
-    vj, graph, query_text, visited_passages,
-    server_configs, ccount, next_Cqueue, hop_log, state,
+    vj,
+    graph,
+    query_text,
+    visited_passages,
+    server_configs,
+    ccount,
+    next_Cqueue,
+    hop_log,
+    state,
     traversal_prompt: str,
     hop: int = 0,
+    token_totals: Optional[Dict[str, int]] = None,
     **kwargs,
 ):
     """Baseline HopRAG traversal step that respects existing edge visitation.
@@ -350,6 +370,8 @@ def hoprag_traversal_algorithm(
         graph=graph,
         server_configs=server_configs,
         traversal_prompt=traversal_prompt,
+        token_totals=token_totals,
+
     )
 
     if chosen is None:
@@ -503,6 +525,7 @@ def traverse_graph(
     traversal_alg: Callable,  # custom algorithm step (edge + queueing logic)
     alpha: float = DEFAULT_ALPHA,
     traversal_prompt: str = "",
+    token_totals: Optional[Dict[str, int]] = None,
 ):
     """Traverse the graph while recording query similarity for visited passages."""
 
@@ -565,6 +588,8 @@ def traverse_graph(
                 state=state,
                 traversal_prompt=traversal_prompt,
                 hop=hop,  # expose hop depth to traversal algorithm
+                token_totals=token_totals,
+
 
             )
             for new_pid in new_nodes:
@@ -718,6 +743,8 @@ def run_traversal(
     output_paths["base"].mkdir(parents=True, exist_ok=True)
         
     all_selected_passages = set()
+    token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
 
     if traversal_prompt is None:
         traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
@@ -762,6 +789,8 @@ def run_traversal(
             traversal_alg=traversal_alg,
             alpha=alpha,
             traversal_prompt=traversal_prompt,
+            token_totals=token_totals,
+
         )
 
         print(f"[Traversal] Visited {len(visited_passages)} passages (None={stats['none_count']}, Repeat={stats['repeat_visit_count']})")
@@ -794,6 +823,10 @@ def run_traversal(
     output_paths["visited_passages"].parent.mkdir(parents=True, exist_ok=True)
     with open(output_paths["visited_passages"], "wt", encoding="utf-8") as f:
         json.dump(sorted(all_selected_passages), f, indent=2)
+    
+    token_usage_path = output_paths["base"] / "token_usage.json"
+    with open(token_usage_path, "wt", encoding="utf-8") as f:
+        json.dump(token_totals, f, indent=2)
 
 
 
