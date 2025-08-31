@@ -22,5 +22,4 @@ json {"Question List":["Whose eighth studio album is '(How to Live) As Ghosts'?"
 ### Sentences of News:
 {{PASSAGE}}
 
-Your response must strictly follow the JSON format, avoiding unnecessary escapes, line breaks, or spaces. You should also pay extra attention to ensure that, except for the JSON and list formats themselves using double quotes ("), other instances of double quotes should be replaced with single quotes. For example, use '(How to Live) As Ghosts' instead of "(How to Live) As Ghosts".
-json {"Question List":["<Question 1>","<Question 2>","<Question 3>"......]}
+Return the questions as a JSON object with a "Question List" array of strings.
