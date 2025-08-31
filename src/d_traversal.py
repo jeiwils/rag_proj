@@ -242,63 +242,58 @@ def select_seed_passages(  # helper for run_dev_set()
 
 
 ########################## THIS SHOULD NOW GET CONDITIONED SCORE FROM OQ-IQ PARENT
-def llm_choose_edge(  # helper for hoprag_traversal_algorithm()
-        query_text: str,  # from hoprag_traversal_algorithm() - the llm reads the query
-        passage_text: str,  # from build_edges() -> build_networkx_graph() - the llm reads the passages
-        candidate_edges: list,  # from hoprag_traversal_algorithm()
-        # then the llm considers all possible OQs in the outgoing edges
-        graph: nx.DiGraph,  # to lookup node-level data like conditioned_score
-        server_configs: list,  # from arg. in multi_hop_traverse()
+def llm_choose_edge(
+        query_text: str,
+        candidate_edges: list,
+        graph: nx.DiGraph,
+        server_configs: list,
         traversal_prompt: str,
         ):
     """
-    Ask the local LLM to choose the best outgoing OQ edge to follow.
-    Uses the OQ worker (assumed server_configs[1]).
+    Ask the local LLM to evaluate each outgoing OQ edge individually.
+    The first edge receiving a {"Decision": "Relevant and Necessary"}
+    response is returned.
 
     ``candidate_edges`` **must** already be sorted by the caller in whatever
-    deterministic order is desired (e.g., ``conditioned_score``).  The function
-    preserves this ordering and presents options to the LLM using their
-    existing positions.  Each entry is a tuple ``(vk, edge_data)`` where
-    ``vk`` is the destination vertex and ``edge_data`` contains the edge
-    metadata.  ``graph`` is used to look up attributes on the destination
-    nodes (e.g., ``conditioned_score``).
+    deterministic order is desired. ``graph`` is used to look up attributes on
+    destination nodes (e.g., ``conditioned_score``).
 
     Returns:
-        The chosen edge tuple or ``None`` if no valid choice is made.
+        The chosen edge tuple or ``None`` if no edge is deemed relevant.
     """
-    oq_options = []
-    for i, (vk, edge_data) in enumerate(candidate_edges):
-        node_score = graph.nodes[vk].get("conditioned_score", 0.0)
-        oq_options.append(
-            f"{i+1}. ({edge_data['oq_id']}, {node_score:.3f}) {edge_data['oq_text']}"
+
+    oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
+
+    for vk, edge_data in candidate_edges:
+        prompt = traversal_prompt.format(
+            query=query_text,
+            question=edge_data["oq_text"],
         )
 
-    prompt = traversal_prompt.format(
-        query_text=query_text,
-        passage_text=passage_text,
-        candidate_oqs="\n".join(oq_options)
-    )
-    
-    # Send to OQ worker
-    oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
-    answer = query_llm(
-        prompt,
-        server_url=oq_server["server_url"],
-        max_tokens=30,
-        temperature=_temp_for(oq_server["model"], "edge_selection"),
-        model_name=oq_server["model"],
-        phase="edge_selection"
-    )
+        answer = query_llm(
+            prompt,
+            server_url=oq_server["server_url"],
+            max_tokens=30,
+            temperature=_temp_for(oq_server["model"], "edge_selection"),
+            model_name=oq_server["model"],
+            phase="edge_selection",
+        )
 
-    if is_r1_like(oq_server["model"]):
-        answer = strip_think(answer)
-    
-    # Extract the first integer from the LLM response
-    match = re.search(r"\d+", answer)
-    if match:
-        choice_idx = int(match.group()) - 1
-        if 0 <= choice_idx < len(candidate_edges):
-            return candidate_edges[choice_idx]
+        if is_r1_like(oq_server["model"]):
+            answer = strip_think(answer)
+
+        decision = None
+        try:
+            parsed = json.loads(answer.replace("'", '"'))
+            decision = parsed.get("Decision")
+        except json.JSONDecodeError:
+            pass
+
+        print(f"[Edge Selection] {edge_data['oq_id']} -> {decision}")
+
+        if decision == "Relevant and Necessary":
+            return vk, edge_data
+
     return None
 
 
@@ -330,9 +325,10 @@ def hoprag_traversal_algorithm(
     # Ensure deterministic ordering for edge options
     candidates.sort(key=lambda item: (item[1].get("oq_id", ""), item[0]))
 
+    # LLM evaluates each edge's auxiliary question and returns the first
+    # marked "Relevant and Necessary". Other edges are ignored.
     chosen = llm_choose_edge(
         query_text=query_text,
-        passage_text=graph.nodes[vj]["text"],
         candidate_edges=candidates,
         graph=graph,
         server_configs=server_configs,
@@ -412,9 +408,10 @@ def enhanced_traversal_algorithm(
     )
 
     # 3) Ask LLM to pick the next edge
+    #    The model evaluates each candidate and returns the first whose
+    #    auxiliary question is deemed "Relevant and Necessary".
     chosen = llm_choose_edge(
         query_text=query_text,
-        passage_text=graph.nodes[vj]["text"],
         candidate_edges=candidates,
         graph=graph,
         server_configs=server_configs,

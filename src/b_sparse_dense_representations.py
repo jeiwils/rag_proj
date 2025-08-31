@@ -118,7 +118,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Dict, Iterable, List, Set
+from typing import Dict, List, Set, Callable
 import unicodedata
 
 import faiss
@@ -502,29 +502,45 @@ SPACY_MODEL = os.environ.get("SPACY_MODEL", "en_core_web_sm")
 nlp = spacy.load(SPACY_MODEL, disable=["parser", "textcat"])
 
 # Keep only these named-entity types
-DEFAULT_KEEP_ENTS = {
-    "PERSON",
-    "ORG",
-    "GPE",
-    "LOC",
-    "NORP",
-    "FAC",
-    "PRODUCT",
-    "EVENT",
-    "WORK_OF_ART",
-    "LAW",
-    "LANGUAGE",
-    "DATE",
-    "TIME",
-    "CARDINAL",
-    "ORDINAL",
+KEEP_ENTS = {
+    "PERSON","ORG","GPE","LOC","FAC","PRODUCT",
+    "WORK_OF_ART","EVENT","LAW"  # drop: DATE, TIME, CARDINAL, ORDINAL, LANGUAGE, NORP
 }
 
-KEEP_ENTS = {
-    e.strip()
-    for e in os.environ.get("KEEP_ENTS", "").split(",")
-    if e.strip()
-} or DEFAULT_KEEP_ENTS
+
+
+ALIAS = {
+  # United States variants
+  "u": "united_states", "us": "united_states", "u_s": "united_states",
+  "u_s_a": "united_states", "united_states_of_america": "united_states",
+  "u_s_navy": "united_states_navy",
+
+  # United Kingdom / UN
+  "uk": "united_kingdom", "u_k": "united_kingdom",
+  "un": "united_nations", "u_n": "united_nations",
+
+  # Map junk to None (drop)
+  "what_year": None,
+}
+
+
+_NOISE_PATTERNS = [
+  re.compile(r"^\d{4}$"),            # bare years
+  re.compile(r"^\d+$"),              # numbers
+  re.compile(r"^(one|two|three|four|five|six|seven|eight|nine|ten|first|second|third)$"),
+]
+
+
+def canonicalize_keyword(kw: str) -> str | None:
+    # alias (single step)
+    kw = ALIAS.get(kw, kw)
+    if kw is None:
+        return None
+    # noise drop
+    for pat in _NOISE_PATTERNS:
+        if pat.match(kw):
+            return None
+    return kw
 
 
 
@@ -559,14 +575,15 @@ def extract_keywords(text: str) -> list[str]:
     if not text:
         return []
     doc = nlp(text)
-    kws = set()
+    out = set()
     for ent in doc.ents:
         if ent.label_ in KEEP_ENTS and ent.text.strip():
-            normalised = normalise_text(ent.text)
-            if normalised.strip():
-                # Skip empty keywords which can occur when normalisation strips all characters
-                kws.add(normalised)
-    return sorted(kws)
+            norm = normalise_text(ent.text)
+            if norm:
+                canon = canonicalize_keyword(norm)
+                if canon:
+                    out.add(canon)
+    return sorted(out)
 
 
 
