@@ -248,7 +248,7 @@ def graph_output_paths(
 
 def build_edges(
     oq_metadata: List[Dict],
-    iqoq_metadata: List[Dict],
+    iq_metadata: List[Dict],
     oq_emb: np.ndarray,
     iq_index,
     top_k: int = DEFAULT_TOP_K,  # highest cosine sim iqs considered per oq
@@ -257,13 +257,11 @@ def build_edges(
 ) -> List[Dict]:
     """Build final OQ→IQ edges.
 
-    1. FAISS ``top_k`` retrieval against an index containing all IQ/OQ vectors
+    1. FAISS ``top_k`` retrieval against an index containing IQ vectors
     2. Compute hybrid similarity
     3. Keep only the single highest-scoring IQ per OQ
 
-    ``iqoq_metadata`` must be aligned with the FAISS index. Retrieved
-    candidates whose metadata ``type`` is not ``"IQ"`` are skipped so OQs
-    are only compared against IQs.
+    ``iq_metadata`` must be aligned with the FAISS index.
     """
     edges = []
 
@@ -279,9 +277,8 @@ def build_edges(
         candidate_edges = []
         oq_parent = oq["parent_passage_id"]
         for rank, iq_idx in enumerate(idxs):
-            iq = iqoq_metadata[iq_idx]
-            if iq.get("type") != "IQ":
-                continue
+            iq = iq_metadata[iq_idx]
+
             iq_parent = iq["parent_passage_id"]
             if iq_parent == oq_parent:
                 # Skip self-loops where OQ and IQ originate from the same passage
@@ -594,6 +591,8 @@ def run_graph_pipeline(
 
     passages_md = list(load_jsonl(p_path))
     iqoq_md = list(load_jsonl(q_path))   ## mmap_mode=r ?
+    iq_md = [m for m in iqoq_md if m["type"] == "IQ"]
+
 
     n_passages = len(passages_md)
     max_edges_per_source = None
@@ -602,8 +601,8 @@ def run_graph_pipeline(
 
     iqoq_emb = np.load(model_paths["iqoq_emb"])
 
-    # ---------- 2) Load FAISS index over all IQ/OQ vectors ----------
-    iq_index = load_faiss_index(model_paths["iqoq_index"])
+    # ---------- 2) Load FAISS index over IQ-only vectors ----------
+    iq_index = load_faiss_index(model_paths["iq_index"])
     oq_items = [q for q in iqoq_md if q.get("type") == "OQ"]
 
     top_k = top_k if top_k is not None else DEFAULT_TOP_K
@@ -628,7 +627,7 @@ def run_graph_pipeline(
 
     new_edges = build_edges(
         oq_metadata=oq_to_process,
-        iqoq_metadata=iqoq_md,
+        iq_metadata=iq_md,
         oq_emb=iqoq_emb,
         iq_index=iq_index,
         top_k=top_k,

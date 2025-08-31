@@ -167,11 +167,15 @@ def dataset_rep_paths(dataset: str, split: str) -> Dict[str, str]:
 
 def model_rep_paths(model: str, dataset: str, split: str, variant: str) -> Dict[str, str]:
     """Return paths for model-specific IQ/OQ representations."""
-    base = os.path.join("data", "representations", "models", model, dataset, split, variant)
+    base = os.path.join(
+        "data", "representations", "models", model, dataset, split, variant
+    )
     return {
         "iqoq_jsonl": os.path.join(base, "iqoq.cleaned.jsonl"),
         "iqoq_emb": os.path.join(base, f"{dataset}_iqoq_emb.npy"),
         "iqoq_index": os.path.join(base, f"{dataset}_faiss_iqoq.faiss"),
+        "iq_emb": os.path.join(base, f"{dataset}_iq_emb.npy"),
+        "iq_index": os.path.join(base, f"{dataset}_faiss_iq.faiss"),
     }
 
 __all__ = [
@@ -345,9 +349,9 @@ def build_and_save_faiss_index(
     vectors are appended to that index. Otherwise, a fresh index is built from
     ``embeddings``. 
     """
-    if not index_type or index_type not in {"passages", "iqoq"}:
+    if not index_type or index_type not in {"passages", "iqoq", "iq"}:
         raise ValueError(
-            "index_type must be provided and set to either 'passages' or 'iqoq'."
+            "index_type must be provided and set to 'passages', 'iqoq', or 'iq'."
         )
 
     faiss_path = os.path.join(output_dir, f"{dataset_name}_faiss_{index_type}.faiss")
@@ -663,6 +667,8 @@ if __name__ == "__main__":
                 iqoq_jsonl = repr_paths["iqoq_jsonl"]
                 iqoq_npy = repr_paths["iqoq_emb"]
                 iqoq_index = repr_paths["iqoq_index"]
+                iq_emb_path = repr_paths["iq_emb"]
+                iq_index_path = repr_paths["iq_index"]
                 os.makedirs(os.path.dirname(iqoq_jsonl), exist_ok=True)
 
 
@@ -720,6 +726,19 @@ if __name__ == "__main__":
                             index_type="iqoq",
                             output_dir=os.path.dirname(iqoq_index),
                         )
+
+                # Build IQ-only embeddings and index
+                iq_md_all = [m for m in load_jsonl(iqoq_jsonl) if m.get("type") == "IQ"]
+                if iq_md_all:
+                    iq_vec_ids = [m["vec_id"] for m in iq_md_all]
+                    iq_emb = iqoq_emb[iq_vec_ids]
+                    np.save(iq_emb_path, iq_emb)
+                    build_and_save_faiss_index(
+                        embeddings=iq_emb,
+                        dataset_name=dataset,
+                        index_type="iq",
+                        output_dir=os.path.dirname(iq_index_path),
+                    )
 
                 print(
                     f"[Done] dataset={dataset} model={model} variant={variant} split={SPLIT}"
