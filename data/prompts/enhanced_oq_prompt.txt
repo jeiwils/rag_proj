@@ -1,4 +1,0 @@
-Generate 4–6 exploratory questions that are NOT directly answerable from the passage. 
-Focus on Why, How, What led to, What are the implications, and comparisons. 
-Avoid restating facts or asking for basic details already present. 
-Output JSON only: [{"question":"..."}]

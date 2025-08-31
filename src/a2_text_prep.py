@@ -101,15 +101,6 @@ Each debug file logs:
 
 
 
-#
-# WRITE UP
-# - conditioned score reverts to 0.5 if missing, the 2-4 default hop-rag iqoq ratio
-# - justification for tokens (budget; size of prompt, expected input, expected output - context window)
-# - justification for temperature (deterministic - taken from hopRAG)
-#
-
-
-
 
 
 
@@ -171,10 +162,6 @@ CS_PROMPT = Path("data/prompts/cs_prompt.txt").read_text(encoding="utf-8") #### 
 HOPRAG_IQ_PROMPT = Path("data/prompts/enhanced_iq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
 HOPRAG_OQ_PROMPT = Path("data/prompts/enhanced_oq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
 
-# HOPRAG_IQ_PROMPT = Path("data/prompts/hoprag_iq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
-# HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
-
-
 
 
 
@@ -192,13 +179,13 @@ def chatml(system: str, user: str) -> str:
         "<|im_start|>assistant\n"
     )
 
-def json_array_grammar(min_n: int, max_n: int) -> str:
-    # enforce [{"question":"..."}] with between min_n and max_n items
+def question_list_grammar(min_n: int, max_n: int) -> str:
+    """Enforce a JSON object {"Question List": ["..."]} with bounds."""
     rep_min = max(0, min_n - 1)
     rep_max = max(0, max_n - 1)
     return (
-        "root    ::= ws \"[\" ws obj (ws \",\" ws obj){" + str(rep_min) + "," + str(rep_max) + "} ws \"]\" ws\n"
-        "obj     ::= \"{\" ws \"\\\"question\\\"\" ws \":\" ws string ws \"}\"\n"
+        "root    ::= ws \"{\" ws \"\\\"Question List\\\"\" ws \":\" ws \"[\" ws string"
+        + " (ws \",\" ws string){" + str(rep_min) + "," + str(rep_max) + "} ws \"]\" ws \"}\" ws\n"
         "string  ::= \"\\\"\" chars \"\\\"\"\n"
         "chars   ::= (escape | char)*\n"
         "char    ::= [^\"\\\\\\x00-\\x1F]\n"
@@ -206,31 +193,6 @@ def json_array_grammar(min_n: int, max_n: int) -> str:
         "hex     ::= [0-9a-fA-F]\n"
         "ws      ::= ([ \\t\\r\\n])*\n"
     )
-
-
-
-IQ_SYSTEM = (
-    "You are an authoritative academic creating comprehension questions.\n"
-    'Output only valid English JSON in the exact shape: [{"question":"..."}]\n'
-    "At least 2 and at most 4 questions. All must be fully answerable using ONLY the passage.\n"
-    "Focus on factual details, definitions, roles, dates, explicit cause–effect, outcomes.\n"
-    "No commentary. No passage echoes."
-)
-
-OQ_SYSTEM = (
-    "You are a curious student/researcher creating exploratory questions.\n"
-    'Output only valid English JSON in the exact shape: [{"question":"..."}]\n'
-    "At least 4 and at most 6 questions. They must NOT be directly answerable from the passage.\n"
-    "Prefer Why/How/What led to/What changed/Implications/Compare. Avoid restating facts."
-)
-
-
-
-def iq_user_msg(passage: str, n_min=2, n_max=4) -> str:
-    return f"Mode: IQ\nMIN: {n_min}\nMAX: {n_max}\nPASSAGE:\n{passage}"
-
-def oq_user_msg(passage: str, n_min=4, n_max=6) -> str:
-    return f"Mode: OQ\nMIN: {n_min}\nMAX: {n_max}\nPASSAGE:\n{passage}"
 
 
 
@@ -605,8 +567,8 @@ def iqoq_ratio( ####################################### FOCUS ON THIS
 
 def generate_iqoq(
     entry: dict,
-    iq_prompt_template: str,   # ignored (kept for backward-compat)
-    oq_prompt_template: str,   # ignored (kept for backward-compat)
+    iq_prompt_template: str,
+    oq_prompt_template: str,
     server_url: str,
     iq_tokens: int,
     oq_tokens: int,
@@ -634,13 +596,13 @@ def generate_iqoq(
     max_iq = num_iq + 2
     max_oq = num_oq + 2
 
-    # Build ChatML prompts
-    iq_prompt = chatml(IQ_SYSTEM, iq_user_msg(passage_text, num_iq, max_iq))
-    oq_prompt = chatml(OQ_SYSTEM, oq_user_msg(passage_text, num_oq, max_oq))
+    # Build ChatML prompts from the baseline templates
+    iq_prompt = chatml("", iq_prompt_template.format(sentences=passage_text))
+    oq_prompt = chatml("", oq_prompt_template.format(sentences=passage_text))
 
-    # Build grammars (force clean JSON arrays)
-    iq_grammar = json_array_grammar(num_iq, max_iq)
-    oq_grammar = json_array_grammar(num_oq, max_oq)
+    # Build grammars (force clean Question List JSON)
+    iq_grammar = question_list_grammar(num_iq, max_iq)
+    oq_grammar = question_list_grammar(num_oq, max_oq)
 
     # Temperatures (allow mid diversity unless you override)
     if is_r1_like(model_name):
@@ -679,18 +641,18 @@ def generate_iqoq(
         pid = entry.get("passage_id", "?")
         return None, [pid], [pid]
 
-    # Must be valid JSON arrays like [{"question":"..."}]
+    # Must be valid JSON object: {"Question List": ["..."]}
     try:
-        iq_list = json.loads(iq_response)
-        oq_list = json.loads(oq_response)
+        iq_list = json.loads(iq_response).get("Question List", [])
+        oq_list = json.loads(oq_response).get("Question List", [])
     except Exception as e:
         print(f"[PARSE ERROR] {entry.get('passage_id','?')}: {e}")
         pid = entry.get("passage_id", "?")
         return None, [pid], [pid]
 
     # Extract strings
-    IQs = [d.get("question","").strip() for d in iq_list if isinstance(d, dict)]
-    OQs = [d.get("question","").strip() for d in oq_list if isinstance(d, dict)]
+    IQs = [q.strip() for q in iq_list if isinstance(q, str)]
+    OQs = [q.strip() for q in oq_list if isinstance(q, str)]
 
     # Minimal sanity
     if not IQs:

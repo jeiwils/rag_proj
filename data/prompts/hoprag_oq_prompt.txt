@@ -4,25 +4,23 @@ You will only have access to a few sentences, not the entire document. After rea
 
 Requirements:
 
-Each question must include specific news elements (time, place, person) or other key features to reduce ambiguity and ensure self-containment.
+1. Each question must include specific news elements (time, place, person) or other key features to reduce ambiguity and ensure self-containment.
 
-Different follow-up questions should focus on diverse, objective aspects of the overall event represented by these sentences, ensuring variety and representativeness. Prioritize objective questions.
+2. Different follow-up questions should focus on diverse, objective aspects of the overall event represented by these sentences, ensuring variety and representativeness. Prioritize objective questions.
 
-Based on the given sentences, generate questions about details that involve causal relationships, parallelism, sequencing, progression, connections, and other logical aspects. Possible areas to explore include, but are not limited to: the background of the event, information, reasons, impacts, significance, development trends, or perspectives of the individuals involved.
+3. Based on the given sentences, generate questions about details that involve causal relationships, parallelism, sequencing, progression, connections, and other logical aspects. Possible areas to explore include, but are not limited to: the background of the event, information, reasons, impacts, significance, development trends, or perspectives of the individuals involved.
 
-Questions should be objective, factual, and detail-oriented. For example, inquire about the time an event occurred, or ask for personal information about the subject. However, ensure that the answers to your questions are not contained in these specific sentences.
+4. Questions should be objective, factual, and detail-oriented. For example, inquire about the time an event occurred, or ask for personal information about the subject. However, ensure that the answers to your questions are not contained in these specific sentences.
 
-Aim to generate as many questions as possible without repetition, but ensure that the answers to the questions do not appear in these sentences. There is no upper limit to the number of questions, but please avoid duplicating questions.
+5. Aim to generate as many questions as possible without repetition, but ensure that the answers to the questions do not appear in these sentences. There is no upper limit to the number of questions, but please avoid duplicating questions.
 
-Example of Sentence:
+### Example of Sentence:
 Their eighth studio album, '(How to Live) As Ghosts', is scheduled for release on October 27, 2017.
-
-Example of Answer:
+### Example of Answer:
 json {"Question List":["Whose eighth studio album is '(How to Live) As Ghosts'?","How did the album '(How to Live) As Ghosts' perform?","How long did it take to make the album '(How to Live) As Ghosts'?"]}
 
-Sentences of News:
+### Sentences of News:
 {{PASSAGE}}
 
 Your response must strictly follow the JSON format, avoiding unnecessary escapes, line breaks, or spaces. You should also pay extra attention to ensure that, except for the JSON and list formats themselves using double quotes ("), other instances of double quotes should be replaced with single quotes. For example, use '(How to Live) As Ghosts' instead of "(How to Live) As Ghosts".
-
 json {"Question List":["<Question 1>","<Question 2>","<Question 3>"......]}

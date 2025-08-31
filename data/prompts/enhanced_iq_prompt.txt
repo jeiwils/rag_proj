@@ -1,2 +1,0 @@
-Generate 2–4 exam questions, fully answerable from the passage.
-Output JSON only: [{"question":"..."}]
