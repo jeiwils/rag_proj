@@ -300,6 +300,8 @@ def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
         }
         if stop:
             payload["stop"] = stop
+        if grammar and "llama" in model_name.lower():
+            payload["grammar"] = grammar  # llama.cpp supports grammar for chat
     else:
         endpoint = "/completion"
         payload = {
@@ -310,7 +312,7 @@ def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
         if stop:
             payload["stop"] = stop
         if grammar:
-            payload["grammar"] = grammar  # grammar works on /completion
+            payload["grammar"] = grammar
 
     r = requests.post(f"{server_url}{endpoint}", json=payload, timeout=60)
     r.raise_for_status()
