@@ -212,7 +212,6 @@ def rerank_passages_by_helpfulness(
 
 ### COMPONENT 1 - retrieval 
 
-
 def select_seed_passages(  # helper for run_dev_set()
     query_text: str,
     query_emb: np.ndarray,
@@ -228,32 +227,83 @@ def select_seed_passages(  # helper for run_dev_set()
     # Extract keywords from the query
     query_keywords = set(extract_keywords(query_text)) # this is extracting them from the query only, which hasn't been processed yet, right? 
 
-    # Step 1: FAISS search
-    idxs, scores = faiss_search_topk(query_emb.reshape(1, -1), passage_index, top_k=seed_top_k)
+    # ------------------------------------------------------------------
+    # Step 1: FAISS dense search
+    # ------------------------------------------------------------------
+    faiss_idxs, faiss_scores = faiss_search_topk(
+        query_emb.reshape(1, -1), passage_index, top_k=seed_top_k
+    )
 
-    # Step 2: Score and filter
+    # Store cosine similarities from FAISS results
+    sim_dict: Dict[int, Dict[str, float]] = {}
+    for rank, passage_idx in enumerate(faiss_idxs):
+        sim_dict[int(passage_idx)] = {
+            "sim_cos": float(faiss_scores[rank])
+        }
+
+    # ------------------------------------------------------------------
+    # Step 2: Stand-alone Jaccard search over all passage metadata
+    # ------------------------------------------------------------------
+    jaccard_scores = [
+        (
+            idx,
+            jaccard_similarity(query_keywords, set(p.get("keywords_passage", []))),
+        )
+        for idx, p in enumerate(passage_metadata)
+    ]
+    jaccard_scores.sort(key=lambda x: x[1], reverse=True)
+    jaccard_top = [idx for idx, _ in jaccard_scores[:seed_top_k]]
+
+    # Add Jaccard scores for top passages
+    for idx, score in jaccard_scores:
+        if idx in jaccard_top:
+            sim_dict.setdefault(idx, {})["sim_jaccard"] = score
+
+    # ------------------------------------------------------------------
+    # Step 3: Merge candidates from both searches
+    # ------------------------------------------------------------------
+    candidate_idxs = set(map(int, faiss_idxs)) | set(jaccard_top)
+
+    # Ensure both cosine and jaccard similarities are computed for all
+    # candidate passages
+    query_vec = query_emb / np.linalg.norm(query_emb)
+    for idx in candidate_idxs:
+        meta = passage_metadata[idx]
+        # Cosine similarity for passages missing it
+        if "sim_cos" not in sim_dict.get(idx, {}):
+            # ``vec_id`` points to the vector within the FAISS index
+            vec = passage_index.reconstruct(int(meta["vec_id"]))
+            vec = vec / np.linalg.norm(vec)
+            sim_dict.setdefault(idx, {})["sim_cos"] = float(np.dot(query_vec, vec))
+        # Jaccard similarity for passages missing it
+        if "sim_jaccard" not in sim_dict.get(idx, {}):
+            sim_dict[idx]["sim_jaccard"] = jaccard_similarity(
+                query_keywords, set(meta.get("keywords_passage", []))
+            )
+
+    # ------------------------------------------------------------------
+    # Step 4: Combine similarities and rank
+    # ------------------------------------------------------------------
     selected = []
-    for rank, passage_idx in enumerate(idxs):
-        p = passage_metadata[passage_idx]
-        sim_cos = float(scores[rank])  # FAISS cosine
-        sim_jac = jaccard_similarity(query_keywords, set(p["keywords_passage"]))
-
-
+    for idx in candidate_idxs:
+        meta = passage_metadata[idx]
+        sim_cos = sim_dict[idx]["sim_cos"]
+        sim_jac = sim_dict[idx]["sim_jaccard"]
         sim_hybrid = alpha * sim_cos + (1 - alpha) * sim_jac
+        selected.append(
+            {
+                "passage_id": meta["passage_id"],
+                "vec_id": meta["vec_id"],
+                "sim_cos": round(sim_cos, 4),
+                "sim_jaccard": round(sim_jac, 4),
+                "sim_hybrid": round(sim_hybrid, 4),
+            }
+        )
 
-        selected.append({
-            "passage_id": p["passage_id"],
-            "vec_id": p["vec_id"],
-            "sim_cos": round(sim_cos, 4),
-            "sim_jaccard": round(sim_jac, 4),
-            "sim_hybrid": round(sim_hybrid, 4)
-        })
-
-    # Step 3: Sort by hybrid score
     selected.sort(key=lambda x: x["sim_hybrid"], reverse=True)
 
-    # Step 4: Return passage_ids
-    return [s["passage_id"] for s in selected]
+    # Return top passage IDs
+    return [s["passage_id"] for s in selected[:seed_top_k]]
 
 
 ### COMPONENT 2 - traversal 

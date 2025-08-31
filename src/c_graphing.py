@@ -3,9 +3,10 @@ Module Overview
 ---------------
 Construct a passage-level graph by linking Original Questions (OQs) to Inferred Questions (IQs).
 
-Each OQ retrieves candidate IQs from a FAISS index, computes hybrid similarity
-(cosine + Jaccard), and retains the top-scoring IQ. The resulting OQ→IQ edges
-form a directed graph over passages for downstream reasoning and traversal.
+Each OQ retrieves candidate IQs from both a FAISS index and a keyword-based
+Jaccard search, computes hybrid similarity (cosine + Jaccard), and retains the
+top-scoring IQ. The resulting OQ→IQ edges form a directed graph over passages
+for downstream reasoning and traversal.
 
 Graphs are currently built for the datasets `hotpotqa`, `musique`, and
 `2wikimultihopqa`.
@@ -41,8 +42,9 @@ Outputs
 
 ### `data/graphs/{model}/{dataset}/{split}/{variant}/`
 
-- `{dataset}_{split}_edges.jsonl`  
-  – Top hybrid-scoring OQ→IQ edge per query with similarity scores.
+- `{dataset}_{split}_edges.jsonl`
+  – Top hybrid-scoring OQ→IQ edge per query with similarity scores and
+    retrieval source.
 
 - `{dataset}_{split}_graph.gpickle`  
   – Directed `NetworkX` graph: passages as nodes, OQ→IQ as edges.
@@ -72,7 +74,8 @@ File Schema
 
   "sim_cos": 0.7215,
   "sim_jaccard": 0.5632,
-  "sim_hybrid": 0.6424
+  "sim_hybrid": 0.6424,
+  "retrieval": "faiss+jaccard"
 }
 
 
@@ -246,62 +249,98 @@ def graph_output_paths(
 
 
 
+
 def build_edges(
     oq_metadata: List[Dict],
     iq_metadata: List[Dict],
-    oq_emb: np.ndarray,
+    emb: np.ndarray,
     iq_index,
-    top_k: int = DEFAULT_TOP_K,  # highest cosine sim iqs considered per oq
+    top_k: int = DEFAULT_TOP_K,
     sim_threshold: float = DEFAULT_SIM_THRESHOLD,
     output_jsonl: str = None,
 ) -> List[Dict]:
     """Build final OQ→IQ edges.
 
-    1. FAISS ``top_k`` retrieval against an index containing IQ vectors
-    2. Compute hybrid similarity
-    3. Keep only the single highest-scoring IQ per OQ
+    For each OQ we gather candidates from two retrieval paths:
 
-    ``iq_metadata`` must be aligned with the FAISS index.
+    1. Dense retrieval via FAISS ``top_k`` search.
+    2. Sparse retrieval via top-k Jaccard keyword overlap against ``iq_metadata``.
+
+    The candidate sets are unioned and deduplicated.  For each candidate we
+    compute both cosine and Jaccard similarity, derive ``sim_hybrid``, and keep
+    the single highest-scoring IQ per OQ.
+
+    ``iq_metadata`` must be aligned with the FAISS index and ``emb`` matrix.
     """
-    edges = []
+    edges: List[Dict] = []
+
+    # Pre-compute IQ keyword sets for fast reuse across OQs
+    iq_keyword_sets = [set(iq["keywords"]) for iq in iq_metadata]
 
     for oq in tqdm(
         oq_metadata, desc="Building edges", unit="OQ", miniters=100, mininterval=1
     ):
 
-        oq_vec = oq_emb[oq["vec_id"]]
-        idxs, scores = faiss_search_topk(oq_vec.reshape(1, -1), iq_index, top_k=top_k)
+        oq_vec = emb[oq["vec_id"]]
+        oq_keywords = set(oq.get("keywords", []))
 
-        candidate_edges = []
+        # ----- Dense candidates (FAISS) -----
+        faiss_idxs, faiss_scores = faiss_search_topk(
+            oq_vec.reshape(1, -1), iq_index, top_k=top_k
+        )
+        faiss_dict = {int(idx): float(score) for idx, score in zip(faiss_idxs, faiss_scores)}
+
+        # ----- Sparse candidates (Jaccard) -----
+        jaccard_scores = [
+            jaccard_similarity(oq_keywords, iq_kw) for iq_kw in iq_keyword_sets
+        ]
+        # Top-k IQs by Jaccard similarity
+        jaccard_top_idxs = np.argsort(jaccard_scores)[::-1][:top_k]
+        jaccard_top_set = set(int(i) for i in jaccard_top_idxs)
+
+        candidate_idxs = set(faiss_dict.keys()).union(jaccard_top_set)
+
+        candidate_edges: List[Dict] = []
         oq_parent = oq["parent_passage_id"]
-        for rank, iq_idx in enumerate(idxs):
-            iq = iq_metadata[iq_idx]
 
+        for iq_idx in candidate_idxs:
+            iq = iq_metadata[iq_idx]
             iq_parent = iq["parent_passage_id"]
             if iq_parent == oq_parent:
                 # Skip self-loops where OQ and IQ originate from the same passage
                 continue
-            sim_cos = float(scores[rank])  # FAISS cosine
-            sim_jac = jaccard_similarity(set(oq["keywords"]), set(iq["keywords"]))
+
+            # Retrieve similarities from both modalities
+            sim_cos = faiss_dict.get(
+                iq_idx, float(np.dot(oq_vec, emb[iq["vec_id"]]))
+            )
+            sim_jac = jaccard_scores[iq_idx]
             sim_hybrid = 0.5 * (sim_cos + sim_jac)
 
             if sim_hybrid < sim_threshold:
                 continue
 
-            candidate_edges.append({
-                "oq_id": oq["iqoq_id"],
-                "oq_parent": oq_parent,
-                "oq_vec_id": oq["vec_id"],
-                "oq_text": oq["text"],
+            retrieval = []
+            if iq_idx in faiss_dict:
+                retrieval.append("faiss")
+            if iq_idx in jaccard_top_set:
+                retrieval.append("jaccard")
 
-                "iq_id": iq["iqoq_id"],
-                "iq_parent": iq_parent,
-                "iq_vec_id": iq["vec_id"],
-
-                "sim_cos": round(sim_cos, 4),
-                "sim_jaccard": round(sim_jac, 4),
-                "sim_hybrid": round(sim_hybrid, 4)
-            })
+            candidate_edges.append(
+                {
+                    "oq_id": oq["iqoq_id"],
+                    "oq_parent": oq_parent,
+                    "oq_vec_id": oq["vec_id"],
+                    "oq_text": oq.get("text", ""),
+                    "iq_id": iq["iqoq_id"],
+                    "iq_parent": iq_parent,
+                    "iq_vec_id": iq["vec_id"],
+                    "sim_cos": round(sim_cos, 4),
+                    "sim_jaccard": round(sim_jac, 4),
+                    "sim_hybrid": round(sim_hybrid, 4),
+                    "retrieval": "+".join(retrieval) or "faiss",  # default if only dense
+                }
+            )
 
         if candidate_edges:
             best_edge = max(candidate_edges, key=lambda e: e["sim_hybrid"])
@@ -311,6 +350,12 @@ def build_edges(
     if output_jsonl:
         save_jsonl(output_jsonl, edges)
         print(f"[Edges] Saved {len(edges)} edges to {output_jsonl}")
+
+    if edges:
+        src_counts = defaultdict(int)
+        for e in edges:
+            src_counts[e.get("retrieval", "faiss")] += 1
+        print(f"[Edges] Retrieval source counts: {dict(src_counts)}")
 
     return edges
 
@@ -378,15 +423,16 @@ def build_networkx_graph(
         oq_parent = e["oq_parent"]
         iq_parent = e["iq_parent"]
 
-        G.add_edge( 
+        G.add_edge(
             oq_parent,
             iq_parent,
             oq_id=e["oq_id"],
-            oq_text=e.get("oq_text", ""),  
+            oq_text=e.get("oq_text", ""),
             iq_id=e["iq_id"],
             sim_cos=e.get("sim_cos", 0.0),
             sim_jaccard=e.get("sim_jaccard", 0.0),
             sim_hybrid=e.get("sim_hybrid", 0.0),
+            retrieval=e.get("retrieval", ""),
         )
 
     return G
@@ -626,7 +672,7 @@ def run_graph_pipeline(
     new_edges = build_edges(
         oq_metadata=oq_to_process,
         iq_metadata=iq_md,
-        oq_emb=iqoq_emb,
+        emb=iqoq_emb,
         iq_index=iq_index,
         top_k=top_k,
         sim_threshold=sim_threshold,

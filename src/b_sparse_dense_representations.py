@@ -430,15 +430,27 @@ KEEP_ENTS = {
 
 
 def strip_accents(t: str) -> str:
-    return ''.join(c for c in unicodedata.normalize('NFKD', t) if not unicodedata.combining(c))
+    """Transliterate ``t`` to ASCII by stripping accents and special letters."""
+
+    t = unicodedata.normalize("NFKD", t)
+    replacements = {"ß": "ss", "æ": "ae", "œ": "oe"}
+    for src, tgt in replacements.items():
+        t = t.replace(src, tgt)
+    return t.encode("ascii", "ignore").decode("ascii")
+
 
 def normalise_text(s: str) -> str:
-    if not s: return ""
+    """Return a normalised keyword string suitable for comparisons."""
+
+    if not s:
+        return ""
     t = clean_text(s).lower()
-    t = t.replace("’", "'")              # unify curly quote
-    t = strip_accents(t)                 # rashād -> rashad
+    t = t.replace("’", "'")  # unify curly quote
+    t = strip_accents(t)
+    t = t.replace("&", " and ")
+    t = re.sub(r"\s+", " ", t)
     t = re.sub(r"\W+", "_", t.strip())
-    t = re.sub(r"_s_", "_", t)           # drop possessive
+    t = re.sub(r"_s_", "_", t)  # drop possessive
     t = re.sub(r"_s$", "", t)
     t = re.sub(r"_+", "_", t).strip("_")
     return t
