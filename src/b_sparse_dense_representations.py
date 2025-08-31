@@ -186,6 +186,7 @@ __all__ = [
     "load_faiss_index",
     "faiss_search_topk",
     "jaccard_similarity",
+    
 ]
 
 
@@ -397,6 +398,104 @@ def jaccard_similarity(set1: set, set2: set) -> float:
     return len(set1 & set2) / max(1, len(set1 | set2))
 
 
+def retrieve_hybrid_candidates(
+    query_vec: np.ndarray,
+    query_keywords: Set[str],
+    metadata: List[Dict],
+    index,
+    top_k: int,
+    alpha: float,
+    *,
+    keyword_field: str | None = None,
+    filter_fn: Callable[[int], bool] | None = None,
+) -> List[Dict[str, float]]:
+    """Hybrid retrieval over dense and sparse signals.
+
+    Parameters
+    ----------
+    query_vec:
+        Dense embedding for the query item.
+    query_keywords:
+        Set of sparse keywords associated with the query.
+    metadata:
+        Sequence of metadata dicts aligned with ``index``. Each item must have
+        ``vec_id`` and a keyword field (``keywords`` or ``keywords_passage``).
+    index:
+        FAISS index storing the dense vectors referenced by ``vec_id``.
+    top_k:
+        Number of candidates to retrieve from each modality and number of
+        results returned.
+    alpha:
+        Weighting factor for the hybrid score
+        ``alpha * sim_cos + (1 - alpha) * sim_jac``.
+    keyword_field:
+        Optional override for the keyword field name in ``metadata``.
+    filter_fn:
+        Optional callable ``filter_fn(idx) -> bool`` applied to candidate
+        indices. Candidates for which the function returns ``False`` are
+        discarded.  This enables caller-specific filtering such as removing
+        self-loops.
+
+    Returns
+    -------
+    List[Dict[str, float]]
+        Sorted list (descending ``sim_hybrid``) of dictionaries containing the
+        candidate index and similarity scores: ``{"idx", "sim_cos",
+        "sim_jac", "sim_hybrid"}``.  The list is truncated to ``top_k``
+        entries.
+    """
+
+    if keyword_field is None and metadata:
+        # Try to infer the keyword field name from the first entry
+        if "keywords" in metadata[0]:
+            keyword_field = "keywords"
+        else:
+            keyword_field = "keywords_passage"
+
+    query_vec = query_vec.reshape(1, -1)
+
+    # Dense retrieval via FAISS
+    faiss_idxs, faiss_scores = faiss_search_topk(query_vec, index, top_k=top_k)
+    faiss_dict = {int(idx): float(score) for idx, score in zip(faiss_idxs, faiss_scores)}
+
+    # Sparse retrieval via Jaccard
+    jaccard_scores = [
+        jaccard_similarity(query_keywords, set(m.get(keyword_field, []))) for m in metadata
+    ]
+    jaccard_top = set(
+        int(i) for i in np.argsort(jaccard_scores)[::-1][:top_k]
+    )
+
+    candidate_idxs = set(faiss_dict.keys()).union(jaccard_top)
+    if filter_fn is not None:
+        candidate_idxs = {i for i in candidate_idxs if filter_fn(i)}
+
+    # Ensure query vector normalised for cosine calculation
+    q_norm = query_vec[0] / max(1e-12, np.linalg.norm(query_vec))
+
+    results: List[Dict[str, float]] = []
+    for idx in candidate_idxs:
+        meta = metadata[idx]
+        if idx in faiss_dict:
+            sim_cos = faiss_dict[idx]
+        else:
+            vec = index.reconstruct(int(meta["vec_id"]))
+            vec = vec / max(1e-12, np.linalg.norm(vec))
+            sim_cos = float(np.dot(q_norm, vec))
+
+        sim_jac = jaccard_scores[idx]
+        sim_hybrid = alpha * sim_cos + (1.0 - alpha) * sim_jac
+        results.append(
+            {
+                "idx": idx,
+                "sim_cos": round(sim_cos, 4),
+                "sim_jac": round(sim_jac, 4),
+                "sim_hybrid": round(sim_hybrid, 4),
+            }
+        )
+
+    results.sort(key=lambda x: x["sim_hybrid"], reverse=True)
+    return results[:top_k]
 
 SPACY_MODEL = os.environ.get("SPACY_MODEL", "en_core_web_sm")
 

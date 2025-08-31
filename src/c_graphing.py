@@ -189,8 +189,7 @@ from tqdm import tqdm
 
 from src.b_sparse_dense_representations import (
     dataset_rep_paths,
-    faiss_search_topk,
-    jaccard_similarity,
+    retrieve_hybrid_candidates,
     load_faiss_index,
     model_rep_paths,
 )
@@ -258,24 +257,18 @@ def build_edges(
     top_k: int = DEFAULT_TOP_K,
     sim_threshold: float = DEFAULT_SIM_THRESHOLD,
     output_jsonl: str = None,
+    alpha: float = 0.5,
+    exclude_self_loops: bool = True,
 ) -> List[Dict]:
     """Build final OQ→IQ edges.
 
-    For each OQ we gather candidates from two retrieval paths:
-
-    1. Dense retrieval via FAISS ``top_k`` search.
-    2. Sparse retrieval via top-k Jaccard keyword overlap against ``iq_metadata``.
-
-    The candidate sets are unioned and deduplicated.  For each candidate we
-    compute both cosine and Jaccard similarity, derive ``sim_hybrid``, and keep
-    the single highest-scoring IQ per OQ.
-
-    ``iq_metadata`` must be aligned with the FAISS index and ``emb`` matrix.
+    Hybrid retrieval is performed for each outgoing question using
+    :func:`retrieve_hybrid_candidates`, combining dense FAISS search and
+    sparse Jaccard keyword overlap.  The highest-scoring candidate per OQ is
+    kept as an edge.  ``iq_metadata`` must be aligned with the FAISS index and
+    embedding matrix ``emb``.
     """
     edges: List[Dict] = []
-
-    # Pre-compute IQ keyword sets for fast reuse across OQs
-    iq_keyword_sets = [set(iq["keywords"]) for iq in iq_metadata]
 
     for oq in tqdm(
         oq_metadata, desc="Building edges", unit="OQ", miniters=100, mininterval=1
@@ -283,49 +276,28 @@ def build_edges(
 
         oq_vec = emb[oq["vec_id"]]
         oq_keywords = set(oq.get("keywords", []))
-
-        # ----- Dense candidates (FAISS) -----
-        faiss_idxs, faiss_scores = faiss_search_topk(
-            oq_vec.reshape(1, -1), iq_index, top_k=top_k
-        )
-        faiss_dict = {int(idx): float(score) for idx, score in zip(faiss_idxs, faiss_scores)}
-
-        # ----- Sparse candidates (Jaccard) -----
-        jaccard_scores = [
-            jaccard_similarity(oq_keywords, iq_kw) for iq_kw in iq_keyword_sets
-        ]
-        # Top-k IQs by Jaccard similarity
-        jaccard_top_idxs = np.argsort(jaccard_scores)[::-1][:top_k]
-        jaccard_top_set = set(int(i) for i in jaccard_top_idxs)
-
-        candidate_idxs = set(faiss_dict.keys()).union(jaccard_top_set)
-
-        candidate_edges: List[Dict] = []
         oq_parent = oq["parent_passage_id"]
 
-        for iq_idx in candidate_idxs:
-            iq = iq_metadata[iq_idx]
-            iq_parent = iq["parent_passage_id"]
-            if iq_parent == oq_parent:
-                # Skip self-loops where OQ and IQ originate from the same passage
+        candidates = retrieve_hybrid_candidates(
+            oq_vec,
+            oq_keywords,
+            iq_metadata,
+            iq_index,
+            top_k=top_k,
+            alpha=alpha,
+            keyword_field="keywords",
+            filter_fn=(
+                (lambda idx: iq_metadata[idx]["parent_passage_id"] != oq_parent)
+                if exclude_self_loops
+                else None
+            ),
+        )
+
+        candidate_edges: List[Dict] = []
+        for cand in candidates:
+            iq = iq_metadata[cand["idx"]]
+            if cand["sim_hybrid"] < sim_threshold:
                 continue
-
-            # Retrieve similarities from both modalities
-            sim_cos = faiss_dict.get(
-                iq_idx, float(np.dot(oq_vec, emb[iq["vec_id"]]))
-            )
-            sim_jac = jaccard_scores[iq_idx]
-            sim_hybrid = 0.5 * (sim_cos + sim_jac)
-
-            if sim_hybrid < sim_threshold:
-                continue
-
-            retrieval = []
-            if iq_idx in faiss_dict:
-                retrieval.append("faiss")
-            if iq_idx in jaccard_top_set:
-                retrieval.append("jaccard")
-
             candidate_edges.append(
                 {
                     "oq_id": oq["iqoq_id"],
@@ -333,12 +305,12 @@ def build_edges(
                     "oq_vec_id": oq["vec_id"],
                     "oq_text": oq.get("text", ""),
                     "iq_id": iq["iqoq_id"],
-                    "iq_parent": iq_parent,
+                    "iq_parent": iq["parent_passage_id"],
                     "iq_vec_id": iq["vec_id"],
-                    "sim_cos": round(sim_cos, 4),
-                    "sim_jaccard": round(sim_jac, 4),
-                    "sim_hybrid": round(sim_hybrid, 4),
-                    "retrieval": "+".join(retrieval) or "faiss",  # default if only dense
+                    "sim_cos": cand["sim_cos"],
+                    "sim_jaccard": cand["sim_jac"],
+                    "sim_hybrid": cand["sim_hybrid"],
+                    "retrieval": "hybrid",
                 }
             )
 
@@ -358,6 +330,7 @@ def build_edges(
         print(f"[Edges] Retrieval source counts: {dict(src_counts)}")
 
     return edges
+
 
 
 
