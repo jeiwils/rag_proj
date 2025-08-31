@@ -728,7 +728,7 @@ if __name__ == "__main__":
     
     MODELS   = ["qwen2.5-7b-instruct"]  # ["deepseek-dis
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-    VARIANTS = ["baseline", "enhanced"]
+    VARIANTS = ["baseline"]
     SPLIT    = "dev"
 
     for dataset in DATASETS: ############## I NEED TO MAKE THESE FOR LOOPS LOGICAL AND COHESIVE ACROSS MODULES 
