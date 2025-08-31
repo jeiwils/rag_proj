@@ -57,26 +57,11 @@ def downsample(
     rng.shuffle(questions)
     selected_questions = questions[:num_questions]
     selected_ids = {q["question_id"] for q in selected_questions}
-
-
-    def question_id_from_passage(pid: str) -> str:
-        """Return the question ID portion of a passage identifier.
-
-        Passage identifiers may append an article segment and always end with a
-        ``_sent`` suffix. This helper removes those components so that the
-        remaining string matches the question IDs found in ``questions.jsonl``.
-        """
-
-        base = pid.rsplit("_sent", 1)[0]
-        parts = base.split("__")
-        if len(parts) > 2:
-            return "__".join(parts[:2])
-        return base
+    prefixes = tuple(selected_ids)
 
     passages = [
-        p
-        for p in load_jsonl(str(passages_path))
-        if question_id_from_passage(p["passage_id"]) in selected_ids
+        p for p in load_jsonl(str(passages_path))
+        if p["passage_id"].startswith(prefixes)
     ]
 
     passage_ids = {p["passage_id"] for p in passages}
