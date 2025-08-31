@@ -419,9 +419,10 @@ def retrieve_hybrid_candidates(
         Set of sparse keywords associated with the query.
     metadata:
         Sequence of metadata dicts aligned with ``index``. Each item must have
-        ``vec_id`` and a keyword field (``keywords`` or ``keywords_passage``).
+        a keyword field (``keywords`` or ``keywords_passage``).
     index:
-        FAISS index storing the dense vectors referenced by ``vec_id``.
+        FAISS index storing the dense vectors whose ordering corresponds to
+        ``metadata``.
     top_k:
         Number of candidates to retrieve from each modality and number of
         results returned.
@@ -479,7 +480,7 @@ def retrieve_hybrid_candidates(
         if idx in faiss_dict:
             sim_cos = faiss_dict[idx]
         else:
-            vec = index.reconstruct(int(meta["vec_id"]))
+            vec = index.reconstruct(int(idx))
             vec = vec / max(1e-12, np.linalg.norm(vec))
             sim_cos = float(np.dot(q_norm, vec))
 
@@ -513,14 +514,21 @@ ALIAS = {
   # United States variants
   "u": "united_states", "us": "united_states", "u_s": "united_states",
   "u_s_a": "united_states", "united_states_of_america": "united_states",
+  "the_united_states": "united_states",
   "u_s_navy": "united_states_navy",
+  "u_s_air_force": "united_states_air_force",
+  "u_s_army": "united_states_army",
+  "u_s_marine_corps": "united_states_marine_corps",
 
   # United Kingdom / UN
   "uk": "united_kingdom", "u_k": "united_kingdom",
+  "great_britain": "united_kingdom",
   "un": "united_nations", "u_n": "united_nations",
 
   # Map junk to None (drop)
   "what_year": None,
+  "the_years": None,
+  "year": None,
 }
 
 
@@ -626,9 +634,10 @@ def add_keywords_to_passages_jsonl(
         kws = set()
         for ent in doc.ents:
             if ent.label_ in KEEP_ENTS and ent.text.strip():
-                normalised = normalise_text(ent.text)
-                if normalised.strip():
-                    kws.add(normalised)
+                norm = normalise_text(ent.text)
+                canon = canonicalize_keyword(norm)
+                if canon:
+                    kws.add(canon)
         r["keywords_passage"] = sorted(kws)
         if merged_with_iqoq:
             kws_iq = [extract_keywords(q) for q in (r.get("IQs") or [])]
@@ -665,9 +674,10 @@ def add_keywords_to_iqoq_jsonl(
         kws = set()
         for ent in doc.ents:
             if ent.label_ in KEEP_ENTS and ent.text.strip():
-                normalised = normalise_text(ent.text)
-                if normalised.strip():
-                    kws.add(normalised)
+                norm = normalise_text(ent.text)
+                canon = canonicalize_keyword(norm)
+                if canon:
+                    kws.add(canon)
         r[out_field] = sorted(kws)
 
     with open(iqoq_jsonl, "wt", encoding="utf-8") as f:
