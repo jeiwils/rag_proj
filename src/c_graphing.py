@@ -268,8 +268,6 @@ def build_edges(
     for oq in tqdm(
         oq_metadata, desc="Building edges", unit="OQ", miniters=100, mininterval=1
     ):
-        if oq["type"] != "OQ":
-            continue
 
         oq_vec = oq_emb[oq["vec_id"]]
         idxs, scores = faiss_search_topk(oq_vec.reshape(1, -1), iq_index, top_k=top_k)
