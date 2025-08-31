@@ -202,7 +202,7 @@ def ask_llm_with_passages(
     Outputs
     -------
     Dict[str, str]
-        ``{"raw_answer": str, "normalised_answer": str}``.
+        ``{"raw_answer": str, "normalised_answer": str, "prompt_len": int, "output_tokens": int}``.
     """
     passage_texts = []
 
@@ -222,6 +222,9 @@ def ask_llm_with_passages(
         + f"\n\nQuestion: {query_text}\nAnswer:"
     )
 
+    prompt_len = len(prompt)
+
+
     raw, _ = query_llm(
         prompt,
         server_url=server_url,
@@ -233,8 +236,15 @@ def ask_llm_with_passages(
     if is_r1_like(model_name):
         raw = strip_think(raw)
 
+    output_tokens = len(raw.split())
+
     norm = normalise_answer(raw)
-    return {"raw_answer": raw, "normalised_answer": norm}
+    return {
+        "raw_answer": raw,
+        "normalised_answer": norm,
+        "prompt_len": prompt_len,
+        "output_tokens": output_tokens,
+    }
 
 
 
@@ -388,6 +398,8 @@ def generate_answers_from_traversal(
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
     hits: Dict[str, float] = {}
+    prompt_lens: List[int] = []
+    output_token_counts: List[int] = []
 
 
     def _init_worker(q_dict, p_lookup, s_url, m_name, top_k):
