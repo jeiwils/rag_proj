@@ -563,7 +563,7 @@ if __name__ == "__main__":
     # Config
     MODELS   = ["qwen2.5-7b-instruct"]  # ["deepseek-dis
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-    VARIANTS = ["baseline", "enhanced"]
+    VARIANTS = ["baseline"]
     SPLIT = "dev"
 
 
