@@ -831,18 +831,22 @@ def run_traversal(
 run_dev_set = run_traversal
 
 
+
 def compute_traversal_summary(
         results_path: str,
         include_ids: Optional[Set[str]] = None
         ) -> dict:
-    """
-    Summarize traversal-wide metrics across all dev results or a filtered subset.
+    """Summarize traversal-wide metrics across all dev results or a filtered subset.
+
+    Computes aggregate precision, recall, F1, hits@k, and various hop statistics
+    over the provided per-query traversal results.
     """
 
     total_queries = 0
     sum_precision = 0.0
     sum_recall = 0.0
-    
+    sum_f1 = 0.0
+
     sum_hits = 0.0
     total_none = 0
     total_repeat = 0
@@ -862,6 +866,7 @@ def compute_traversal_summary(
             final = entry["final_metrics"]
             sum_precision += final["precision"]
             sum_recall += final["recall"]
+            sum_f1 += final.get("f1", 0.0)
             sum_hits += entry.get("hits_at_k", 0.0)
 
 
@@ -904,6 +909,7 @@ def compute_traversal_summary(
 
     mean_precision = sum_precision / total_queries if total_queries else 0
     mean_recall = sum_recall / total_queries if total_queries else 0
+    mean_f1 = sum_f1 / total_queries if total_queries else 0
     mean_hits = sum_hits / total_queries if total_queries else 0
 
     avg_first_gold = (
@@ -919,6 +925,7 @@ def compute_traversal_summary(
     return {
         "mean_precision": round(mean_precision, 4),
         "mean_recall": round(mean_recall, 4),
+        "mean_f1": round(mean_f1, 4),
         "mean_hits_at_k": round(mean_hits, 4),
         "passage_coverage_all_gold_found": passage_coverage_all_gold_found,
         "initial_retrieval_coverage": initial_retrieval_coverage,
