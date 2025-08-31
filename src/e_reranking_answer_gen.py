@@ -400,6 +400,8 @@ def generate_answers_from_traversal(
     hits: Dict[str, float] = {}
     prompt_lens: List[int] = []
     output_token_counts: List[int] = []
+    hits_at_k_counts: List[int] = []
+
 
 
     def _init_worker(q_dict, p_lookup, s_url, m_name, top_k):

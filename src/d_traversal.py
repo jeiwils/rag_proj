@@ -80,6 +80,7 @@ File Schema
   "traversal_eval": {
     "mean_precision": float,
     "mean_recall": float,
+    "mean_f1": float,
     "passage_coverage_all_gold_found": int,
     "initial_retrieval_coverage": int,
     "avg_hops_before_first_gold": float | null,
