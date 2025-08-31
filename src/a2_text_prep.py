@@ -164,8 +164,8 @@ TEMPERATURE = { #### WHY SET HERE????
 
 CS_PROMPT = Path("data/prompts/cs_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
 
-HOPRAG_IQ_PROMPT = Path("data/prompts/enhanced_iq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
-HOPRAG_OQ_PROMPT = Path("data/prompts/enhanced_oq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
+HOPRAG_IQ_PROMPT = Path("data/prompts/hoprag_iq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
+HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
 
 
 
