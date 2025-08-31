@@ -202,7 +202,8 @@ def ask_llm_with_passages(
     Outputs
     -------
     Dict[str, str]
-        ``{"raw_answer": str, "normalised_answer": str, "prompt_len": int, "output_tokens": int}``.
+        ``{"raw_answer": str, "normalised_answer": str, "prompt_len": int, "output_tokens": int, "total_tokens": int}``
+        where the token counts are provided by :func:`query_llm`.
     """
     passage_texts = []
 
@@ -222,10 +223,7 @@ def ask_llm_with_passages(
         + f"\n\nQuestion: {query_text}\nAnswer:"
     )
 
-    prompt_len = len(prompt)
-
-
-    raw, _ = query_llm(
+    raw, usage = query_llm(
         prompt,
         server_url=server_url,
         max_tokens=max_tokens,
@@ -236,14 +234,17 @@ def ask_llm_with_passages(
     if is_r1_like(model_name):
         raw = strip_think(raw)
 
-    output_tokens = len(raw.split())
+    prompt_tokens = usage.get("prompt_tokens", 0)
+    completion_tokens = usage.get("completion_tokens", 0)
+    total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
 
     norm = normalise_answer(raw)
     return {
         "raw_answer": raw,
         "normalised_answer": norm,
-        "prompt_len": prompt_len,
-        "output_tokens": output_tokens,
+        "prompt_len": prompt_tokens,
+        "output_tokens": completion_tokens,
+        "total_tokens": total_tokens,
     }
 
 
@@ -398,9 +399,8 @@ def generate_answers_from_traversal(
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
     hits: Dict[str, float] = {}
-    prompt_lens: List[int] = []
-    output_token_counts: List[int] = []
-    hits_at_k_counts: List[int] = []
+    token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
 
 
 
@@ -453,8 +453,11 @@ def generate_answers_from_traversal(
             "normalised_answer": llm_out["normalised_answer"],
             "used_passages": top_passages,
             "hits_at_k": hits_val,
-
+            "prompt_len": llm_out.get("prompt_len", 0),
+            "output_tokens": llm_out.get("output_tokens", 0),
+            "total_tokens": llm_out.get("total_tokens", 0),
         }
+
         return qid, answer_dict, llm_out["normalised_answer"]
 
     if num_workers is None:
@@ -492,6 +495,11 @@ def generate_answers_from_traversal(
         predictions[qid] = norm_ans
         gold[qid] = [queries[qid].get("gold_answer", "")]
         hits[qid] = answer.get("hits_at_k", 0.0)
+        token_totals["prompt_tokens"] += answer.get("prompt_len", 0)
+        token_totals["completion_tokens"] += answer.get("output_tokens", 0)
+        token_totals["total_tokens"] += answer.get(
+            "total_tokens", answer.get("prompt_len", 0) + answer.get("output_tokens", 0)
+        )
 
     result_paths["base"].mkdir(parents=True, exist_ok=True)
     if resume:
@@ -504,6 +512,9 @@ def generate_answers_from_traversal(
         metrics["hits_at_k"] = round(sum(hits.values()) / len(hits), 4)
     with open(result_paths["summary"], "wt", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
+
+    with open(result_paths["base"] / "token_usage.json", "w", encoding="utf-8") as f:
+        json.dump(token_totals, f, indent=2)
 
     return metrics
 

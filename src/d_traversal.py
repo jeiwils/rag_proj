@@ -99,6 +99,7 @@ import pickle
 import re
 import inspect
 import time 
+import random
 
 from collections import Counter
 from pathlib import Path
@@ -697,14 +698,21 @@ def run_traversal(
     n_hops=2,
     traversal_alg=None,
     traversal_prompt: Optional[str] = None,
+    seed: int | None = None,
 ):
-    """
-    Run LLM-guided multi-hop traversal over a QA query set (e.g., train, dev).
+    """Run LLM-guided multi-hop traversal over a QA query set (e.g., train, dev).
 
-    Outputs:
+    Outputs
+    -------
     - visited_passages.json: ✅ Used downstream (answer generation, reranking)
     - per_query_traversal_results.jsonl: 🔍 Full per-query trace and metrics
     - final_traversal_stats.json: 📈 Aggregate traversal metrics across the query set
+
+    Parameters
+    ----------
+    seed: int, optional
+        Seed used to initialize :mod:`random` and :mod:`numpy` for
+        deterministic behaviour.
     """
 
     output_paths["base"].mkdir(parents=True, exist_ok=True)
@@ -714,8 +722,11 @@ def run_traversal(
     if traversal_prompt is None:
         traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
 
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
 
-    for entry in tqdm(query_data, desc="queries"): #    for entry in query_data:
+    for entry in tqdm(query_data, desc="queries"):
         question_id = entry["question_id"]
         query_text = entry["question"]
         gold_passages = entry["gold_passages"]
@@ -987,6 +998,7 @@ def process_query_batch(cfg: Dict) -> None:
         alpha=DEFAULT_ALPHA,
         n_hops=DEFAULT_NUMBER_HOPS,
         traversal_alg=cfg["traversal_alg"],
+        seed=cfg.get("seed"),
     )
 
 
@@ -1057,6 +1069,8 @@ def process_traversal(cfg: Dict) -> None:
                 "traversal_alg": trav_alg,
                 "resume": resume,
                 "resume_path": output_paths["results"],
+                "seed": cfg.get("seed"),
+
             }
         )
 

@@ -10,6 +10,8 @@ produce an answer from those passages.
 
 from typing import Dict, List
 
+import random
+import numpy as np
 import time
 import json
 from tqdm import tqdm
@@ -34,7 +36,6 @@ from src.utils import (
     processed_dataset_paths,
     compute_hits_at_k,
     log_wall_time   
-
 )
 
 
@@ -44,6 +45,7 @@ def run_dense_rag(
     reader_model: str,
     server_url: str | None = None,
     top_k: int = DEFAULT_SEED_TOP_K,
+    seed: int | None = None,
     resume: bool = False,
 ) -> Dict[str, float]:
     """Answer queries using dense retrieval over passages and evaluate EM/F1.
@@ -64,6 +66,9 @@ def run_dense_rag(
     top_k: int, optional
         Number of passages to retrieve for each query. Defaults to
         ``DEFAULT_SEED_TOP_K`` from :mod:`src.d_traversal`.
+    seed: int, optional
+        Seed used to initialize :mod:`random` and :mod:`numpy` for
+        deterministic behaviour.
     resume: bool, optional
         Resume a previously interrupted run by reusing existing answers and
         skipping already processed questions. When ``True``,
@@ -75,6 +80,10 @@ def run_dense_rag(
     Dict[str, float]
         Exact Match and F1 scores across the query set.
     """
+
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
 
     if server_url is None:
         server_url = get_server_configs(reader_model)[0]["server_url"]
@@ -104,6 +113,8 @@ def run_dense_rag(
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
     hits_at_k_scores: Dict[str, float] = {}
+    token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
 
 
     for q in tqdm(queries, desc="queries"):
@@ -138,10 +149,18 @@ def run_dense_rag(
                 "normalised_answer": llm_out["normalised_answer"],
                 "used_passages": passage_ids,
                 "hits_at_k": hits_val,
+                "prompt_len": llm_out.get("prompt_len", 0),
+                "output_tokens": llm_out.get("output_tokens", 0),
+                "total_tokens": llm_out.get("total_tokens", 0),
             },
         )
         predictions[q_id] = llm_out["normalised_answer"]
         hits_at_k_scores[q_id] = hits_val
+        token_totals["prompt_tokens"] += llm_out.get("prompt_len", 0)
+        token_totals["completion_tokens"] += llm_out.get("output_tokens", 0)
+        token_totals["total_tokens"] += llm_out.get(
+            "total_tokens", llm_out.get("prompt_len", 0) + llm_out.get("output_tokens", 0)
+        )
 
     if not gold:
         print("No new queries to process.")
@@ -149,9 +168,14 @@ def run_dense_rag(
 
     metrics = evaluate_answers(predictions, gold)
     if hits_at_k_scores:
-        metrics["hits_at_k"] = round(sum(hits_at_k_scores.values()) / len(hits_at_k_scores), 4)
+        metrics["hits_at_k"] = round(
+            sum(hits_at_k_scores.values()) / len(hits_at_k_scores), 4
+        )
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
+
+    with open(paths["base"] / "token_usage.json", "w", encoding="utf-8") as f:
+        json.dump(token_totals, f, indent=2)
 
     return metrics
 
