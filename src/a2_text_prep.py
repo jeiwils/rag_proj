@@ -574,10 +574,10 @@ def generate_iqoq(
 
     # Build prompts from the baseline templates with model-aware formatting
     iq_prompt = build_prompt(
-        model_name, "", iq_prompt_template.format(sentences=passage_text)
+        model_name, "", iq_prompt_template.replace("{{PASSAGE}}", passage_text)
     )
     oq_prompt = build_prompt(
-        model_name, "", oq_prompt_template.format(sentences=passage_text)
+        model_name, "", oq_prompt_template.replace("{{PASSAGE}}", passage_text)
     )
 
     # Build grammars (force clean Question List JSON)
