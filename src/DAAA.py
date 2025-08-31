@@ -5,9 +5,9 @@ from pathlib import Path
 from src.utils import load_jsonl, processed_dataset_paths
 
 SEED = 42
-DATASETS = ["musique"]
 SPLITS = ["dev"]
-NUM_QUESTIONS = 250
+NUM_QUESTIONS = 100
+DATASETS = [d.name for d in Path("data/processed_datasets").iterdir() if d.is_dir()]
 
 
 def downsample(
@@ -28,12 +28,20 @@ def downsample(
     selected_questions = questions[:num_questions]
     selected_ids = {q["question_id"] for q in selected_questions}
 
-    # ✅ Fix for MuSiQue: strip "_sentN" to recover question_id
     passages = [
         p
         for p in load_jsonl(str(passages_path))
         if p["passage_id"].rsplit("_sent", 1)[0] in selected_ids
     ]
+
+    passage_ids = {p["passage_id"] for p in passages}
+    missing: dict[str, list[str]] = {}
+    for q in selected_questions:
+        missing_ids = [pid for pid in q["gold_passages"] if pid not in passage_ids]
+        if missing_ids:
+            missing[q["question_id"]] = missing_ids
+    if missing:
+        raise ValueError(f"Missing passages: {missing}")
 
     if output_dir is None:
         output_dir = f"data/processed_datasets/{dataset}/{split}_subset"
