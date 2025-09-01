@@ -36,9 +36,6 @@ Outputs
 - `per_query_traversal_results.jsonl'
     One entry per query with hop trace, visited nodes, and precision/recall/F1.
 
-- `visited_passages.json`  
-    Deduplicated union of all passages visited during traversal (used for answer reranking).
-
 - `final_traversal_stats.json`  
     Aggregate metrics across the full query set (e.g., mean precision, recall, hop stats).
 
@@ -63,15 +60,6 @@ File Schema
   "traversal_algorithm": "{algorithm_name}",
   "wall_time_sec": float
 }
-
-### visited_passages.json
-
-[
-  "{passage_id_1}",
-  "{passage_id_2}",
-  ...
-]
-
 
 ### final_traversal_stats.json
 
@@ -314,16 +302,18 @@ def llm_choose_edge(
 
         {"edge_index": int | null}
 
-    ``edge_index`` refers to the position of the chosen edge in
-    ``candidate_edges``. The function returns the selected edge tuple
-    (``(vk, edge_data)``) or ``None``.
+    Indexes in the prompt start at 1. ``edge_index`` refers to this
+    1-based position of the chosen edge in ``candidate_edges``. The
+    function converts the model's reply to a zero-based list index and
+    returns the selected edge tuple (``(vk, edge_data)``) or ``None``.
     """
 
     oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
 
     # Build a single prompt listing all candidate auxiliary questions
     option_lines = [
-        f"{i}. {edge_data['oq_text']}" for i, (_, edge_data) in enumerate(candidate_edges)
+        f"{i}. {edge_data['oq_text']}"
+        for i, (_, edge_data) in enumerate(candidate_edges, start=1)
     ]
     options = "\n".join(option_lines)
     prompt = (
@@ -332,7 +322,7 @@ def llm_choose_edge(
         "Candidate Auxiliary Questions:\n"
         f"{options}\n\n"
         "Select the auxiliary question that best helps answer the main question. "
-        "Respond with a JSON object {\"edge_index\": <int or null>}"
+        "Indexes start at 1. Respond with a JSON object {\"edge_index\": <int or null>}"
     )
 
     answer, usage = query_llm(
@@ -370,24 +360,19 @@ def llm_choose_edge(
                 parsed = None
     if parsed:
         idx = parsed.get("edge_index")
-        if isinstance(idx, int) and 0 <= idx < len(candidate_edges):
-            chosen = candidate_edges[idx]
+        if isinstance(idx, int):
+            idx -= 1
+            if 0 <= idx < len(candidate_edges):
+                chosen = candidate_edges[idx]
 
     if chosen is None:
         match = re.search(r"[\"']edge_index[\"']\s*:\s*(\d+|null)", answer)
         if match:
             val = match.group(1)
             if val != "null":
-                idx = int(val)
+                idx = int(val) - 1
                 if 0 <= idx < len(candidate_edges):
                     chosen = candidate_edges[idx]
-
-    if chosen is None:
-        match = re.search(r"\d+", answer)
-        if match:
-            idx = int(match.group(0))
-            if 0 <= idx < len(candidate_edges):
-                chosen = candidate_edges[idx]
 
     if chosen is None:
         print(f"[Edge Selection] raw answer (no valid index): {answer}")
@@ -849,7 +834,6 @@ def run_traversal(
 
     Outputs
     -------
-    - visited_passages.json: ✅ Used downstream (answer generation, reranking)
     - per_query_traversal_results.jsonl: 🔍 Full per-query trace and metrics
     - final_traversal_stats.json: 📈 Aggregate traversal metrics across the query set
 
@@ -862,7 +846,6 @@ def run_traversal(
 
     output_paths["base"].mkdir(parents=True, exist_ok=True)
         
-    all_selected_passages = set()
     token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     per_query_usage: Dict[str, Dict[str, int]] = {}
 
@@ -953,14 +936,6 @@ def run_traversal(
             token_totals[k] += query_token_totals.get(k, 0)
         per_query_usage[question_id] = query_token_totals
 
-        # --- Accumulate traversal + selected passages ---
-
-        all_selected_passages.update(visited_passages)
-
-    # --- Save selected_passages.json ---
-    output_paths["visited_passages"].parent.mkdir(parents=True, exist_ok=True)
-    with open(output_paths["visited_passages"], "wt", encoding="utf-8") as f:
-        json.dump(sorted(all_selected_passages), f, indent=2)
     
     token_usage_path = output_paths["base"] / "token_usage.json"
     with open(token_usage_path, "wt", encoding="utf-8") as f:

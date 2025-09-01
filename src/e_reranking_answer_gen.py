@@ -31,11 +31,8 @@ Outputs
 
 ### data/traversal/{model}/{dataset}/{split}/{variant}/
 
-- `per_query_traversal_results.jsonl`  
+- `per_query_traversal_results.jsonl`
     One entry per query with hop trace, visited nodes, and precision/recall/F1 metrics.
-
-- `visited_passages.json`  
-    Deduplicated union of all passages visited during traversal (used for answer reranking).
 
 - `final_traversal_stats.json`  
     Aggregate metrics across the full query set (e.g., mean precision, recall, hop stats).
@@ -62,16 +59,6 @@ Each line contains a dict with the full traversal trace and evaluation:
   "traversal_algorithm": str
 }
 
-
-### visited_passages.json
-
-A list of unique passage IDs visited across all queries:
-
-[
-  "passage_id_1",
-  "passage_id_2",
-  ...
-]
 
 
 ### final_traversal_stats.json
@@ -332,6 +319,7 @@ def generate_answers_from_traversal(
     split: str,
     variant: str,
     top_k_answer_passages: int = 5,
+    reader_model: str = "llama-3.1-8b-instruct",
     server_url: str | None = None,
     model_name: str | None = None,
     num_workers: int | None = None,
@@ -347,9 +335,11 @@ def generate_answers_from_traversal(
         directory.
     top_k_answer_passages:
         Number of passages to supply to the LLM per query.
+    reader_model:
+        Model used to generate final answers ("reader").
     server_url, model_name:
         LLM server configuration. Defaults to the first server returned by
-        :func:`get_server_configs` for ``traversal_model`` when not provided.
+        :func:`get_server_configs` for ``reader_model`` when not provided.
     num_workers:
         Number of worker processes. When ``None``, uses :func:`model_size` to
         choose ``1`` worker for ``14b``/``19b`` models, ``2`` for ``7b`` models,
@@ -371,7 +361,7 @@ def generate_answers_from_traversal(
     """
 
     if server_url is None or model_name is None:
-        server = get_server_configs(traversal_model)[0]
+        server = get_server_configs(reader_model)[0]
         server_url = server_url or server["server_url"]
         model_name = model_name or server["model"]
 
@@ -546,6 +536,7 @@ if __name__ == "__main__":
     # === Configuration ===
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     SPLITS = ["dev"]
+    READER_MODEL = "llama-3.1-8b-instruct"
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
     TRAVERSAL_MODELS = [
         "qwen2.5-7b-instruct"]
@@ -579,6 +570,7 @@ if __name__ == "__main__":
                             split,
                             variant,
                             top_k_answer_passages=TOP_K_ANSWER_PASSAGES,
+                            reader_model=READER_MODEL,
                             num_workers=None,
                         )
     print("\n✅ Answers-only complete.")
