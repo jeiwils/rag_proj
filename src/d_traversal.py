@@ -60,9 +60,9 @@ File Schema
     "recall": float,
     "f1": float
   },
-  "traversal_algorithm": "{algorithm_name}"
+  "traversal_algorithm": "{algorithm_name}",
+  "wall_time_sec": float
 }
-
 
 ### visited_passages.json
 
@@ -88,7 +88,10 @@ File Schema
     "avg_repeat_visits": float,
     "avg_none_count_per_query": float,
     "max_hop_depth_reached": int,
-    "hop_depth_distribution": [int, int, ...]
+    "hop_depth_distribution": [int, int, ...],
+    "wall_time_total_sec": float,
+    "wall_time_mean_sec": float,
+    "wall_time_median_sec": float
   }
 }
 """
@@ -720,7 +723,9 @@ def save_traversal_result( # helper for run_dev_set()
     traversal_alg,
     helpful_passages,
     hits_at_k,
-    output_path="dev_results.jsonl"
+    wall_time_sec: float | None = None,
+    output_path="dev_results.jsonl",
+    token_usage: Optional[Dict[str, int]] = None,
 ):
     """
     Save a complete traversal + metric result for a single query.
@@ -742,6 +747,15 @@ def save_traversal_result( # helper for run_dev_set()
         ],
         "hits_at_k": hits_at_k,
     }
+
+    if token_usage is not None:
+        result_entry["token_usage"] = token_usage
+
+
+    if wall_time_sec is not None:
+        result_entry["wall_time_sec"] = round(wall_time_sec, 4)
+
+
 
     append_jsonl(str(output_path), result_entry)
 
@@ -796,6 +810,7 @@ def run_traversal(
         
     all_selected_passages = set()
     token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    per_query_usage: Dict[str, Dict[str, int]] = {}
 
 
     if traversal_prompt is None:
@@ -806,9 +821,11 @@ def run_traversal(
         np.random.seed(seed)
 
     for entry in tqdm(query_data, desc="queries"):
+        start = time.perf_counter()
         question_id = entry["question_id"]
         query_text = entry["question"]
         gold_passages = entry["gold_passages"]
+        query_token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
         print(f"\n[Query] {question_id} - \"{query_text}\"")
 
@@ -847,7 +864,7 @@ def run_traversal(
             traversal_alg=traversal_alg,
             alpha=alpha,
             traversal_prompt=traversal_prompt,
-            token_totals=token_totals,
+            token_totals=query_token_totals,
 
         )
 
@@ -860,6 +877,9 @@ def run_traversal(
             graph=graph,
         )
 
+        elapsed = time.perf_counter() - start
+
+
         # --- Save per-query JSONL ---
         save_traversal_result(
             question_id=question_id,
@@ -870,8 +890,14 @@ def run_traversal(
             traversal_alg=traversal_alg,
             helpful_passages=helpful_passages,
             hits_at_k=hits_val,
+            wall_time_sec=elapsed,
             output_path=output_paths["results"],
+            token_usage=query_token_totals,
         )
+
+        for k in token_totals:
+            token_totals[k] += query_token_totals.get(k, 0)
+        per_query_usage[question_id] = query_token_totals
 
         # --- Accumulate traversal + selected passages ---
 
@@ -884,7 +910,7 @@ def run_traversal(
     
     token_usage_path = output_paths["base"] / "token_usage.json"
     with open(token_usage_path, "wt", encoding="utf-8") as f:
-        json.dump(token_totals, f, indent=2)
+        json.dump({"per_query": per_query_usage, "global": token_totals}, f, indent=2)
 
 
 
@@ -945,6 +971,8 @@ def compute_traversal_summary(
     initial_retrieval_coverage = 0
     first_gold_hops = []
     query_hop_depths: List[int] = []
+    wall_times: List[float] = []
+
 
     with open(results_path, "rt", encoding="utf-8") as f:
         for line in f:
@@ -959,6 +987,8 @@ def compute_traversal_summary(
             sum_recall += final["recall"]
             sum_f1 += final.get("f1", 0.0)
             sum_hits += entry.get("hits_at_k", 0.0)
+            if "wall_time_sec" in entry:
+                wall_times.append(entry["wall_time_sec"])
 
 
             if set(entry["gold_passages"]).issubset(set(entry["visited_passages"])):
@@ -1013,6 +1043,10 @@ def compute_traversal_summary(
     max_depth = max(query_hop_depths) if query_hop_depths else 0
     hop_depth_distribution = [hop_depth_counter.get(i, 0) for i in range(max_depth + 1)]
 
+    wall_time_total = sum(wall_times)
+    wall_time_mean = wall_time_total / len(wall_times) if wall_times else 0.0
+    wall_time_median = float(np.median(wall_times)) if wall_times else 0.0
+
     return {
         "mean_precision": round(mean_precision, 4),
         "mean_recall": round(mean_recall, 4),
@@ -1026,6 +1060,9 @@ def compute_traversal_summary(
         "avg_none_count_per_query": round(total_none / total_queries, 2) if total_queries else 0,
         "max_hop_depth_reached": max_depth,
         "hop_depth_distribution": hop_depth_distribution,
+        "wall_time_total_sec": round(wall_time_total, 4),
+        "wall_time_mean_sec": round(wall_time_mean, 4),
+        "wall_time_median_sec": round(wall_time_median, 4),
     }
 
 
