@@ -1,0 +1,259 @@
+{
+  "per_query": {
+    "2hop__7046_44085": {
+      "prompt_tokens": 20167,
+      "completion_tokens": 1043,
+      "total_tokens": 21210
+    },
+    "2hop__580231_162399": {
+      "prompt_tokens": 13051,
+      "completion_tokens": 810,
+      "total_tokens": 13861
+    },
+    "2hop__411091_625230": {
+      "prompt_tokens": 14901,
+      "completion_tokens": 784,
+      "total_tokens": 15685
+    },
+    "2hop__77775_162341": {
+      "prompt_tokens": 14035,
+      "completion_tokens": 874,
+      "total_tokens": 14909
+    },
+    "2hop__496732_658428": {
+      "prompt_tokens": 13073,
+      "completion_tokens": 677,
+      "total_tokens": 13750
+    },
+    "2hop__471509_136043": {
+      "prompt_tokens": 12995,
+      "completion_tokens": 747,
+      "total_tokens": 13742
+    },
+    "2hop__35686_58556": {
+      "prompt_tokens": 18029,
+      "completion_tokens": 1071,
+      "total_tokens": 19100
+    },
+    "2hop__657913_88628": {
+      "prompt_tokens": 16042,
+      "completion_tokens": 1021,
+      "total_tokens": 17063
+    },
+    "2hop__61318_362941": {
+      "prompt_tokens": 16964,
+      "completion_tokens": 1039,
+      "total_tokens": 18003
+    },
+    "2hop__29349_92763": {
+      "prompt_tokens": 18950,
+      "completion_tokens": 1031,
+      "total_tokens": 19981
+    },
+    "2hop__60229_1783": {
+      "prompt_tokens": 16774,
+      "completion_tokens": 1007,
+      "total_tokens": 17781
+    },
+    "2hop__159146_120065": {
+      "prompt_tokens": 14215,
+      "completion_tokens": 870,
+      "total_tokens": 15085
+    },
+    "2hop__119423_779396": {
+      "prompt_tokens": 12884,
+      "completion_tokens": 783,
+      "total_tokens": 13667
+    },
+    "2hop__728969_131890": {
+      "prompt_tokens": 19572,
+      "completion_tokens": 1107,
+      "total_tokens": 20679
+    },
+    "2hop__394720_120259": {
+      "prompt_tokens": 15984,
+      "completion_tokens": 948,
+      "total_tokens": 16932
+    },
+    "2hop__860241_766393": {
+      "prompt_tokens": 8341,
+      "completion_tokens": 513,
+      "total_tokens": 8854
+    },
+    "2hop__435087_55984": {
+      "prompt_tokens": 12088,
+      "completion_tokens": 721,
+      "total_tokens": 12809
+    },
+    "2hop__551235_310309": {
+      "prompt_tokens": 12220,
+      "completion_tokens": 800,
+      "total_tokens": 13020
+    },
+    "2hop__734057_88628": {
+      "prompt_tokens": 13231,
+      "completion_tokens": 836,
+      "total_tokens": 14067
+    },
+    "2hop__36747_18974": {
+      "prompt_tokens": 17915,
+      "completion_tokens": 1062,
+      "total_tokens": 18977
+    },
+    "2hop__81682_707195": {
+      "prompt_tokens": 12079,
+      "completion_tokens": 705,
+      "total_tokens": 12784
+    },
+    "2hop__753715_51329": {
+      "prompt_tokens": 17891,
+      "completion_tokens": 997,
+      "total_tokens": 18888
+    },
+    "2hop__3131_3300": {
+      "prompt_tokens": 16876,
+      "completion_tokens": 949,
+      "total_tokens": 17825
+    },
+    "2hop__168816_144857": {
+      "prompt_tokens": 10165,
+      "completion_tokens": 616,
+      "total_tokens": 10781
+    },
+    "2hop__390947_232243": {
+      "prompt_tokens": 8333,
+      "completion_tokens": 457,
+      "total_tokens": 8790
+    },
+    "2hop__152052_141308": {
+      "prompt_tokens": 13018,
+      "completion_tokens": 773,
+      "total_tokens": 13791
+    },
+    "2hop__753260_71701": {
+      "prompt_tokens": 22792,
+      "completion_tokens": 1303,
+      "total_tokens": 24095
+    },
+    "2hop__623501_297043": {
+      "prompt_tokens": 13014,
+      "completion_tokens": 764,
+      "total_tokens": 13778
+    },
+    "2hop__837900_71701": {
+      "prompt_tokens": 25844,
+      "completion_tokens": 1516,
+      "total_tokens": 27360
+    },
+    "2hop__95878_88628": {
+      "prompt_tokens": 17954,
+      "completion_tokens": 1125,
+      "total_tokens": 19079
+    },
+    "2hop__499003_853511": {
+      "prompt_tokens": 9253,
+      "completion_tokens": 607,
+      "total_tokens": 9860
+    },
+    "2hop__153573_45901": {
+      "prompt_tokens": 20887,
+      "completion_tokens": 1238,
+      "total_tokens": 22125
+    },
+    "2hop__25396_212301": {
+      "prompt_tokens": 19675,
+      "completion_tokens": 1087,
+      "total_tokens": 20762
+    },
+    "2hop__191125_781346": {
+      "prompt_tokens": 20175,
+      "completion_tokens": 1156,
+      "total_tokens": 21331
+    },
+    "2hop__26642_81961": {
+      "prompt_tokens": 10375,
+      "completion_tokens": 528,
+      "total_tokens": 10903
+    },
+    "2hop__505860_650613": {
+      "prompt_tokens": 18599,
+      "completion_tokens": 970,
+      "total_tokens": 19569
+    },
+    "2hop__238499_431914": {
+      "prompt_tokens": 12287,
+      "completion_tokens": 688,
+      "total_tokens": 12975
+    },
+    "2hop__636597_480615": {
+      "prompt_tokens": 18948,
+      "completion_tokens": 1021,
+      "total_tokens": 19969
+    },
+    "2hop__37765_85990": {
+      "prompt_tokens": 19589,
+      "completion_tokens": 1185,
+      "total_tokens": 20774
+    },
+    "2hop__89991_58067": {
+      "prompt_tokens": 17839,
+      "completion_tokens": 1103,
+      "total_tokens": 18942
+    },
+    "2hop__21991_43945": {
+      "prompt_tokens": 23848,
+      "completion_tokens": 1397,
+      "total_tokens": 25245
+    },
+    "2hop__135822_46621": {
+      "prompt_tokens": 16081,
+      "completion_tokens": 879,
+      "total_tokens": 16960
+    },
+    "2hop__439614_349102": {
+      "prompt_tokens": 16587,
+      "completion_tokens": 945,
+      "total_tokens": 17532
+    },
+    "2hop__109131_343058": {
+      "prompt_tokens": 13945,
+      "completion_tokens": 801,
+      "total_tokens": 14746
+    },
+    "2hop__85463_50252": {
+      "prompt_tokens": 27797,
+      "completion_tokens": 1668,
+      "total_tokens": 29465
+    },
+    "2hop__50910_177869": {
+      "prompt_tokens": 14774,
+      "completion_tokens": 842,
+      "total_tokens": 15616
+    },
+    "2hop__76314_177869": {
+      "prompt_tokens": 17686,
+      "completion_tokens": 1115,
+      "total_tokens": 18801
+    },
+    "2hop__678516_179720": {
+      "prompt_tokens": 15972,
+      "completion_tokens": 961,
+      "total_tokens": 16933
+    },
+    "2hop__8347_8311": {
+      "prompt_tokens": 18818,
+      "completion_tokens": 1071,
+      "total_tokens": 19889
+    },
+    "2hop__40270_11402": {
+      "prompt_tokens": 20907,
+      "completion_tokens": 1094,
+      "total_tokens": 22001
+    }
+  },
+  "global": {
+    "prompt_tokens": 813439,
+    "completion_tokens": 47305,
+    "total_tokens": 860744
+  }
+}

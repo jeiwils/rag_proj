@@ -1,0 +1,259 @@
+{
+  "per_query": {
+    "3647118c0bdd11eba7f7acde48001122": {
+      "prompt_tokens": 9326,
+      "completion_tokens": 596,
+      "total_tokens": 9922
+    },
+    "f7c153ce092e11ebbdaeac1f6bf848b6": {
+      "prompt_tokens": 14202,
+      "completion_tokens": 883,
+      "total_tokens": 15085
+    },
+    "1f77cec108ad11ebbd83ac1f6bf848b6": {
+      "prompt_tokens": 14242,
+      "completion_tokens": 881,
+      "total_tokens": 15123
+    },
+    "534cb9fe0baf11ebab90acde48001122": {
+      "prompt_tokens": 22664,
+      "completion_tokens": 1258,
+      "total_tokens": 23922
+    },
+    "e618b2c608c911ebbd92ac1f6bf848b6": {
+      "prompt_tokens": 14098,
+      "completion_tokens": 780,
+      "total_tokens": 14878
+    },
+    "421b26d80bb011ebab90acde48001122": {
+      "prompt_tokens": 16772,
+      "completion_tokens": 1082,
+      "total_tokens": 17854
+    },
+    "096e14a20bde11eba7f7acde48001122": {
+      "prompt_tokens": 11321,
+      "completion_tokens": 674,
+      "total_tokens": 11995
+    },
+    "041581680bdc11eba7f7acde48001122": {
+      "prompt_tokens": 17022,
+      "completion_tokens": 998,
+      "total_tokens": 18020
+    },
+    "5c77f7ed08ac11ebbd82ac1f6bf848b6": {
+      "prompt_tokens": 5615,
+      "completion_tokens": 347,
+      "total_tokens": 5962
+    },
+    "a9a4b633089c11ebbd78ac1f6bf848b6": {
+      "prompt_tokens": 16849,
+      "completion_tokens": 1082,
+      "total_tokens": 17931
+    },
+    "027970120bdc11eba7f7acde48001122": {
+      "prompt_tokens": 12091,
+      "completion_tokens": 675,
+      "total_tokens": 12766
+    },
+    "04b5e0320bdb11eba7f7acde48001122": {
+      "prompt_tokens": 16867,
+      "completion_tokens": 977,
+      "total_tokens": 17844
+    },
+    "c19b72520bdb11eba7f7acde48001122": {
+      "prompt_tokens": 14929,
+      "completion_tokens": 930,
+      "total_tokens": 15859
+    },
+    "c9b515020bda11eba7f7acde48001122": {
+      "prompt_tokens": 19765,
+      "completion_tokens": 1102,
+      "total_tokens": 20867
+    },
+    "f9dcb4a60bda11eba7f7acde48001122": {
+      "prompt_tokens": 12074,
+      "completion_tokens": 708,
+      "total_tokens": 12782
+    },
+    "94198d580bb011ebab90acde48001122": {
+      "prompt_tokens": 21627,
+      "completion_tokens": 1354,
+      "total_tokens": 22981
+    },
+    "c933c15308c711ebbd91ac1f6bf848b6": {
+      "prompt_tokens": 15327,
+      "completion_tokens": 988,
+      "total_tokens": 16315
+    },
+    "2fd031c00bde11eba7f7acde48001122": {
+      "prompt_tokens": 18036,
+      "completion_tokens": 1015,
+      "total_tokens": 19051
+    },
+    "4a9acefe0baf11ebab90acde48001122": {
+      "prompt_tokens": 18759,
+      "completion_tokens": 1095,
+      "total_tokens": 19854
+    },
+    "cff878c20bdb11eba7f7acde48001122": {
+      "prompt_tokens": 20414,
+      "completion_tokens": 1041,
+      "total_tokens": 21455
+    },
+    "71d8e20e0bdb11eba7f7acde48001122": {
+      "prompt_tokens": 14938,
+      "completion_tokens": 903,
+      "total_tokens": 15841
+    },
+    "5db7e2d80bdc11eba7f7acde48001122": {
+      "prompt_tokens": 15203,
+      "completion_tokens": 969,
+      "total_tokens": 16172
+    },
+    "ac1b9ee108b911ebbd88ac1f6bf848b6": {
+      "prompt_tokens": 14100,
+      "completion_tokens": 815,
+      "total_tokens": 14915
+    },
+    "5affe63d08f311ebbdaaac1f6bf848b6": {
+      "prompt_tokens": 13492,
+      "completion_tokens": 780,
+      "total_tokens": 14272
+    },
+    "9e506db00bdc11eba7f7acde48001122": {
+      "prompt_tokens": 13161,
+      "completion_tokens": 716,
+      "total_tokens": 13877
+    },
+    "bac99ab40bd911eba7f7acde48001122": {
+      "prompt_tokens": 16799,
+      "completion_tokens": 869,
+      "total_tokens": 17668
+    },
+    "6e5e9de109af11ebbdb0ac1f6bf848b6": {
+      "prompt_tokens": 19808,
+      "completion_tokens": 1185,
+      "total_tokens": 20993
+    },
+    "33b51db508af11ebbd83ac1f6bf848b6": {
+      "prompt_tokens": 6588,
+      "completion_tokens": 442,
+      "total_tokens": 7030
+    },
+    "1d4139960bde11eba7f7acde48001122": {
+      "prompt_tokens": 3747,
+      "completion_tokens": 219,
+      "total_tokens": 3966
+    },
+    "c30b9f8108b211ebbd85ac1f6bf848b6": {
+      "prompt_tokens": 12111,
+      "completion_tokens": 726,
+      "total_tokens": 12837
+    },
+    "645c9a5a08c311ebbd8dac1f6bf848b6": {
+      "prompt_tokens": 11287,
+      "completion_tokens": 737,
+      "total_tokens": 12024
+    },
+    "019bed300bde11eba7f7acde48001122": {
+      "prompt_tokens": 15098,
+      "completion_tokens": 906,
+      "total_tokens": 16004
+    },
+    "3ccbcad20bda11eba7f7acde48001122": {
+      "prompt_tokens": 10245,
+      "completion_tokens": 636,
+      "total_tokens": 10881
+    },
+    "d3949a8e08c111ebbd8bac1f6bf848b6": {
+      "prompt_tokens": 6562,
+      "completion_tokens": 382,
+      "total_tokens": 6944
+    },
+    "bf06c94208a711ebbd7fac1f6bf848b6": {
+      "prompt_tokens": 11258,
+      "completion_tokens": 735,
+      "total_tokens": 11993
+    },
+    "1822cbb4089111ebbd72ac1f6bf848b6": {
+      "prompt_tokens": 6550,
+      "completion_tokens": 374,
+      "total_tokens": 6924
+    },
+    "f13a163908b311ebbd86ac1f6bf848b6": {
+      "prompt_tokens": 6513,
+      "completion_tokens": 362,
+      "total_tokens": 6875
+    },
+    "d6074911090011ebbdadac1f6bf848b6": {
+      "prompt_tokens": 15940,
+      "completion_tokens": 975,
+      "total_tokens": 16915
+    },
+    "0c585dbc0bde11eba7f7acde48001122": {
+      "prompt_tokens": 14782,
+      "completion_tokens": 930,
+      "total_tokens": 15712
+    },
+    "4d982dc308c111ebbd8bac1f6bf848b6": {
+      "prompt_tokens": 15850,
+      "completion_tokens": 965,
+      "total_tokens": 16815
+    },
+    "f1ff478c089011ebbd72ac1f6bf848b6": {
+      "prompt_tokens": 9407,
+      "completion_tokens": 536,
+      "total_tokens": 9943
+    },
+    "26b866e6085c11ebbd5cac1f6bf848b6": {
+      "prompt_tokens": 20700,
+      "completion_tokens": 1113,
+      "total_tokens": 21813
+    },
+    "e5bdd71f08d011ebbd95ac1f6bf848b6": {
+      "prompt_tokens": 14997,
+      "completion_tokens": 763,
+      "total_tokens": 15760
+    },
+    "5eff3f9a0bd911eba7f7acde48001122": {
+      "prompt_tokens": 23498,
+      "completion_tokens": 1308,
+      "total_tokens": 24806
+    },
+    "94873b220bd911eba7f7acde48001122": {
+      "prompt_tokens": 19663,
+      "completion_tokens": 1141,
+      "total_tokens": 20804
+    },
+    "0323cdea090d11ebbdadac1f6bf848b6": {
+      "prompt_tokens": 15968,
+      "completion_tokens": 916,
+      "total_tokens": 16884
+    },
+    "48c8f7f80bdd11eba7f7acde48001122": {
+      "prompt_tokens": 10232,
+      "completion_tokens": 627,
+      "total_tokens": 10859
+    },
+    "774fa4e20bdc11eba7f7acde48001122": {
+      "prompt_tokens": 23470,
+      "completion_tokens": 1557,
+      "total_tokens": 25027
+    },
+    "90bad89e0bdb11eba7f7acde48001122": {
+      "prompt_tokens": 14967,
+      "completion_tokens": 927,
+      "total_tokens": 15894
+    },
+    "e4e02a240bda11eba7f7acde48001122": {
+      "prompt_tokens": 6690,
+      "completion_tokens": 373,
+      "total_tokens": 7063
+    }
+  },
+  "global": {
+    "prompt_tokens": 715624,
+    "completion_tokens": 42353,
+    "total_tokens": 757977
+  }
+}
