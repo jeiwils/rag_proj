@@ -118,6 +118,7 @@ from src.b_sparse_dense_representations import (
     retrieve_hybrid_candidates,
     get_embedding_model,
     jaccard_similarity,
+    faiss_search_topk
 )
 from src.c_graphing import DEFAULT_ALPHA, append_global_result
 from src.utils import (
@@ -217,7 +218,6 @@ def rerank_passages_by_helpfulness(
 
 
 ### COMPONENT 1 - retrieval 
-
 def select_seed_passages(  # helper for run_dev_set()
     query_text: str,
     query_emb: np.ndarray,
@@ -225,12 +225,39 @@ def select_seed_passages(  # helper for run_dev_set()
     passage_index,
     seed_top_k: int = 50,
     alpha: float = 0.5,
+    question_id: str | None = None,
 ) -> List[str]:
+    """Select top seed passages using dense (FAISS) and sparse (Jaccard) signals.
+
+    Logs the top ``seed_top_k`` FAISS and Jaccard results for ``question_id`` to
+    help verify that retrieval varies across queries.
     """
-    Select top seed passages by combining FAISS dense similarity and Jaccard keyword overlap.
-    Returns a list of passage_ids.
-    """
+
     query_keywords = set(extract_keywords(query_text))
+
+    # Log FAISS dense results
+    faiss_idxs, faiss_scores = faiss_search_topk(
+        query_emb.reshape(1, -1), passage_index, top_k=seed_top_k
+    )
+    faiss_pairs = [
+        (passage_metadata[int(i)]["passage_id"], float(s))
+        for i, s in zip(faiss_idxs, faiss_scores)
+    ]
+
+    # Log Jaccard keyword overlap results
+    jac_pairs = [
+        (
+            m["passage_id"],
+            jaccard_similarity(query_keywords, set(m.get("keywords_passage", []))),
+        )
+        for m in passage_metadata
+    ]
+    jac_pairs.sort(key=lambda x: x[1], reverse=True)
+    jac_pairs = jac_pairs[:seed_top_k]
+
+    if question_id is not None:
+        print(f"[select_seed_passages][{question_id}] FAISS top: {faiss_pairs[:5]}")
+        print(f"[select_seed_passages][{question_id}] Jaccard top: {jac_pairs[:5]}")
 
     candidates = retrieve_hybrid_candidates(
         query_emb,
@@ -243,6 +270,7 @@ def select_seed_passages(  # helper for run_dev_set()
     )
 
     return [passage_metadata[c["idx"]]["passage_id"] for c in candidates]
+
 
 ### COMPONENT 2 - traversal 
 
@@ -772,7 +800,8 @@ def run_traversal(
             passage_metadata=passage_metadata,
             passage_index=passage_index,
             seed_top_k=seed_top_k,
-            alpha=alpha
+            alpha=alpha,
+            question_id=question_id,
         )
 
         print(f"[Seeds] Retrieved {len(seed_passages)} passages.")
@@ -1163,7 +1192,7 @@ if __name__ == "__main__":
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
     TRAVERSAL_MODELS = ["qwen2.5-7b-instruct"]# ["deepseek-distill-qwen-7b"] #  #
-    VARIANTS = ["baseline", "enhanced"]
+    VARIANTS = ["baseline"]
 
     RESUME = True
     SPLIT = "dev"

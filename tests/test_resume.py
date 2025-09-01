@@ -8,6 +8,7 @@ sys.modules.setdefault("requests", types.ModuleType("requests"))
 tqdm_module = types.ModuleType("tqdm")
 tqdm_module.tqdm = lambda x, **kwargs: x
 sys.modules.setdefault("tqdm", tqdm_module)
+sys.modules.setdefault("tiktoken", types.ModuleType("tiktoken"))
 prompt_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "prompts"))
 os.makedirs(prompt_dir, exist_ok=True)
 for fname in [
