@@ -880,7 +880,7 @@ if __name__ == "__main__":
 
     RUN_BASELINE = True
     RUN_ENHANCED = False
-    RUN_CLEAN    = False
+    RUN_CLEAN    = True
     RUN_MERGE    = True
     RUN_EXPLODE  = True
 
