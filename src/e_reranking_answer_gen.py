@@ -352,8 +352,8 @@ def generate_answers_from_traversal(
         :func:`get_server_configs` for ``traversal_model`` when not provided.
     num_workers:
         Number of worker processes. When ``None``, uses :func:`model_size` to
-        choose ``1`` worker for ``14b`` models, ``2`` for ``7b`` models, and
-        ``4`` otherwise.
+        choose ``1`` worker for ``14b``/``19b`` models, ``2`` for ``7b`` models,
+        and ``4`` otherwise.
     resume:
         When ``True``, skip questions already present in the output file and
         append newly generated answers instead of overwriting.
@@ -462,7 +462,7 @@ def generate_answers_from_traversal(
 
     if num_workers is None:
         size = model_size(traversal_model if model_name is None else model_name)
-        num_workers = {"14b": 1, "7b": 2}.get(size, 4)
+        num_workers = {"14b": 1, "19b": 1, "7b": 2}.get(size, 4)
 
     worker = partial(
         _generate_answer,
@@ -544,11 +544,17 @@ def sweep_thresholds(edges: List[Dict], thresholds: List[float]):
 
 if __name__ == "__main__":
     # === Configuration ===
-    DATASETS = ["hotpotqa"]
+    DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     SPLITS = ["dev"]
-    GRAPH_MODELS = ["qwen-7b"]
-    TRAVERSAL_MODELS = ["qwen-7b"]
-    VARIANTS = ["baseline", "enhanced"]  # matches the traversal variants
+    GRAPH_MODELS = ["llama-3.1-8b-instruct"]
+    TRAVERSAL_MODELS = [
+        "qwen2.5-7b-instruct"]
+    #     "qwen2.5-14b-instruct",
+    #     "deepseek-r1-distill-qwen-7b",
+    #     "deepseek-r1-distill-qwen-14b",
+    #     "qwen2.5-moe-19b",
+    # ]
+    VARIANTS = ["baseline"]  
 
     TOP_K_ANSWER_PASSAGES = 5
 

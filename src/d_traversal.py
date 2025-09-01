@@ -1334,7 +1334,16 @@ if __name__ == "__main__":
 
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
-    TRAVERSAL_MODELS = ["qwen2.5-7b-instruct"]# ["deepseek-distill-qwen-7b"] #  #
+    TRAVERSAL_MODELS = ["qwen2.5-7b-instruct"] 
+
+# [
+#         "qwen2.5-7b-instruct",
+#         "qwen2.5-14b-instruct",
+#         "deepseek-r1-distill-qwen-7b",
+#         "deepseek-r1-distill-qwen-14b",
+#         "qwen2.5-moe-19b",
+#     ]
+
     VARIANTS = ["baseline"]
 
     RESUME = True

@@ -92,7 +92,7 @@ Schemas
   "hoprag_version": "enhanced_hoprag",
   "dataset": "hotpotqa",
   "split": "train",
-  "generation_model": "qwen-7b"
+  "generation_model": "llama-3.1-8b-instruct"
 }
 
 
@@ -105,7 +105,7 @@ Schemas
   "conditioned_score": 0.25,
   "dataset": "hotpotqa",
   "split": "train",
-  "generation_model": "qwen-7b"
+  "generation_model": "llama-3.1-8b-instruct"
 }
 
 
@@ -114,7 +114,7 @@ Schemas
 {
   "dataset": "hotpotqa",
   "split": "train",
-  "generation_model": "qwen-7b",
+  "generation_model": "llama-3.1-8b-instruct",
   "parent_passage_id": "5a7a0693__arthur_s_magazine_sent0",
   "iqoq_id": "5a7a0693__arthur_s_magazine_sent0_oq2",
   "type": "OQ",
@@ -128,7 +128,7 @@ Schemas
 {
   "dataset": "hotpotqa",
   "split": "train",
-  "generation_model": "qwen-7b",
+  "generation_model": "llama-3.1-8b-instruct",
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
   "text": "Arthur's Magazine (1844–1846)...",
   "conditioned_score": 0.25

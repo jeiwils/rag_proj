@@ -23,43 +23,26 @@ from pathlib import Path
 
 
 SERVER_CONFIGS = [
-    # --- Legacy: Qwen 1.5B (4) ---
-    {"server_url": "http://localhost:8000", "model": "qwen-1.5b"},
-    {"server_url": "http://localhost:8001", "model": "qwen-1.5b"},
-    {"server_url": "http://localhost:8002", "model": "qwen-1.5b"},
-    {"server_url": "http://localhost:8003", "model": "qwen-1.5b"},
+    # --- Graphing & Reading: Meta-Llama-3.1-8B-Instruct (2) ---
+    {"server_url": "http://localhost:8000", "model": "llama-3.1-8b-instruct"},
+    {"server_url": "http://localhost:8001", "model": "llama-3.1-8b-instruct"},
 
-    # --- Legacy: Qwen 7B (2) ---
-    {"server_url": "http://localhost:8004", "model": "qwen-7b"},
-    {"server_url": "http://localhost:8005", "model": "qwen-7b"},
+    # --- Traversal: Qwen2.5-7B-Instruct (2) ---
+    {"server_url": "http://localhost:8002", "model": "qwen2.5-7b-instruct"},
+    {"server_url": "http://localhost:8003", "model": "qwen2.5-7b-instruct"},
 
-    # --- Legacy: Qwen 14B (1) ---
-    {"server_url": "http://localhost:8006", "model": "qwen-14b"},
+    # --- Traversal: Qwen2.5-14B-Instruct (1) ---
+    {"server_url": "http://localhost:8004", "model": "qwen2.5-14b-instruct"},
 
-    # --- Legacy: DeepSeek-Distill-Qwen 1.5B (4) ---
-    {"server_url": "http://localhost:8007", "model": "deepseek-distill-qwen-1.5b"},
-    {"server_url": "http://localhost:8008", "model": "deepseek-distill-qwen-1.5b"},
-    {"server_url": "http://localhost:8009", "model": "deepseek-distill-qwen-1.5b"},
-    {"server_url": "http://localhost:8010", "model": "deepseek-distill-qwen-1.5b"},
+    # --- Traversal: DeepSeek-R1-Distill-Qwen-7B (2) ---
+    {"server_url": "http://localhost:8005", "model": "deepseek-r1-distill-qwen-7b"},
+    {"server_url": "http://localhost:8006", "model": "deepseek-r1-distill-qwen-7b"},
 
-    # --- Legacy: DeepSeek-Distill-Qwen 7B (2) ---
-    {"server_url": "http://localhost:8011", "model": "deepseek-distill-qwen-7b"},
-    {"server_url": "http://localhost:8012", "model": "deepseek-distill-qwen-7b"},
+    # --- Traversal: DeepSeek-R1-Distill-Qwen-14B (1) ---
+    {"server_url": "http://localhost:8007", "model": "deepseek-r1-distill-qwen-14b"},
 
-    # --- Legacy: DeepSeek-Distill-Qwen 14B (1) ---
-    {"server_url": "http://localhost:8013", "model": "deepseek-distill-qwen-14b"},
-
-    # --- NEW: Graphing — Qwen2.5-7B (2) ---
-    {"server_url": "http://localhost:8014", "model": "qwen2.5-7b"},
-    {"server_url": "http://localhost:8015", "model": "qwen2.5-7b"},
-
-    # --- NEW: Qwen2.5-7B-Instruct (2) ---
-    {"server_url": "http://localhost:8018", "model": "qwen2.5-7b-instruct"},
-    {"server_url": "http://localhost:8019", "model": "qwen2.5-7b-instruct"},
-
-    # --- NEW: Reader — Meta-Llama-3.1-8B-Instruct (2) ---
-    {"server_url": "http://localhost:8020", "model": "llama-3.1-8b-instruct"},
-    {"server_url": "http://localhost:8021", "model": "llama-3.1-8b-instruct"},
+    # --- Traversal: Qwen2.5-MOE-19B (1) ---
+    {"server_url": "http://localhost:8008", "model": "qwen2.5-moe-19b"},
 ]
 
 
@@ -420,11 +403,15 @@ def processed_dataset_paths(dataset: str, split: str) -> Dict[str, Path]:
 
 
 def model_size(model: str) -> str:
-    """
-    Normalizes 'qwen-1.5b' -> '1.5b', 'qwen-7b' -> '7b', 'deepseek-distill-qwen-14b' -> '14b'
-        
-    just a helper function for file naming         
-                
+    """Return a normalized size string for ``model``.
+
+    Examples
+    --------
+    ``qwen2.5-7b-instruct`` → ``7b``
+    ``deepseek-r1-distill-qwen-14b`` → ``14b``
+    ``qwen2.5-moe-19b`` → ``19b``
+
+    This is used purely for file naming and shard selection.
     """
     m = re.search(r'(\d+(?:\.\d+)?)b', model, re.I)
     if not m:
@@ -522,10 +509,10 @@ def model_shard_paths(model: str, dataset: str, split: str, stem: str, size: str
     stem:
         Base filename (typically input JSONL stem).
     size:
-        Model size string (``"1.5b"``, ``"7b"``, ``"8b"`` or ``"14b"``).
+        Model size string (``"1.5b"``, ``"7b"``, ``"8b"``, ``"14b"`` or ``"19b"``).
     """
     out_dir = model_shard_dir(model, dataset, split)
-    counts = {"1.5b": 4, "7b": 2, "8b": 2, "14b": 1}
+    counts = {"1.5b": 4, "7b": 2, "8b": 2, "14b": 1, "19b": 1}
     n_shards = counts.get(size)
     if n_shards is None:
         raise ValueError(f"Unsupported model size: {size}")
@@ -537,7 +524,7 @@ def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> Li
     """Split ``path`` into shards appropriate for ``model``.
 
     Supported model sizes and shard counts:
-    ``1.5b`` → 4 shards, ``7b``/``8b`` → 2 shards, ``14b`` → 1 shard.
+    ``1.5b`` → 4 shards, ``7b``/``8b`` → 2 shards, ``14b``/``19b`` → 1 shard.
 
     Parameters
     ----------
@@ -567,11 +554,9 @@ def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> Li
 
     if size == "1.5b":
         split_jsonl_into_four(path, *(str(op) for op in out_paths))
-    elif size == "7b":
+    elif size in {"7b", "8b"}:
         split_jsonl(path, str(out_paths[0]), str(out_paths[1]))
-    elif size == "8b":
-        split_jsonl(path, str(out_paths[0]), str(out_paths[1]))
-    elif size == "14b":
+    elif size in {"14b", "19b"}:
         data = list(load_jsonl(path))
         save_jsonl(str(out_paths[0]), data)
     else:

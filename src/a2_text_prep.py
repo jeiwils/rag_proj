@@ -31,7 +31,7 @@ Sharded output files written to:
 
 data/models/{model}/{dataset}/{split}/shards/
     - {split}_passages_shard{N}_{size}.jsonl
-        → Raw input shards split by model size (1.5b → 4 shards, 7b → 2, 8b → 2, 14b → 1).
+        → Raw input shards split by model size (1.5b → 4 shards, 7b → 2, 8b → 2, 14b/19b → 1).
         
 data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/
 
@@ -64,7 +64,7 @@ Examples
   "conditioned_score": 0.25,
   "dataset": "hotpotqa",
   "split": "train",
-  "generation_model": "qwen-7b"
+  "generation_model": "llama-3.1-8b-instruct"
 }
 
 
@@ -83,7 +83,7 @@ Examples
   "hoprag_version": "baseline_hoprag",
   "dataset": "hotpotqa",
   "split": "train",
-  "generation_model": "qwen-7b"
+  "generation_model": "llama-3.1-8b-instruct"
 }
 
 

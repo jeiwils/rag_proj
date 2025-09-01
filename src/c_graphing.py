@@ -119,7 +119,7 @@ Edge:
   "mode": "standard_pipeline",
   "dataset": "hotpotqa",
   "split": "train",
-  "edges_file": "data/graphs/qwen-7b/hotpotqa/train/baseline/hotpotqa_train_edges.jsonl",
+  "edges_file": "data/graphs/llama-3.1-8b-instruct/hotpotqa/train/baseline/hotpotqa_train_edges.jsonl",
   "params": {
     "top_k": 50,
     "sim_threshold": 0.65
