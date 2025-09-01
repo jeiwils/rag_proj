@@ -1309,7 +1309,7 @@ if __name__ == "__main__":
 
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
-    TRAVERSAL_MODELS = ["qwen2.5-7b-instruct"] 
+    TRAVERSAL_MODELS = ["deepseek-r1-distill-qwen-7b"] 
 
 # [
 #         "qwen2.5-7b-instruct",

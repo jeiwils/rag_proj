@@ -101,6 +101,7 @@ from typing import Dict, List, Optional, Tuple
 
 from functools import partial
 import networkx as nx
+import pickle
 
 from src.a2_text_prep import is_r1_like, query_llm, strip_think, model_size
 from src.utils import (
@@ -381,7 +382,8 @@ def generate_answers_from_traversal(
     query_file = processed_dataset_paths(dataset, split)["questions"]
 
     traversal_records = {r["question_id"]: r for r in load_jsonl(traversal_file)}
-    graph = nx.read_gpickle(graph_file)
+    with open(graph_file, "rb") as f:
+        graph = pickle.load(f)
     passage_lookup = {pid: data.get("text", "") for pid, data in graph.nodes(data=True)}
     queries = {q["question_id"]: q for q in load_jsonl(query_file)}
 
