@@ -358,18 +358,26 @@ def build_and_save_faiss_index(
             "index_type must be provided and set to 'passages', 'iqoq', or 'iq'."
         )
 
-    # Ensure float32 and contiguous layout for FAISS
+    # Ensure float32, contiguous layout and normalize vectors for cosine sim
     embeddings = np.ascontiguousarray(embeddings, dtype=np.float32)
+    faiss.normalize_L2(embeddings)
     if new_vectors is not None:
         new_vectors = np.ascontiguousarray(new_vectors, dtype=np.float32)
+        faiss.normalize_L2(new_vectors)
 
     faiss_path = os.path.join(output_dir, f"{dataset_name}_faiss_{index_type}.faiss")
 
     if new_vectors is not None and os.path.exists(faiss_path):
         index = faiss.read_index(faiss_path)
+        assert new_vectors.shape[1] == index.d, (
+            f"Dimension mismatch: new_vectors.shape[1]={new_vectors.shape[1]}, index.d={index.d}"
+        )
         index.add(new_vectors)
     else:
         index = faiss.IndexFlatIP(embeddings.shape[1])
+        assert embeddings.shape[1] == index.d, (
+            f"Dimension mismatch: embeddings.shape[1]={embeddings.shape[1]}, index.d={index.d}"
+        )
         index.add(embeddings)
 
     faiss.write_index(index, faiss_path)
