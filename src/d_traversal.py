@@ -334,7 +334,7 @@ def llm_choose_edge(
         temperature=_temp_for(oq_server["model"], "edge_selection"),
         model_name=oq_server["model"],
         phase="edge_selection",
-        stop=["}"],
+        stop=None,
         reason=reason,
     )
 
@@ -353,15 +353,13 @@ def llm_choose_edge(
     chosen = None
     idx = None
     parsed = None
-    try:
-        parsed = json.loads(answer.replace("'", '"'))
-    except json.JSONDecodeError:
-        brace_match = re.search(r"\{.*\}", answer, re.DOTALL)
-        if brace_match:
-            try:
-                parsed = json.loads(brace_match.group(0).replace("'", '"'))
-            except json.JSONDecodeError:
-                parsed = None
+    brace_match = re.search(r"\{.*?\}", answer, re.DOTALL)
+    if brace_match:
+        try:
+            parsed = json.loads(brace_match.group(0).replace("'", '"'))
+        except json.JSONDecodeError:
+            parsed = None
+
     if parsed:
         idx = parsed.get("edge_index")
         if isinstance(idx, int):
@@ -441,6 +439,9 @@ def hoprag_traversal_algorithm(
     )
 
     # LLM selects among the candidates once and returns the chosen edge
+    edge_model = (
+        server_configs[1]["model"] if len(server_configs) > 1 else server_configs[0]["model"]
+    )
     chosen = llm_choose_edge(
         query_text=query_text,
         candidate_edges=candidates,
@@ -448,7 +449,7 @@ def hoprag_traversal_algorithm(
         server_configs=server_configs,
         traversal_prompt=traversal_prompt,
         token_totals=token_totals,
-        reason=False,
+        reason=is_r1_like(edge_model),
     )
 
     if chosen is None:
@@ -548,13 +549,16 @@ def enhanced_traversal_algorithm(
         ]
     )
     # 3) Ask LLM to pick the next edge among the candidates
+    edge_model = (
+        server_configs[1]["model"] if len(server_configs) > 1 else server_configs[0]["model"]
+    )
     chosen = llm_choose_edge(
         query_text=query_text,
         candidate_edges=candidates,
         graph=graph,
         server_configs=server_configs,
         traversal_prompt=traversal_prompt,
-        reason=False,
+        reason=is_r1_like(edge_model),
     )
 
     if chosen is None:

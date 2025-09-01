@@ -176,13 +176,55 @@ HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding=
 
 
 
-# --- ChatML builders (Qwen style) ---
-def chatml(system: str, user: str) -> str:
-    return (
-        "<|im_start|>system\n" + system.strip() + "\n<|im_end|>\n"
-        "<|im_start|>user\n"   + user.strip()    + "\n<|im_end|>\n"
-        "<|im_start|>assistant\n"
-    )
+# # --- ChatML builders (Qwen style) ---
+# def chatml(system: str, user: str) -> str:
+#     return (
+#         "<|im_start|>system\n" + system.strip() + "\n<|im_end|>\n"
+#         "<|im_start|>user\n"   + user.strip()    + "\n<|im_end|>\n"
+#         "<|im_start|>assistant\n"
+#     )
+
+# def build_prompt(model_name: str, system: str, user: str):
+#     """Return an LLM prompt formatted for the given model.
+
+#     Parameters
+#     ----------
+#     model_name: str
+#         Identifier for the active model. If the name contains "llama" the
+#         OpenAI style chat format is used, otherwise the prompt is returned in
+#         Qwen-style ChatML.
+#     system: str
+#         System message content.
+#     user: str
+#         User message content.
+#     """
+#     if "llama" in model_name.lower():
+#         messages = []
+#         if system.strip():
+#             messages.append({"role": "system", "content": system.strip()})
+#         messages.append({"role": "user", "content": user.strip()})
+#         return messages
+#     return chatml(system, user)
+
+# def question_list_grammar(min_n: int, max_n: int) -> str:
+#     """Enforce a JSON object {"Question List": ["..."]} with bounds."""
+#     rep_min = max(0, min_n - 1)
+#     rep_max = max(0, max_n - 1)
+#     return (
+#         "root    ::= ws \"{\" ws \"\\\"Question List\\\"\" ws \":\" ws \"[\" ws string"
+#         + " (ws \",\" ws string){" + str(rep_min) + "," + str(rep_max) + "} ws \"]\" ws \"}\" ws\n"
+#         "string  ::= \"\\\"\" chars \"\\\"\"\n"
+#         "chars   ::= (escape | char)*\n"
+#         "char    ::= [^\"\\\\\\x00-\\x1F]\n"
+#         "escape  ::= \"\\\\\" ([\"\\\\/bfnrt] | \"u\" hex hex hex hex)\n"
+#         "hex     ::= [0-9a-fA-F]\n"
+#         "ws      ::= ([ \\t\\r\\n])*\n"
+#     )
+
+
+
+# --- Prompt builders ---
+
 
 def build_prompt(model_name: str, system: str, user: str):
     """Return an LLM prompt formatted for the given model.
@@ -190,21 +232,26 @@ def build_prompt(model_name: str, system: str, user: str):
     Parameters
     ----------
     model_name: str
-        Identifier for the active model. If the name contains "llama" the
-        OpenAI style chat format is used, otherwise the prompt is returned in
-        Qwen-style ChatML.
+        Identifier for the active model. If the name contains ``"llama"`` the
+        prompt is returned as a list of OpenAI style chat messages. For
+        DeepSeek-R1 and other non-Llama models the raw ``user`` string is
+        returned so callers can pass plain text directly to :func:`query_llm`.
     system: str
         System message content.
     user: str
         User message content.
     """
-    if "llama" in model_name.lower():
+
+    name = model_name.lower()
+    if "llama" in name:
         messages = []
         if system.strip():
             messages.append({"role": "system", "content": system.strip()})
         messages.append({"role": "user", "content": user.strip()})
         return messages
-    return chatml(system, user)
+
+    # R1-like and other completion-style models expect plain text.
+    return user.strip()
 
 def question_list_grammar(min_n: int, max_n: int) -> str:
     """Enforce a JSON object {"Question List": ["..."]} with bounds."""
@@ -220,10 +267,6 @@ def question_list_grammar(min_n: int, max_n: int) -> str:
         "hex     ::= [0-9a-fA-F]\n"
         "ws      ::= ([ \\t\\r\\n])*\n"
     )
-
-
-
-
 
 
 
@@ -283,14 +326,15 @@ def _wrap_for_deepseek_user(prompt: str, task: str, reason: bool = True) -> str:
         Name of the calling task/phase.
     reason: bool, optional
         If ``True`` and the task is generative (IQ/OQ, answers, edge selection),
-        instruct the model to begin with a ``<think>`` block. When ``False``, the
-        preface is omitted to keep the output concise.
+        instruct the model to begin with a ``<think>`` block and then emit the
+        final structured output. When ``False``, the preface is omitted to keep
+        the output concise.
     """
     if reason and task in {"iqoq_generation", "answer_generation", "edge_selection"}:
         preface = (
             "All instructions are provided in this single user message (no system prompt). "
             "Begin your output with '<think>\\n' and use that block for your reasoning. "
-            "After the think block, follow the requested output format exactly."
+            "After the think block, produce the structured output exactly as requested."
         )
         return f"{preface}\n\n{prompt}"
     return prompt
@@ -619,7 +663,7 @@ def generate_iqoq(
     model_name: str = ""
 ):
     """
-    Generates IQ and OQ lists for a passage using ChatML + JSON grammar.
+    Generates IQ and OQ lists for a passage using JSON grammar.
     Returns (entry, missing_iq_ids, missing_oq_ids).
     """
     passage_text = entry["text"]
