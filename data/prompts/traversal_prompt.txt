@@ -3,8 +3,9 @@ Given a main question and several candidate auxiliary questions, choose the
 single auxiliary question that will most help answer the main question. If none
 of the candidates are useful, select null.
 
-Return your choice as a JSON object: {"edge_index": <int or null>}
+Return your choice as a JSON object on a single line:
+{"edge_index": <int or null>, "reason": "<optional brief reason>"}
 
 The edge_index corresponds to the position of the chosen candidate in the
-provided list (zero-based). Do not include any additional keys or commentary
-outside the JSON object.
+provided list (zero-based). Output only this JSON object with no text before or
+after.

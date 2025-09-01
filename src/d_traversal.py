@@ -303,7 +303,7 @@ def llm_choose_edge(
     The LLM receives a single prompt enumerating all candidate auxiliary
     questions and must respond with JSON of the form::
 
-        {"edge_index": int | null}
+        {"edge_index": int | null, "reason": "<optional>"}
 
     ``edge_index`` refers to the position of the chosen edge in
     ``candidate_edges``. The function returns the selected edge tuple
@@ -324,7 +324,7 @@ def llm_choose_edge(
         "Candidate Auxiliary Questions:\n"
         f"{options}\n\n"
         "Select the auxiliary question that best helps answer the main question. "
-        "Respond with a JSON object {\"edge_index\": <int or null>}"
+        "Respond with a JSON object {\"edge_index\": <int or null>, \"reason\": \"<optional>\"}"
     )
 
     answer, usage = query_llm(
