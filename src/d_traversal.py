@@ -1138,28 +1138,17 @@ def process_traversal(cfg: Dict) -> None:
             f"[process_traversal] FAISS index has {passage_index.ntotal} vectors "
             f"but metadata lists {len(passage_metadata)} passages. Rebuilding index."
         )
-        missing = len(passage_metadata) - passage_index.ntotal
         output_dir = str(Path(paths["passages_index"]).parent)
-        if missing > 0:
-            build_and_save_faiss_index(
-                passage_emb,
-                dataset,
-                "passages",
-                output_dir=output_dir,
-                new_vectors=passage_emb[passage_index.ntotal:],
-            )
-        else:
-            build_and_save_faiss_index(
-                passage_emb,
-                dataset,
-                "passages",
-                output_dir=output_dir,
-            )
+        build_and_save_faiss_index(
+            passage_emb,
+            dataset,
+            "passages",
+            output_dir=output_dir,
+        )
         passage_index = faiss.read_index(paths["passages_index"])
-        if passage_index.ntotal != len(passage_metadata):
-            raise ValueError(
-                "FAISS index rebuild failed to match metadata length"
-            )
+        assert passage_index.ntotal == len(passage_metadata), (
+            "FAISS index rebuild failed to match metadata length"
+        )
     query_path = processed_dataset_paths(dataset, split)["questions"]
 
     graph_path = Path(
