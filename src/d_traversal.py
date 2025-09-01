@@ -136,9 +136,10 @@ from src.utils import (
     save_jsonl,
     split_jsonl_for_models,
     model_size,
-    pool_map, 
+    pool_map,
     compute_hits_at_k,
     log_wall_time,
+    validate_vec_ids,
 )
 
 
@@ -1130,6 +1131,7 @@ def process_traversal(cfg: Dict) -> None:
     paths = dataset_rep_paths(dataset, split)
     passage_metadata = list(load_jsonl(paths["passages_jsonl"]))
     passage_emb = np.load(paths["passages_emb"])
+    validate_vec_ids(passage_metadata, passage_emb)
     passage_index = faiss.read_index(paths["passages_index"])
     if passage_index.ntotal != len(passage_metadata):
         print(
@@ -1165,6 +1167,13 @@ def process_traversal(cfg: Dict) -> None:
     )
     with open(graph_path, "rb") as f:
         graph_obj = pickle.load(f)
+    validate_vec_ids(
+        [
+            {"passage_id": pid, "vec_id": data.get("vec_id")}
+            for pid, data in graph_obj.nodes(data=True)
+        ],
+        passage_emb,
+    )
     trav_alg = variant_cfg[variant]
 
     output_paths = get_traversal_paths(model, dataset, split, variant)

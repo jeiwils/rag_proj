@@ -10,6 +10,7 @@ import re
 import unicodedata
 from typing import Any, Callable, Dict, Hashable, Iterable, Iterator, List, Optional, Set, Tuple
 
+import numpy as np
 
 from multiprocessing import Process, Pool 
 
@@ -145,7 +146,18 @@ def existing_ids(path, id_field="passage_id", required_field: str | None = None)
     return done
 
 
+def validate_vec_ids(
+    metadata: List[Dict], emb: np.ndarray, id_field: str = "passage_id"
+) -> None:
+    """Raise ``ValueError`` if any ``vec_id`` is missing or out of bounds."""
 
+    n = len(emb)
+    for item in metadata:
+        vec_id = item.get("vec_id")
+        if vec_id is None or not (0 <= vec_id < n):
+            raise ValueError(
+                f"{id_field} {item.get(id_field)} has invalid vec_id {vec_id}"
+            )
 
 
 def compute_resume_sets(

@@ -198,6 +198,8 @@ from src.utils import (
     compute_resume_sets,
     load_jsonl,
     save_jsonl,
+    validate_vec_ids,
+
 )
 
 
@@ -607,6 +609,9 @@ def run_graph_pipeline(
     q_path = iqoq_file if iqoq_file else model_paths["iqoq_jsonl"]
 
     passages_md = list(load_jsonl(p_path))
+    passage_emb = np.load(pass_paths["passages_emb"], mmap_mode="r")
+    validate_vec_ids(passages_md, passage_emb)
+    del passage_emb
     iqoq_md = list(load_jsonl(q_path))   ## mmap_mode=r ?
     iq_md = [m for m in iqoq_md if m["type"] == "IQ"]
 

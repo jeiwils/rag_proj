@@ -358,6 +358,11 @@ def build_and_save_faiss_index(
             "index_type must be provided and set to 'passages', 'iqoq', or 'iq'."
         )
 
+    # Ensure float32 and contiguous layout for FAISS
+    embeddings = np.ascontiguousarray(embeddings, dtype=np.float32)
+    if new_vectors is not None:
+        new_vectors = np.ascontiguousarray(new_vectors, dtype=np.float32)
+
     faiss_path = os.path.join(output_dir, f"{dataset_name}_faiss_{index_type}.faiss")
 
     if new_vectors is not None and os.path.exists(faiss_path):
@@ -413,7 +418,7 @@ def retrieve_hybrid_candidates(
     keyword_field: str | None = None,
     filter_fn: Callable[[int], bool] | None = None,
 ) -> List[Dict[str, float]]:
-    """Hybrid retrieval over dense and sparse signals.
+    """Retrieve top dense candidates and rerank them by Jaccard overlap.
 
     Parameters
     ----------
@@ -428,17 +433,17 @@ def retrieve_hybrid_candidates(
         FAISS index storing the dense vectors whose ordering corresponds to
         ``metadata``.
     top_k:
-        Number of candidates to retrieve from each modality and number of
-        results returned.
+        Number of passages retrieved by dense search and returned after
+        reranking.
     alpha:
-        Weighting factor for the hybrid score
-        ``alpha * sim_cos + (1 - alpha) * sim_jac``.
+        Weighting factor for the final score used to rerank the dense
+        candidates: ``alpha * sim_cos + (1 - alpha) * sim_jac``.
     keyword_field:
         Optional override for the keyword field name in ``metadata``.
     filter_fn:
         Optional callable ``filter_fn(idx) -> bool`` applied to candidate
         indices. Candidates for which the function returns ``False`` are
-        discarded.  This enables caller-specific filtering such as removing
+        discarded. This enables caller-specific filtering such as removing
         self-loops.
 
     Returns
@@ -462,45 +467,29 @@ def retrieve_hybrid_candidates(
     # Dense retrieval via FAISS
     faiss_idxs, faiss_scores = faiss_search_topk(query_vec, index, top_k=top_k)
     n_meta = len(metadata)
-    # Filter out invalid indices and associated scores
     valid_pairs = [
         (int(idx), float(score))
         for idx, score in zip(faiss_idxs, faiss_scores)
         if idx != -1 and 0 <= int(idx) < n_meta
     ]
-    faiss_dict = {idx: score for idx, score in valid_pairs}
 
-    # Sparse retrieval via Jaccard
-    if query_keywords:
-        jaccard_scores = [
-            jaccard_similarity(query_keywords, set(m.get(keyword_field, []))) for m in metadata
-        ]
-        jaccard_top = set(
-            int(i) for i in np.argsort(jaccard_scores)[::-1][:top_k]
-        )
-    else:
-        logger.warning("No query keywords provided; skipping Jaccard retrieval")
-        jaccard_scores = [0.0] * n_meta
-        jaccard_top = set()
-    candidate_idxs = set(faiss_dict.keys()).union(jaccard_top)
-    candidate_idxs = {i for i in candidate_idxs if 0 <= i < n_meta}
+    # Keep only valid dense candidates and optionally filter them
+    candidate_idxs = [idx for idx, _ in valid_pairs]
     if filter_fn is not None:
-        candidate_idxs = {i for i in candidate_idxs if filter_fn(i)}
+        candidate_idxs = [i for i in candidate_idxs if filter_fn(i)]
 
-    # Ensure query vector normalised for cosine calculation
-    q_norm = query_vec[0] / max(1e-12, np.linalg.norm(query_vec))
+    faiss_dict = {idx: score for idx, score in valid_pairs if idx in candidate_idxs}
 
     results: List[Dict[str, float]] = []
     for idx in candidate_idxs:
-        meta = metadata[idx]
-        if idx in faiss_dict:
-            sim_cos = faiss_dict[idx]
+        sim_cos = faiss_dict[idx]
+        if query_keywords:
+            sim_jac = jaccard_similarity(
+                query_keywords, set(metadata[idx].get(keyword_field, []))
+            )
         else:
-            vec = index.reconstruct(int(idx))
-            vec = vec / max(1e-12, np.linalg.norm(vec))
-            sim_cos = float(np.dot(q_norm, vec))
-
-        sim_jac = jaccard_scores[idx]
+            logger.warning("No query keywords provided; skipping Jaccard rerank")
+            sim_jac = 0.0
         sim_hybrid = alpha * sim_cos + (1.0 - alpha) * sim_jac
         results.append(
             {
