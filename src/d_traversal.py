@@ -1289,12 +1289,13 @@ def process_traversal(cfg: Dict) -> None:
 
     merged_passages: Set[str] = set()
     for i in range(len(urls)):
-        part_path = output_paths["base"] / f"visited_passages_part{i}.json" ########### what's this for???
+        part_path = output_paths["base"] / f"visited_passages_part{i}.json"
         if part_path.exists():
             with open(part_path, "rt", encoding="utf-8") as fin:
                 merged_passages.update(json.load(fin))
             part_path.unlink()
-    with open(output_paths["visited_passages"], "wt", encoding="utf-8") as fout:
+    visited_path = output_paths["visited_passages"]
+    with open(visited_path, "wt", encoding="utf-8") as fout:
         json.dump(sorted(merged_passages), fout, indent=2)
 
     traversal_metrics = compute_traversal_summary(
@@ -1319,7 +1320,7 @@ if __name__ == "__main__":
 
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
-    TRAVERSAL_MODELS = ["deepseek-r1-distill-qwen-7b"] 
+    TRAVERSAL_MODELS = ["qwen2.5-14b-instruct"] 
 
 # [
 #         "qwen2.5-7b-instruct",
