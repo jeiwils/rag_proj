@@ -224,6 +224,9 @@ def rerank_passages_by_helpfulness(
 
 
 ### COMPONENT 1 - retrieval 
+
+
+
 def select_seed_passages(  # helper for run_dev_set()
     query_text: str,
     query_emb: np.ndarray,
@@ -288,7 +291,10 @@ def select_seed_passages(  # helper for run_dev_set()
 ### COMPONENT 2 - traversal 
 
 
-########################## THIS SHOULD NOW GET CONDITIONED SCORE FROM OQ-IQ PARENT
+
+
+
+
 def llm_choose_edge(
     query_text: str,
     candidate_edges: list,
@@ -393,6 +399,11 @@ def llm_choose_edge(
 
 
 
+
+
+
+
+
 def hoprag_traversal_algorithm(
     vj,
     graph,
@@ -486,6 +497,18 @@ def hoprag_traversal_algorithm(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 def enhanced_traversal_algorithm(
     vj, graph, query_text, visited_passages,
     server_configs, ccount, next_Cqueue, hop_log, state,
@@ -573,6 +596,8 @@ def enhanced_traversal_algorithm(
     hop_log["new_passages"].append(chosen_vk)
     next_Cqueue.append(chosen_vk)
     return {chosen_vk}
+
+
 
 
 
@@ -683,6 +708,10 @@ def traverse_graph(
 
 
 
+
+
+
+
 ### COMPONENT 3 - metrics 
 
 
@@ -724,6 +753,12 @@ def compute_hop_metrics(
 
     final_metrics = results[-1]["metrics"] if results else {"precision": 0.0, "recall": 0.0, "f1": 0.0}
     return results, final_metrics
+
+
+
+
+
+
 
 
 
