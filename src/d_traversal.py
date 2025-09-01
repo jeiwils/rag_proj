@@ -290,6 +290,8 @@ def llm_choose_edge(
     server_configs: list,
     traversal_prompt: str,
     token_totals: Optional[Dict[str, int]] = None,
+    reason: bool = True,
+
 ):
     """Ask the local LLM to choose among multiple outgoing edges.
 
@@ -328,10 +330,12 @@ def llm_choose_edge(
     answer, usage = query_llm(
         prompt,
         server_url=oq_server["server_url"],
-        max_tokens=512,
+        max_tokens=2028,
         temperature=_temp_for(oq_server["model"], "edge_selection"),
         model_name=oq_server["model"],
         phase="edge_selection",
+        stop=["}"],
+        reason=reason,
     )
 
     if token_totals is not None and usage:
@@ -444,6 +448,7 @@ def hoprag_traversal_algorithm(
         server_configs=server_configs,
         traversal_prompt=traversal_prompt,
         token_totals=token_totals,
+        reason=False,
     )
 
     if chosen is None:
@@ -549,6 +554,7 @@ def enhanced_traversal_algorithm(
         graph=graph,
         server_configs=server_configs,
         traversal_prompt=traversal_prompt,
+        reason=False,
     )
 
     if chosen is None:

@@ -256,13 +256,37 @@ def is_r1_like(model_name: str) -> bool:
     name = model_name.lower()
     return ("deepseek" in name and ("r1" in name or "distill" in name)) or "r1" in name
 
-def _wrap_for_deepseek_user(prompt: str, task: str) -> str:
+# def _wrap_for_deepseek_user(prompt: str, task: str) -> str:
+#     """
+#     DeepSeek-R1 guidance must live in the *user* message. We inline the rules here.
+#     For generative tasks (IQ/OQ, answers, edge selection), we ask the model to
+#     start with '<think>\\n'. For CS (grammar+newline stop), we do NOT enforce think.
+#     """
+#     if task in {"iqoq_generation", "answer_generation", "edge_selection"}:
+#         preface = (
+#             "All instructions are provided in this single user message (no system prompt). "
+#             "Begin your output with '<think>\\n' and use that block for your reasoning. "
+#             "After the think block, follow the requested output format exactly."
+#         )
+#         return f"{preface}\n\n{prompt}"
+#     return prompt
+
+
+def _wrap_for_deepseek_user(prompt: str, task: str, reason: bool = True) -> str:
+    """Embed DeepSeek-R1 guidance in the *user* message.
+
+    Parameters
+    ----------
+    prompt: str
+        Original user prompt.
+    task: str
+        Name of the calling task/phase.
+    reason: bool, optional
+        If ``True`` and the task is generative (IQ/OQ, answers, edge selection),
+        instruct the model to begin with a ``<think>`` block. When ``False``, the
+        preface is omitted to keep the output concise.
     """
-    DeepSeek-R1 guidance must live in the *user* message. We inline the rules here.
-    For generative tasks (IQ/OQ, answers, edge selection), we ask the model to
-    start with '<think>\\n'. For CS (grammar+newline stop), we do NOT enforce think.
-    """
-    if task in {"iqoq_generation", "answer_generation", "edge_selection"}:
+    if reason and task in {"iqoq_generation", "answer_generation", "edge_selection"}:
         preface = (
             "All instructions are provided in this single user message (no system prompt). "
             "Begin your output with '<think>\\n' and use that block for your reasoning. "
@@ -287,14 +311,34 @@ def _temp_for(model_name: str, phase: str) -> float: ############ I GUESS I SHOU
 
 
 
-def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
-              stop=None, grammar=None, model_name="", phase=None):
-    # If you want R1-style guidance inside the *user* message:
-    def _wrap_for_deepseek_user(p):
-        return ("All instructions are provided in this single user message. "
-                "Begin your output with '<think>\\n' for internal reasoning, "
-                "then give the final answer.\n\n" + p)
+# def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
+#               stop=None, grammar=None, model_name="", phase=None):
+#     # If you want R1-style guidance inside the *user* message:
+#     def _wrap_for_deepseek_user(p):
+#         return ("All instructions are provided in this single user message. "
+#                 "Begin your output with '<think>\\n' for internal reasoning, "
+#                 "then give the final answer.\n\n" + p)
 
+#     is_deepseek = "deepseek" in model_name.lower()
+#     use_chat = isinstance(prompt, list) or is_deepseek
+#     if use_chat:
+#         endpoint = "/v1/chat/completions"
+#         if isinstance(prompt, list):
+#             messages = prompt
+#         else:
+#             content = _wrap_for_deepseek_user(prompt) if is_deepseek else prompt
+
+def query_llm(
+    prompt,
+    server_url,
+    max_tokens=128,
+    temperature=0.2,
+    stop=None,
+    grammar=None,
+    model_name="",
+    phase=None,
+    reason: bool = True,
+):
     is_deepseek = "deepseek" in model_name.lower()
     use_chat = isinstance(prompt, list) or is_deepseek
     if use_chat:
@@ -302,7 +346,11 @@ def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
         if isinstance(prompt, list):
             messages = prompt
         else:
-            content = _wrap_for_deepseek_user(prompt) if is_deepseek else prompt
+            content = (
+                _wrap_for_deepseek_user(prompt, phase or "", reason)
+                if is_deepseek
+                else prompt
+            )
             messages = [{"role": "user", "content": content}]
         payload = {
             "model": "local",  # required by the spec; llama.cpp ignores the value
