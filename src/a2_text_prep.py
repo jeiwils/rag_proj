@@ -234,10 +234,27 @@ def question_list_grammar(min_n: int, max_n: int) -> str:
 
 ############################################################################################## I NEED TO CHECK THIS BEFORE RUNNIN GIT AGAIN - NEED TO INTEGRATE 
 
-THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", flags=re.S|re.I)
+# THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", flags=re.S|re.I)
+
+# def strip_think(text: str) -> str:
+#     return THINK_BLOCK_RE.sub("", text).strip()
+
+THINK_BLOCK_RE = re.compile(r"<think>.*?(</think>|$)", flags=re.S | re.I)
+
 
 def strip_think(text: str) -> str:
-    return THINK_BLOCK_RE.sub("", text).strip()
+    """Remove reasoning traces wrapped in <think> tags.
+
+    The pattern also captures unclosed <think> blocks. After substitution any
+    leftover leading ``<think>`` tag is removed to guard against malformed
+    responses.
+    """
+
+    text = THINK_BLOCK_RE.sub("", text)
+    # If the model emitted an opening tag without a closing tag, remove it
+    text = re.sub(r"^<think>\s*", "", text, flags=re.I)
+    return text.strip()
+
 
 
 def is_r1_like(model_name: str) -> bool:
