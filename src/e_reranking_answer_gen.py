@@ -167,13 +167,41 @@ def normalise_answer(s: str) -> str:
     return white_space_fix(remove_articles(remove_punc(lower(s))))
 
 
+def clean_tokens(tokens: list[str]) -> list[str]:
+    """Remove duplicate tokens while keeping order.
+
+    If tokens besides ``"unknown"`` exist, drop all occurrences of
+    ``"unknown"``. Otherwise, keep a single ``"unknown"`` token.
+    """
+    drop_unknown = any(t != "unknown" for t in tokens)
+    seen: set[str] = set()
+    cleaned: list[str] = []
+    for t in tokens:
+        if t == "unknown" and drop_unknown:
+            continue
+        if t not in seen:
+            seen.add(t)
+            cleaned.append(t)
+    return cleaned
+
+
+def first_fragment(text: str) -> str:
+    """Return the first non-empty fragment split by period or newline."""
+
+    for part in re.split(r"[.\n]", text):
+        frag = part.strip()
+        if frag:
+            return frag
+    return ""
+
+
 
 def ask_llm_with_passages(
     query_text: str,
     passage_ids: List[str],
     graph: Optional[nx.DiGraph],
     server_url: str,
-    max_tokens: int = 20,
+    max_tokens: int = 512,
     passage_lookup: Optional[Dict[str, str]] = None,  # optional for dense mode
     model_name: str = "",
     top_k_answer_passages: int = 5,
@@ -238,12 +266,14 @@ def ask_llm_with_passages(
     if is_r1_like(model_name):
         raw = strip_think(raw)
 
-    raw_clean = extract_final_answer(raw)
+    raw_clean = first_fragment(extract_final_answer(raw))
     prompt_tokens = usage.get("prompt_tokens", 0)
     completion_tokens = usage.get("completion_tokens", 0)
     total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
+    tokens = clean_tokens(normalise_answer(raw_clean).split())
+    norm = " ".join(tokens)
 
-    norm = normalise_answer(raw_clean)
+    # norm = normalise_answer(raw_clean)
     return {
         "raw_answer": raw,
         "raw_clean": raw_clean,
