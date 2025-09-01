@@ -83,7 +83,7 @@ def stats_and_norm_checks(emb: np.ndarray, errors: list[str], sample: int, expec
         else:
             ok(f"emb ~unit-norm within tol={unit_tol}")
 
-def load_index(path: Path, errors: list[str]):
+def load_index(path: Path, errors: list[str], enforce_ip: bool = False):
     if not Path(path).is_file():
         fail(errors, f"index file not found: {path}")
         return None
@@ -93,20 +93,93 @@ def load_index(path: Path, errors: list[str]):
         fail(errors, f"failed to read faiss index: {path} ({e})")
         return None
 
-    # basic attributes
+    # Basic attributes
     ntotal = getattr(index, "ntotal", None)
     d = getattr(index, "d", None)
     metric = getattr(index, "metric_type", None)
     ok(f"faiss index loaded: ntotal={ntotal}, dim={d}, metric={metric}")
-
-    # training state (for IVF/HNSW etc.)
     if hasattr(index, "is_trained"):
         if not index.is_trained:
             fail(errors, "faiss index is not trained")
         else:
             ok("faiss index is trained")
 
+    # Report family/params best-effort
+    tname = type(index).__name__
+    family = tname
+    details = []
+    # IVF family
+    try:
+        ivf = faiss.extract_index_ivf(index)
+    except Exception:
+        ivf = None
+    if ivf is not None:
+        family = f"{family}/IVF"
+        if hasattr(ivf, "nlist"):
+            details.append(f"nlist={ivf.nlist}")
+        if hasattr(ivf, "nprobe"):
+            details.append(f"nprobe={ivf.nprobe}")
+        # IVFPQ details
+        if hasattr(index, "pq"):
+            pq = index.pq
+            details.append(f"pq.M={getattr(pq, 'M', '?')}")
+            details.append(f"pq.nbits={getattr(pq, 'nbits', '?')}")
+
+    # HNSW family (IndexHNSWFlat / IndexHNSW)
+    try:
+        down = faiss.downcast_index(index)
+        if hasattr(down, "hnsw"):
+            family = f"{family}/HNSW"
+            h = down.hnsw
+            details.append(f"HNSW.M={getattr(h, 'M', '?')}")
+            details.append(f"efSearch={getattr(h, 'efSearch', '?')}")
+            details.append(f"efConstruction={getattr(h, 'efConstruction', '?')}")
+    except Exception:
+        pass
+
+    print(f"[faiss] family={family} " + (" ".join(details) if details else ""))
+
+    # Optional: enforce IP metric (most common for unit-norm cosine)
+    if enforce_ip:
+        try:
+            if metric != faiss.METRIC_INNER_PRODUCT:
+                fail(errors, f"unexpected metric_type={metric} (expected METRIC_INNER_PRODUCT)")
+        except Exception:
+            fail(errors, "could not verify metric_type vs METRIC_INNER_PRODUCT")
+
     return index
+
+def set_search_effort(index, nprobe: int | None = None, efsearch: int | None = None):
+    """Best-effort bump of search effort on approximate indexes.
+    Returns a dict of previous -> new params that were changed.
+    """
+    changes = {}
+    # IVF
+    try:
+        ivf = faiss.extract_index_ivf(index)
+    except Exception:
+        ivf = None
+    if ivf is not None and nprobe is not None and hasattr(ivf, "nprobe"):
+        prev = int(ivf.nprobe)
+        if nprobe > prev:
+            ivf.nprobe = nprobe
+            changes["nprobe"] = (prev, ivf.nprobe)
+
+    # HNSW
+    try:
+        down = faiss.downcast_index(index)
+        if hasattr(down, "hnsw") and efsearch is not None:
+            h = down.hnsw
+            if hasattr(h, "efSearch"):
+                prev = int(h.efSearch)
+                if efsearch > prev:
+                    h.efSearch = efsearch
+                    changes["efSearch"] = (prev, h.efSearch)
+    except Exception:
+        pass
+
+    return changes
+
 
 def check_index_matches_emb(index, emb: np.ndarray, errors: list[str]):
     # dim check
@@ -123,24 +196,30 @@ def check_index_matches_emb(index, emb: np.ndarray, errors: list[str]):
     else:
         ok("index ntotal matches emb rows")
 
-def quick_recall_check(index, emb: np.ndarray, trials: int, errors: list[str]):
-    # Choose random rows; expect nearest neighbor to be self
+def quick_recall_check(index, emb: np.ndarray, trials: int, errors: list[str],
+                       bump_nprobe: int | None = 128, bump_efsearch: int | None = 256):
+    # Increase search effort for the test (non-destructive to your saved index)
+    changes = set_search_effort(index, nprobe=bump_nprobe, efsearch=bump_efsearch)
+    if changes:
+        pretty = " ".join([f"{k}:{v[0]}→{v[1]}" for k, v in changes.items()])
+        print(f"[faiss] bumped search effort for self-recall test: {pretty}")
+
     if emb.shape[0] == 0:
         return
     rng = np.random.default_rng(0xBEEF)
     n = emb.shape[0]
     k = min(trials, n)
     picks = rng.integers(0, n, size=k)
-    # Make sure we feed float32 and C-contiguous
+
     q = np.ascontiguousarray(emb[picks].astype(np.float32))
     D, I = index.search(q, 1)
     hits = int((I.reshape(-1) == picks).sum())
     print(f"[recall@1 self] {hits}/{k} exact self-hits")
-    # Be lenient on approximate indexes: require majority self-hit
     if hits < max(1, k // 2):
         fail(errors, f"low self recall@1: {hits}/{k}")
     else:
         ok("self recall@1 looks good")
+
 
 def load_metadata(meta_path: Path, errors: list[str]) -> list[dict]:
     if not Path(meta_path).is_file():
@@ -170,7 +249,15 @@ def check_meta_vs_emb(meta: list[dict], emb: np.ndarray, errors: list[str]):
             fail(errors, "meta vec_id not integer type")
         else:
             ok("meta vec_id integer type")
-        # uniqueness & range
+
+        # perfect positional alignment
+        if not np.all(ids == np.arange(len(ids))):
+            bad = np.where(ids != np.arange(len(ids)))[0][:5]
+            fail(errors, f"vec_id misaligned with row indices (first bad rows: {bad.tolist()})")
+        else:
+            ok("vec_id perfectly aligned with row indices")
+
+        # uniqueness & range (redundant if perfectly aligned, but keep for clarity)
         unique = len(set(map(int, ids)))
         if unique != len(ids):
             fail(errors, f"duplicate vec_id(s): unique={unique} rows={len(ids)}")
@@ -193,6 +280,33 @@ def check_meta_vs_emb(meta: list[dict], emb: np.ndarray, errors: list[str]):
         if coverage < 0.95:
             print("[warn] low text coverage (<95%); ensure this is expected")
 
+
+
+from collections import defaultdict
+
+def detect_exact_duplicates(emb: np.ndarray, max_report: int = 5) -> list[list[int]]:
+    """Return groups of exact duplicate row indices (byte-for-byte equal in FP32).
+    NOTE: This detects exact equality, not near-duplicates.
+    """
+    if emb.size == 0:
+        return []
+    arr = np.ascontiguousarray(emb.astype(np.float32, copy=False))
+    buckets: dict[bytes, list[int]] = defaultdict(list)
+
+    # Hash each row's bytes; O(N * d) but robust and simple
+    for i in range(arr.shape[0]):
+        buckets[arr[i].tobytes()].append(i)
+
+    groups = [idxs for idxs in buckets.values() if len(idxs) > 1]
+    if groups:
+        print(f"[warn] found {len(groups)} exact duplicate group(s). Showing up to {max_report}:")
+        for g in groups[:max_report]:
+            head = ", ".join(map(str, g[:10]))
+            print(f"  - dup size={len(g)} rows=[{head}]{' ...' if len(g) > 10 else ''}")
+    return groups
+
+
+
 def main():
     ap = argparse.ArgumentParser("rep health")
     ap.add_argument("--emb", type=Path, required=True, help="Path to *.npy embeddings")
@@ -204,6 +318,15 @@ def main():
     ap.add_argument("--no_expect_unit_norm", dest="expect_unit_norm", action="store_false")
     ap.add_argument("--unit_tol", type=float, default=1e-4, help="Tolerance for unit-norm check")
     ap.add_argument("--strict", action="store_true", help="Exit 1 if any failure or warning")
+    ap.add_argument("--enforce_ip", action="store_true",
+                    help="Fail if FAISS metric_type is not METRIC_INNER_PRODUCT")
+    ap.add_argument("--nprobe", type=int, default=128,
+                    help="IVF nprobe to use during self-recall test (if applicable)")
+    ap.add_argument("--efsearch", type=int, default=256,
+                    help="HNSW efSearch to use during self-recall test (if applicable)")
+    ap.add_argument("--check_duplicates", action="store_true",
+                    help="Scan for exact duplicate embedding rows (can cause self-recall ties)")
+
     args = ap.parse_args()
 
     errors: list[str] = []
@@ -211,15 +334,19 @@ def main():
     emb = load_embeddings(args.emb, errors)
     if emb.size:
         stats_and_norm_checks(emb, errors, args.sample, args.expect_unit_norm, args.unit_tol)
+        if args.check_duplicates:
+            _dup = detect_exact_duplicates(emb, max_report=5)
+            if _dup:
+                print("[note] self-recall misses can be caused by exact duplicates (ties).")
 
-    index = load_index(args.index, errors)
+    index = load_index(args.index, errors, enforce_ip=args.enforce_ip)
     if index is not None and emb.size:
         check_index_matches_emb(index, emb, errors)
-        quick_recall_check(index, emb, args.recall_trials, errors)
+        quick_recall_check(index, emb, args.recall_trials, errors,
+                           bump_nprobe=args.nprobe, bump_efsearch=args.efsearch)
 
     meta = load_metadata(args.meta, errors)
     if meta and emb.size:
-        # prefer project validator if available
         if validate_vec_ids is not None:
             try:
                 validate_vec_ids(meta, emb)
@@ -227,6 +354,7 @@ def main():
             except Exception as e:
                 fail(errors, f"validate_vec_ids failed: {e}")
         check_meta_vs_emb(meta, emb, errors)
+
 
     if errors:
         print("\n=== SUMMARY: FAIL ===")
