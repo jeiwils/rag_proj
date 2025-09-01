@@ -120,6 +120,7 @@ import re
 from pathlib import Path
 from typing import Dict, List, Set, Callable
 import unicodedata
+import logging
 
 import faiss
 import numpy as np
@@ -142,6 +143,8 @@ from src.utils import (
 RESUME = True ########## WHY SET HERE?
 
 _bge_model = None ########## WHY SET HERE?
+
+logger = logging.getLogger(__name__)
 
 
 def get_embedding_model():
@@ -460,12 +463,17 @@ def retrieve_hybrid_candidates(
     faiss_dict = {int(idx): float(score) for idx, score in zip(faiss_idxs, faiss_scores)}
 
     # Sparse retrieval via Jaccard
-    jaccard_scores = [
-        jaccard_similarity(query_keywords, set(m.get(keyword_field, []))) for m in metadata
-    ]
-    jaccard_top = set(
-        int(i) for i in np.argsort(jaccard_scores)[::-1][:top_k]
-    )
+    if query_keywords:
+        jaccard_scores = [
+            jaccard_similarity(query_keywords, set(m.get(keyword_field, []))) for m in metadata
+        ]
+        jaccard_top = set(
+            int(i) for i in np.argsort(jaccard_scores)[::-1][:top_k]
+        )
+    else:
+        logger.warning("No query keywords provided; skipping Jaccard retrieval")
+        jaccard_scores = [0.0] * len(metadata)
+        jaccard_top = set()
 
     candidate_idxs = set(faiss_dict.keys()).union(jaccard_top)
     if filter_fn is not None:
