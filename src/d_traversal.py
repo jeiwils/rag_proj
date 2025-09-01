@@ -118,8 +118,10 @@ from src.b_sparse_dense_representations import (
     retrieve_hybrid_candidates,
     get_embedding_model,
     jaccard_similarity,
-    faiss_search_topk
+    faiss_search_topk,
+    build_and_save_faiss_index,
 )
+
 from src.c_graphing import DEFAULT_ALPHA, append_global_result
 from src.utils import (
     SERVER_CONFIGS,
@@ -233,6 +235,14 @@ def select_seed_passages(  # helper for run_dev_set()
     help verify that retrieval varies across queries.
     """
 
+    if passage_index.ntotal != len(passage_metadata):
+        raise ValueError(
+            "FAISS index size mismatch: index has "
+            f"{passage_index.ntotal} vectors but metadata lists "
+            f"{len(passage_metadata)} passages"
+        )
+
+    query_emb = np.ascontiguousarray(query_emb, dtype=np.float32)
     query_keywords = set(extract_keywords(query_text))
 
     # Log FAISS dense results
@@ -277,70 +287,88 @@ def select_seed_passages(  # helper for run_dev_set()
 
 ########################## THIS SHOULD NOW GET CONDITIONED SCORE FROM OQ-IQ PARENT
 def llm_choose_edge(
-        query_text: str,
-        candidate_edges: list,
-        graph: nx.DiGraph,
-        server_configs: list,
-        traversal_prompt: str,
-        token_totals: Optional[Dict[str, int]] = None,
-
-        ):
-    """
-    Ask the local LLM to evaluate each outgoing OQ edge individually.
-    The first edge receiving a {"Decision": "Relevant and Necessary"}
-    response is returned.
+    query_text: str,
+    candidate_edges: list,
+    graph: nx.DiGraph,
+    server_configs: list,
+    traversal_prompt: str,
+    token_totals: Optional[Dict[str, int]] = None,
+):
+    """Ask the local LLM to choose among multiple outgoing edges.
 
     ``candidate_edges`` **must** already be sorted by the caller in whatever
-    deterministic order is desired. ``graph`` is used to look up attributes on
-    destination nodes (e.g., ``conditioned_score``).
+    deterministic order is desired. ``graph`` is included for interface
+    compatibility but is not used.
 
-    Returns:
-        The chosen edge tuple or ``None`` if no edge is deemed relevant.
+    The LLM receives a single prompt enumerating all candidate auxiliary
+    questions and must respond with JSON of the form::
+
+        {"edge_index": int | null, "decision": str, "rationale": str}
+
+    ``edge_index`` refers to the position of the chosen edge in
+    ``candidate_edges``. ``decision`` is the relevance judgement and
+    ``rationale`` is optional free text.  The function returns the selected
+    edge tuple (``(vk, edge_data)``) or ``None`` along with the decision text
+    (decision and rationale concatenated) for logging.
     """
 
     oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
 
-    for vk, edge_data in candidate_edges:
-        template = string.Template(traversal_prompt)
-        prompt = template.safe_substitute(
-            query=query_text,
-            question=edge_data["oq_text"],
+    # Build a single prompt listing all candidate auxiliary questions
+    option_lines = [
+        f"{i}. {edge_data['oq_text']}" for i, (_, edge_data) in enumerate(candidate_edges)
+    ]
+    options = "\n".join(option_lines)
+    prompt = (
+        f"{traversal_prompt}\n"
+        f"Main Question: {query_text}\n"
+        "Candidate Auxiliary Questions:\n"
+        f"{options}\n\n"
+        "Select the most relevant and necessary question. "
+        "Respond with a JSON object {\"edge_index\": <int or null>, "
+        "\"decision\": <str>, \"rationale\": <str>}"
+    )
+
+    answer, usage = query_llm(
+        prompt,
+        server_url=oq_server["server_url"],
+        max_tokens=64,
+        temperature=_temp_for(oq_server["model"], "edge_selection"),
+        model_name=oq_server["model"],
+        phase="edge_selection",
+    )
+
+    if token_totals is not None and usage:
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+        token_totals["prompt_tokens"] += prompt_tokens
+        token_totals["completion_tokens"] += completion_tokens
+        token_totals["total_tokens"] += usage.get(
+            "total_tokens", prompt_tokens + completion_tokens
         )
 
-        answer, usage = query_llm(
-            prompt,
-            server_url=oq_server["server_url"],
-            max_tokens=30,
-            temperature=_temp_for(oq_server["model"], "edge_selection"),
-            model_name=oq_server["model"],
-            phase="edge_selection",
-        )
+    if is_r1_like(oq_server["model"]):
+        answer = strip_think(answer)
 
-        if token_totals is not None and usage:
-            prompt_tokens = usage.get("prompt_tokens", 0)
-            completion_tokens = usage.get("completion_tokens", 0)
-            token_totals["prompt_tokens"] += prompt_tokens
-            token_totals["completion_tokens"] += completion_tokens
-            token_totals["total_tokens"] += usage.get(
-                "total_tokens", prompt_tokens + completion_tokens
-            )
+    chosen = None
+    decision_text = answer
+    try:
+        parsed = json.loads(answer.replace("'", '"'))
+        idx = parsed.get("edge_index")
+        decision = parsed.get("decision") or parsed.get("Decision")
+        rationale = parsed.get("rationale") or parsed.get("Rationale")
+        if decision:
+            decision_text = decision
+            if rationale:
+                decision_text += f" - {rationale}"
+        if isinstance(idx, int) and 0 <= idx < len(candidate_edges):
+            chosen = candidate_edges[idx]
+    except json.JSONDecodeError:
+        pass
 
-        if is_r1_like(oq_server["model"]):
-            answer = strip_think(answer)
+    print(f"[Edge Selection] {decision_text}")
 
-        decision = None
-        try:
-            parsed = json.loads(answer.replace("'", '"'))
-            decision = parsed.get("Decision")
-        except json.JSONDecodeError:
-            pass
-
-        print(f"[Edge Selection] {edge_data['oq_id']} -> {decision}")
-
-        if decision == "Relevant and Necessary":
-            return vk, edge_data
-
-    return None
+    return chosen, decision_text
 
 
 
@@ -392,16 +420,14 @@ def hoprag_traversal_algorithm(
         ]
     )
 
-    # LLM evaluates each edge's auxiliary question and returns the first
-    # marked "Relevant and Necessary". Other edges are ignored.
-    chosen = llm_choose_edge(
+    # LLM selects among the candidates once and returns the chosen edge
+    chosen, decision = llm_choose_edge(
         query_text=query_text,
         candidate_edges=candidates,
         graph=graph,
         server_configs=server_configs,
         traversal_prompt=traversal_prompt,
         token_totals=token_totals,
-
     )
 
     if chosen is None:
@@ -419,6 +445,7 @@ def hoprag_traversal_algorithm(
         "oq_id": chosen_edge["oq_id"],
         "iq_id": chosen_edge["iq_id"],
         "repeat_visit": is_repeat,
+        "decision": decision,
     })
 
     ccount[chosen_vk] = ccount.get(chosen_vk, 0) + 1
@@ -488,10 +515,8 @@ def enhanced_traversal_algorithm(
             for vk, edge_data in candidates
         ]
     )
-    # 3) Ask LLM to pick the next edge
-    #    The model evaluates each candidate and returns the first whose
-    #    auxiliary question is deemed "Relevant and Necessary".
-    chosen = llm_choose_edge(
+    # 3) Ask LLM to pick the next edge among the candidates
+    chosen, decision = llm_choose_edge(
         query_text=query_text,
         candidate_edges=candidates,
         graph=graph,
@@ -517,6 +542,8 @@ def enhanced_traversal_algorithm(
         "oq_id": chosen_edge["oq_id"],
         "iq_id": chosen_edge["iq_id"],
         "repeat_visit": is_repeat,
+        "decision": decision,
+
     })
 
     ccount[chosen_vk] = ccount.get(chosen_vk, 0) + 1
@@ -1104,6 +1131,33 @@ def process_traversal(cfg: Dict) -> None:
     passage_metadata = list(load_jsonl(paths["passages_jsonl"]))
     passage_emb = np.load(paths["passages_emb"])
     passage_index = faiss.read_index(paths["passages_index"])
+    if passage_index.ntotal != len(passage_metadata):
+        print(
+            f"[process_traversal] FAISS index has {passage_index.ntotal} vectors "
+            f"but metadata lists {len(passage_metadata)} passages. Rebuilding index."
+        )
+        missing = len(passage_metadata) - passage_index.ntotal
+        output_dir = str(Path(paths["passages_index"]).parent)
+        if missing > 0:
+            build_and_save_faiss_index(
+                passage_emb,
+                dataset,
+                "passages",
+                output_dir=output_dir,
+                new_vectors=passage_emb[passage_index.ntotal:],
+            )
+        else:
+            build_and_save_faiss_index(
+                passage_emb,
+                dataset,
+                "passages",
+                output_dir=output_dir,
+            )
+        passage_index = faiss.read_index(paths["passages_index"])
+        if passage_index.ntotal != len(passage_metadata):
+            raise ValueError(
+                "FAISS index rebuild failed to match metadata length"
+            )
     query_path = processed_dataset_paths(dataset, split)["questions"]
 
     graph_path = Path(

@@ -384,6 +384,7 @@ def load_faiss_index(path: str):
 
 def faiss_search_topk(query_emb: np.ndarray, index, top_k: int = 50):
     """Retrieve ``top_k`` most similar items from a FAISS index."""
+    query_emb = np.ascontiguousarray(query_emb, dtype=np.float32)
     scores, idx = index.search(query_emb, top_k)
     return idx[0], scores[0]
 
