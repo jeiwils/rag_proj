@@ -306,12 +306,11 @@ def llm_choose_edge(
     The LLM receives a single prompt enumerating all candidate auxiliary
     questions and must respond with JSON of the form::
 
-        {"edge_index": int | null, "reason": "<optional>"}
+        {"edge_index": int | null}
 
     ``edge_index`` refers to the position of the chosen edge in
     ``candidate_edges``. The function returns the selected edge tuple
-    (``(vk, edge_data)``) or ``None`` along with any optional rationale text for
-    logging.
+    (``(vk, edge_data)``) or ``None``.
     """
 
     oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
@@ -327,7 +326,7 @@ def llm_choose_edge(
         "Candidate Auxiliary Questions:\n"
         f"{options}\n\n"
         "Select the auxiliary question that best helps answer the main question. "
-        "Respond with a JSON object {\"edge_index\": <int or null>, \"reason\": \"<optional>\"}"
+        "Respond with a JSON object {\"edge_index\": <int or null>}"
     )
 
     answer, usage = query_llm(
@@ -352,21 +351,18 @@ def llm_choose_edge(
         answer = strip_think(answer)
 
     chosen = None
-    reason_text = answer
+    idx = None
     try:
         parsed = json.loads(answer.replace("'", '"'))
         idx = parsed.get("edge_index")
-        rationale = parsed.get("rationale") or parsed.get("Rationale")
-        if rationale:
-            reason_text = rationale
         if isinstance(idx, int) and 0 <= idx < len(candidate_edges):
             chosen = candidate_edges[idx]
     except json.JSONDecodeError:
         pass
 
-    print(f"[Edge Selection] {reason_text}")
+    print(f"[Edge Selection] idx={idx}")
 
-    return chosen, reason_text
+    return chosen
 
 
 
@@ -419,7 +415,7 @@ def hoprag_traversal_algorithm(
     )
 
     # LLM selects among the candidates once and returns the chosen edge
-    chosen, reason = llm_choose_edge(
+    chosen = llm_choose_edge(
         query_text=query_text,
         candidate_edges=candidates,
         graph=graph,
@@ -443,7 +439,6 @@ def hoprag_traversal_algorithm(
         "oq_id": chosen_edge["oq_id"],
         "iq_id": chosen_edge["iq_id"],
         "repeat_visit": is_repeat,
-        "reason": reason,
     })
 
     ccount[chosen_vk] = ccount.get(chosen_vk, 0) + 1
@@ -514,7 +509,7 @@ def enhanced_traversal_algorithm(
         ]
     )
     # 3) Ask LLM to pick the next edge among the candidates
-    chosen, reason = llm_choose_edge(
+    chosen = llm_choose_edge(
         query_text=query_text,
         candidate_edges=candidates,
         graph=graph,
@@ -540,8 +535,6 @@ def enhanced_traversal_algorithm(
         "oq_id": chosen_edge["oq_id"],
         "iq_id": chosen_edge["iq_id"],
         "repeat_visit": is_repeat,
-        "reason": reason,
-
     })
 
     ccount[chosen_vk] = ccount.get(chosen_vk, 0) + 1
