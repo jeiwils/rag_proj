@@ -239,20 +239,15 @@ def question_list_grammar(min_n: int, max_n: int) -> str:
 # def strip_think(text: str) -> str:
 #     return THINK_BLOCK_RE.sub("", text).strip()
 
-THINK_BLOCK_RE = re.compile(r"<think>.*?(</think>|$)", flags=re.S | re.I)
+THINK_BLOCK_RE = re.compile(r"^<think>.*?</think>\s*", flags=re.S | re.I)
 
 
 def strip_think(text: str) -> str:
-    """Remove reasoning traces wrapped in <think> tags.
-
-    The pattern also captures unclosed <think> blocks. After substitution any
-    leftover leading ``<think>`` tag is removed to guard against malformed
-    responses.
-    """
+    """Remove a leading reasoning block delimited by ``<think>`` tags."""
 
     text = THINK_BLOCK_RE.sub("", text)
-    # If the model emitted an opening tag without a closing tag, remove it
-    text = re.sub(r"^<think>\s*", "", text, flags=re.I)
+    if text.lstrip().lower().startswith("<think>"):
+        text = re.sub(r"^<think>\s*", "", text, flags=re.I)
     return text.strip()
 
 

@@ -128,7 +128,21 @@ from src.utils import (
 ################################################################################################################
 
 
+def extract_final_answer(raw: str) -> str:
+    """Extract the last stated answer from raw LLM output.
 
+    Searches for patterns like "final answer", "answer is", or "Answer:" and
+    returns the text following the last occurrence. If no such pattern is
+    found, the original string is returned stripped.
+    """
+    pattern = re.compile(
+        r"(?:final answer|answer(?: is)?)\s*:?\s*(.+)",
+        flags=re.IGNORECASE | re.MULTILINE,
+    )
+    matches = pattern.findall(raw)
+    if matches:
+        return matches[-1].strip()
+    return raw.strip()
 
 
 def normalise_answer(s: str) -> str:
@@ -160,7 +174,7 @@ def ask_llm_with_passages(
     passage_ids: List[str],
     graph: Optional[nx.DiGraph],
     server_url: str,
-    max_tokens: int = 100,
+    max_tokens: int = 20,
     passage_lookup: Optional[Dict[str, str]] = None,  # optional for dense mode
     model_name: str = "",
     top_k_answer_passages: int = 5,
@@ -179,7 +193,7 @@ def ask_llm_with_passages(
     server_url : str
         URL of the LLM completion endpoint.
     max_tokens : int, optional
-        Maximum number of tokens to generate, by default ``100``.
+        Maximum number of tokens to generate, by default ``20``.
     passage_lookup : Optional[Dict[str, str]]
         Mapping from ``passage_id`` to passage text when ``graph`` is ``None``.
     model_name : str, optional
@@ -206,7 +220,8 @@ def ask_llm_with_passages(
         passage_texts.append(f"[{pid}]: {passage}")
 
     prompt = (
-        f"Answer the question using the following passages:\n\n"
+        "Answer the question using the following passages.\n"
+        "Respond with a single short answer and no explanation. If unknown, reply `unknown`.\n\n"
         + "\n\n".join(passage_texts)
         + f"\n\nQuestion: {query_text}\nAnswer:"
     )
@@ -216,19 +231,22 @@ def ask_llm_with_passages(
         server_url=server_url,
         max_tokens=max_tokens,
         model_name=model_name,
+        stop=["\n", "Answer:", "Final answer:"],
         phase="answer_generation",
     )
 
     if is_r1_like(model_name):
         raw = strip_think(raw)
 
+    raw_clean = extract_final_answer(raw)
     prompt_tokens = usage.get("prompt_tokens", 0)
     completion_tokens = usage.get("completion_tokens", 0)
     total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
 
-    norm = normalise_answer(raw)
+    norm = normalise_answer(raw_clean)
     return {
         "raw_answer": raw,
+        "raw_clean": raw_clean,
         "normalised_answer": norm,
         "prompt_len": prompt_tokens,
         "output_tokens": completion_tokens,
