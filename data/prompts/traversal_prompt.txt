@@ -1,33 +1,4 @@
-You are a question-answering robot. I will provide you with a main question that involves multiple pieces of information, as well as an additional auxiliary question. Your task is to answer the main question, but since the main question involves a lot of information that you may not know, you have the opportunity to use the auxiliary question to gather the information you need. However, the auxiliary question may not always be useful, so you need to assess the relationship between the auxiliary and the main question to determine whether or not to use it.
-
-You need to assess whether the auxiliary question is completely irrelevant, indirectly relevant, or relevant and necessary for answering the main question. You can only return one of these three outcomes.
-
-Please note that the main question will involve multiple background sentences, meaning that answering the main question requires the combination and reasoning of several pieces of information. However, you do not know which specific sentences are necessary to answer the main question. Your task is to assess whether the given auxiliary question is relevant and necessary, indirectly relevant, or completely irrelevant in answering the main question.
-
-Result 1: [Completely Irrelevant]. In this case, you determine that even without the information from the auxiliary question, you can still answer the main question, or the information in the auxiliary question is completely unrelated to the answer of the main question.
-Result 2: [Indirectly relevant]. In this case, you find that the auxiliary question is related to the main question, but its answer is not part of the multiple pieces of information needed to answer the main question. The auxiliary question focuses on a related topic but does not provide critical information necessary for answering the main question.
-Result 3: [Relevant and Necessary]. In this case, you find that the auxiliary question is a sub-question of the main question, meaning that without answering the auxiliary question, you will not be able to answer the main question. The information provided by the auxiliary question is necessary to answer the main question.
-
-Example of Result 1:
-Main Question: Donnie Smith who plays as a left back for New England Revolution belongs to what league featuring 22 teams?
-Auxiliary Question: What is the purpose of the State of the Union address presented by the President of the United States?
-In this case, after careful consideration, you find that the auxiliary question does not help answer the main question. The auxiliary question is completely unrelated to the main question. Your response should be:
-```json {"Decision": "Completely Irrelevant"} ```
-
-Example of Result 2:
-Main Question: Donnie Smith who plays as a left back for New England Revolution belongs to what league featuring 22 teams?
-Auxiliary Question: What is the significance of this league for second teams in the region?
-In this case, you notice that both the main and auxiliary questions involve similar topics, but the auxiliary question focuses on the significance of the league, while the main question asks about the league to which a specific player belongs. Upon careful consideration, you find that the auxiliary question is related, but its answer does not provide any critical information to answer the main question. Your response should be:
-```json {"Decision": "Indirectly relevant"} ```
-
-Example of Result 3:
-Main Question: Donnie Smith who plays as a left back for New England Revolution belongs to what league featuring 22 teams?
-Auxiliary Question: Which team does Donald W. 'Donnie' Smith play for in Major League Soccer?
-In this case, after careful consideration, you find that the auxiliary question is indeed related to the main question. The auxiliary question is a sub-question of the main question and provides necessary information to answer the main question. Without the answer to the auxiliary question, you will not be able to answer the main question. Your response should be:
-```json {"Decision": "Relevant and Necessary"} ```
-
-Now please strictly follow the JSON format in your response, avoiding unnecessary escapes, line breaks, or spaces. You should return the JSON object, except for the JSON and list formats, you should replace all double quotes with single quotes.
-For example, use { 'How to Live' As Ghosts }
-You will receive the Main Question as follows:
-Main Question: $query
-Auxiliary Question: $question
+You will be given a main question and several candidate auxiliary questions.
+Enumerate the candidates starting at 1 and pick the one most useful for answering the main question.
+If none are helpful, choose null.
+Respond ONLY with a JSON object of the form {"edge_index": <int|null>}.
