@@ -352,13 +352,39 @@ def llm_choose_edge(
 
     chosen = None
     idx = None
+    parsed = None
     try:
         parsed = json.loads(answer.replace("'", '"'))
+    except json.JSONDecodeError:
+        brace_match = re.search(r"\{.*\}", answer, re.DOTALL)
+        if brace_match:
+            try:
+                parsed = json.loads(brace_match.group(0).replace("'", '"'))
+            except json.JSONDecodeError:
+                parsed = None
+    if parsed:
         idx = parsed.get("edge_index")
         if isinstance(idx, int) and 0 <= idx < len(candidate_edges):
             chosen = candidate_edges[idx]
-    except json.JSONDecodeError:
-        pass
+
+    if chosen is None:
+        match = re.search(r"[\"']edge_index[\"']\s*:\s*(\d+|null)", answer)
+        if match:
+            val = match.group(1)
+            if val != "null":
+                idx = int(val)
+                if 0 <= idx < len(candidate_edges):
+                    chosen = candidate_edges[idx]
+
+    if chosen is None:
+        match = re.search(r"\d+", answer)
+        if match:
+            idx = int(match.group(0))
+            if 0 <= idx < len(candidate_edges):
+                chosen = candidate_edges[idx]
+
+    if chosen is None:
+        print(f"[Edge Selection] raw answer (no valid index): {answer}")
 
     print(f"[Edge Selection] idx={idx}")
 
