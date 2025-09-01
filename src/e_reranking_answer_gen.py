@@ -92,7 +92,6 @@ Notes
 
 
 import json
-import os
 import pickle
 import re
 import string
@@ -103,7 +102,7 @@ from functools import partial
 import networkx as nx
 import pickle
 
-from src.a2_text_prep import is_r1_like, query_llm, strip_think, model_size
+from src.a2_text_prep import _temp_for, is_r1_like, query_llm, strip_think, model_size
 from src.utils import (
     append_jsonl,
     compute_resume_sets,
@@ -232,6 +231,7 @@ def ask_llm_with_passages(
         max_tokens=max_tokens,
         model_name=model_name,
         stop=["\n", "Answer:", "Final answer:"],
+        temperature=_temp_for(model_name, "answer_generation"),
         phase="answer_generation",
     )
 

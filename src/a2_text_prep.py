@@ -154,10 +154,10 @@ MAX_TOKENS = { #### WHY SET HERE????
 }
 
 TEMPERATURE = { #### WHY SET HERE????
-    "cs": 0.6, #0.0, 
-    "iqoq_generation": 0.6, # 0.1,
-    "edge_selection": 0.6, #0.1, 
-    "answer_generation": 0.6, #0.1 
+    "cs": 0.6, 
+    "iqoq_generation": 0.6, 
+    "edge_selection": 0.1, #0.6
+    "answer_generation": 0.6, 
 }
 
 
