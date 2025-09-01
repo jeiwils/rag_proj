@@ -742,7 +742,7 @@ def run_graph_pipeline(
 
 if __name__ == "__main__":
     
-    MODELS   = ["qwen2.5-7b-instruct"]  # ["deepseek-dis
+    MODELS   = ["llama-3.1-8b-instruct"]  # ["deepseek-dis
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     VARIANTS = ["baseline"]
     SPLIT    = "dev"

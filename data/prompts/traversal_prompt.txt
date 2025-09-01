@@ -12,22 +12,22 @@ Example of Result 1:
 Main Question: Donnie Smith who plays as a left back for New England Revolution belongs to what league featuring 22 teams?
 Auxiliary Question: What is the purpose of the State of the Union address presented by the President of the United States?
 In this case, after careful consideration, you find that the auxiliary question does not help answer the main question. The auxiliary question is completely unrelated to the main question. Your response should be:
-```json {{" Decision ": "Completely Irrelevant"}} ```
+```json {"Decision": "Completely Irrelevant"} ```
 
 Example of Result 2:
 Main Question: Donnie Smith who plays as a left back for New England Revolution belongs to what league featuring 22 teams?
 Auxiliary Question: What is the significance of this league for second teams in the region?
 In this case, you notice that both the main and auxiliary questions involve similar topics, but the auxiliary question focuses on the significance of the league, while the main question asks about the league to which a specific player belongs. Upon careful consideration, you find that the auxiliary question is related, but its answer does not provide any critical information to answer the main question. Your response should be:
-```json {{" Decision "* " Indirectly relevant "}} ```
+```json {"Decision": "Indirectly relevant"} ```
 
 Example of Result 3:
 Main Question: Donnie Smith who plays as a left back for New England Revolution belongs to what league featuring 22 teams?
 Auxiliary Question: Which team does Donald W. 'Donnie' Smith play for in Major League Soccer?
 In this case, after careful consideration, you find that the auxiliary question is indeed related to the main question. The auxiliary question is a sub-question of the main question and provides necessary information to answer the main question. Without the answer to the auxiliary question, you will not be able to answer the main question. Your response should be:
-```json {{" Decision ".* " Relevant and Necessary "}} ```
+```json {"Decision": "Relevant and Necessary"} ```
 
 Now please strictly follow the JSON format in your response, avoiding unnecessary escapes, line breaks, or spaces. You should return the JSON object, except for the JSON and list formats, you should replace all double quotes with single quotes.
-For example, use { 'How to Live' As Ghosts}
+For example, use { 'How to Live' As Ghosts }
 You will receive the Main Question as follows:
-Main Question: {query}
-Auxiliary Question: {question}
+Main Question: $query
+Auxiliary Question: $question

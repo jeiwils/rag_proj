@@ -148,7 +148,7 @@ root ::= "CS: 0.00" | "CS: 0.25" | "CS: 0.50" | "CS: 0.75" | "CS: 1.00"
 
 MAX_TOKENS = { #### WHY SET HERE????
     "cs": 200, # 50, 
-    "iqoq_generation": 512, 
+    "iqoq_generation": 192, 
     "edge_selection": 64, 
     "answer_generation": 256 
 }

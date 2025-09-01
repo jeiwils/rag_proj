@@ -100,6 +100,7 @@ import re
 import inspect
 import time 
 import random
+import string 
 
 from collections import Counter
 from pathlib import Path
@@ -272,7 +273,8 @@ def llm_choose_edge(
     oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
 
     for vk, edge_data in candidate_edges:
-        prompt = traversal_prompt.format(
+        template = string.Template(traversal_prompt)
+        prompt = template.safe_substitute(
             query=query_text,
             question=edge_data["oq_text"],
         )
@@ -1159,7 +1161,7 @@ if __name__ == "__main__":
     start_time = time.time()
 
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
-    GRAPH_MODELS = ["qwen-7b"]
+    GRAPH_MODELS = ["llama-3.1-8b-instruct"]
     TRAVERSAL_MODELS = ["qwen2.5-7b-instruct"]# ["deepseek-distill-qwen-7b"] #  #
     VARIANTS = ["baseline", "enhanced"]
 
