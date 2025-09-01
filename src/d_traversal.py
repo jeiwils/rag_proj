@@ -819,7 +819,12 @@ def run_traversal(
 
         # --- Embed query ---
         query_emb = emb_model.encode(query_text, normalize_embeddings=False)
-
+        norm = np.linalg.norm(query_emb)
+        if not np.isfinite(norm) or norm == 0:
+            raise ValueError(
+                f"Query embedding norm invalid ({norm}); check emb_model.encode output."
+            )
+        
         # --- Select seed passages ---
         seed_passages = select_seed_passages(
             query_text=query_text,
@@ -1067,6 +1072,9 @@ def process_query_batch(cfg: Dict) -> None:
     )
     if server_config is None:
         raise ValueError(f"Server URL {server_url} not found for model {model}")
+    
+    emb_model = get_embedding_model()
+
 
     queries = [{**q, "query_id": q["question_id"]} for q in load_jsonl(input_path)]
 
@@ -1089,7 +1097,7 @@ def process_query_batch(cfg: Dict) -> None:
         passage_metadata=cfg["passage_metadata"],
         passage_emb=cfg["passage_emb"],
         passage_index=cfg["passage_index"],
-        emb_model=cfg["emb_model"],
+        emb_model=emb_model,
         server_configs=[server_config],
         output_paths=cfg["output_paths"],
         seed_top_k=DEFAULT_SEED_TOP_K,
@@ -1168,7 +1176,6 @@ def process_traversal(cfg: Dict) -> None:
 
     urls = get_server_urls(model)
     shards = split_jsonl_for_models(str(query_path), model, resume=resume)
-    emb_model = get_embedding_model()
 
     batch_configs = []
     for i, (url, shard) in enumerate(zip(urls, shards)):
@@ -1184,7 +1191,6 @@ def process_traversal(cfg: Dict) -> None:
                 "passage_metadata": passage_metadata,
                 "passage_emb": passage_emb,
                 "passage_index": passage_index,
-                "emb_model": emb_model,
                 "server_url": url,
                 "model": model,
                 "output_paths": batch_paths,
