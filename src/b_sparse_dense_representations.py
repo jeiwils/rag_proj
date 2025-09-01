@@ -460,7 +460,14 @@ def retrieve_hybrid_candidates(
 
     # Dense retrieval via FAISS
     faiss_idxs, faiss_scores = faiss_search_topk(query_vec, index, top_k=top_k)
-    faiss_dict = {int(idx): float(score) for idx, score in zip(faiss_idxs, faiss_scores)}
+    n_meta = len(metadata)
+    # Filter out invalid indices and associated scores
+    valid_pairs = [
+        (int(idx), float(score))
+        for idx, score in zip(faiss_idxs, faiss_scores)
+        if idx != -1 and 0 <= int(idx) < n_meta
+    ]
+    faiss_dict = {idx: score for idx, score in valid_pairs}
 
     # Sparse retrieval via Jaccard
     if query_keywords:
@@ -472,10 +479,10 @@ def retrieve_hybrid_candidates(
         )
     else:
         logger.warning("No query keywords provided; skipping Jaccard retrieval")
-        jaccard_scores = [0.0] * len(metadata)
+        jaccard_scores = [0.0] * n_meta
         jaccard_top = set()
-
     candidate_idxs = set(faiss_dict.keys()).union(jaccard_top)
+    candidate_idxs = {i for i in candidate_idxs if 0 <= i < n_meta}
     if filter_fn is not None:
         candidate_idxs = {i for i in candidate_idxs if filter_fn(i)}
 
