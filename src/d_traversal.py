@@ -303,13 +303,12 @@ def llm_choose_edge(
     The LLM receives a single prompt enumerating all candidate auxiliary
     questions and must respond with JSON of the form::
 
-        {"edge_index": int | null, "decision": str, "rationale": str}
+        {"edge_index": int | null}
 
     ``edge_index`` refers to the position of the chosen edge in
-    ``candidate_edges``. ``decision`` is the relevance judgement and
-    ``rationale`` is optional free text.  The function returns the selected
-    edge tuple (``(vk, edge_data)``) or ``None`` along with the decision text
-    (decision and rationale concatenated) for logging.
+    ``candidate_edges``. The function returns the selected edge tuple
+    (``(vk, edge_data)``) or ``None`` along with any optional rationale text for
+    logging.
     """
 
     oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
@@ -324,9 +323,8 @@ def llm_choose_edge(
         f"Main Question: {query_text}\n"
         "Candidate Auxiliary Questions:\n"
         f"{options}\n\n"
-        "Select the most relevant and necessary question. "
-        "Respond with a JSON object {\"edge_index\": <int or null>, "
-        "\"decision\": <str>, \"rationale\": <str>}"
+        "Select the auxiliary question that best helps answer the main question. "
+        "Respond with a JSON object {\"edge_index\": <int or null>}"
     )
 
     answer, usage = query_llm(
@@ -351,24 +349,21 @@ def llm_choose_edge(
         answer = strip_think(answer)
 
     chosen = None
-    decision_text = answer
+    reason_text = answer
     try:
         parsed = json.loads(answer.replace("'", '"'))
         idx = parsed.get("edge_index")
-        decision = parsed.get("decision") or parsed.get("Decision")
         rationale = parsed.get("rationale") or parsed.get("Rationale")
-        if decision:
-            decision_text = decision
-            if rationale:
-                decision_text += f" - {rationale}"
+        if rationale:
+            reason_text = rationale
         if isinstance(idx, int) and 0 <= idx < len(candidate_edges):
             chosen = candidate_edges[idx]
     except json.JSONDecodeError:
         pass
 
-    print(f"[Edge Selection] {decision_text}")
+    print(f"[Edge Selection] {reason_text}")
 
-    return chosen, decision_text
+    return chosen, reason_text
 
 
 
@@ -421,7 +416,7 @@ def hoprag_traversal_algorithm(
     )
 
     # LLM selects among the candidates once and returns the chosen edge
-    chosen, decision = llm_choose_edge(
+    chosen, reason = llm_choose_edge(
         query_text=query_text,
         candidate_edges=candidates,
         graph=graph,
@@ -445,7 +440,7 @@ def hoprag_traversal_algorithm(
         "oq_id": chosen_edge["oq_id"],
         "iq_id": chosen_edge["iq_id"],
         "repeat_visit": is_repeat,
-        "decision": decision,
+        "reason": reason,
     })
 
     ccount[chosen_vk] = ccount.get(chosen_vk, 0) + 1
@@ -516,7 +511,7 @@ def enhanced_traversal_algorithm(
         ]
     )
     # 3) Ask LLM to pick the next edge among the candidates
-    chosen, decision = llm_choose_edge(
+    chosen, reason = llm_choose_edge(
         query_text=query_text,
         candidate_edges=candidates,
         graph=graph,
@@ -542,7 +537,7 @@ def enhanced_traversal_algorithm(
         "oq_id": chosen_edge["oq_id"],
         "iq_id": chosen_edge["iq_id"],
         "repeat_visit": is_repeat,
-        "decision": decision,
+        "reason": reason,
 
     })
 
