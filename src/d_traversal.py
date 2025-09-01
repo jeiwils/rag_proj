@@ -243,7 +243,6 @@ def select_seed_passages(  # helper for run_dev_set()
             f"{len(passage_metadata)} passages"
         )
 
-    query_emb = np.ascontiguousarray(query_emb, dtype=np.float32)
     query_keywords = set(extract_keywords(query_text))
 
     # Log FAISS dense results
@@ -819,7 +818,7 @@ def run_traversal(
         print(f"\n[Query] {question_id} - \"{query_text}\"")
 
         # --- Embed query ---
-        query_emb = emb_model.encode(query_text, normalize_embeddings=True)
+        query_emb = emb_model.encode(query_text, normalize_embeddings=False)
 
         # --- Select seed passages ---
         seed_passages = select_seed_passages(

@@ -126,7 +126,7 @@ def run_dense_rag(
 
         print(f"\n[Query] {q_id} - \"{q_text}\"")
 
-        q_emb = encoder.encode([q_text], normalize_embeddings=True)
+        q_emb = encoder.encode([q_text], normalize_embeddings=False)
         idxs, _ = faiss_search_topk(q_emb, index, top_k=top_k)
         passage_ids = [passages[i]["passage_id"] for i in idxs]
         hits_val = compute_hits_at_k(passage_ids, q.get("gold_passages", []), top_k)
