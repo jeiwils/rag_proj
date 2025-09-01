@@ -385,11 +385,16 @@ def build_networkx_graph(
 
     # Add passage nodes
     for p in passages:
+        vec_id = p.get("vec_id")
+        if vec_id is None:
+            raise ValueError(
+                f"passage {p.get('passage_id')} missing vec_id"
+            )
         G.add_node(
             p["passage_id"],
             text=p.get("text", ""),
             conditioned_score=p.get("conditioned_score", 0.0),
-            vec_id=p.get("vec_id"),
+            vec_id=vec_id,
             keywords=p.get("keywords_passage", []),
         )
 
@@ -611,7 +616,6 @@ def run_graph_pipeline(
     passages_md = list(load_jsonl(p_path))
     passage_emb = np.load(pass_paths["passages_emb"], mmap_mode="r")
     validate_vec_ids(passages_md, passage_emb)
-    del passage_emb
     iqoq_md = list(load_jsonl(q_path))   ## mmap_mode=r ?
     iq_md = [m for m in iqoq_md if m["type"] == "IQ"]
 
@@ -673,6 +677,14 @@ def run_graph_pipeline(
 
     # ---------- 4) Build graph ----------
     G = build_networkx_graph(passages=passages_md, edges=edges)
+
+    # Confirm all nodes retain vec_ids
+    node_md = [
+        {"passage_id": nid, "vec_id": data.get("vec_id")}
+        for nid, data in G.nodes(data=True)
+    ]
+    validate_vec_ids(node_md, passage_emb)
+    del passage_emb
 
     # ---------- 5) Global eval ----------
     graph_eval = basic_graph_eval(G)

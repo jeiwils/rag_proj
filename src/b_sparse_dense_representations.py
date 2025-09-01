@@ -257,21 +257,23 @@ def embed_and_save(
                 by_id[entry[id_field]] = entry
 
     data, texts = [], []
-    with open(input_jsonl, "rt", encoding="utf-8") as f:
-        for line in f:
-            entry = json.loads(line)
-            entry_id = entry.get(id_field)
-            if done_ids and entry_id in done_ids:
-                continue
-            texts.append(entry[text_key])
-            if by_id:
-                if entry_id not in by_id:
-                    raise KeyError(
-                        f"{id_field} {entry_id} from {input_jsonl} not found in {output_jsonl_input}"
-                    )
-                data.append(by_id[entry_id])
-            else:
-                data.append(entry)
+    # ``load_jsonl`` handles blank or malformed lines gracefully which ensures
+    # we iterate over *every* passage in the source file.  Some datasets include
+    # passages whose identifiers start with ``2hop__``; these should be embedded
+    # just like any other passage and must not be skipped.
+    for entry in load_jsonl(input_jsonl):
+        entry_id = entry.get(id_field)
+        if done_ids and entry_id in done_ids:
+            continue
+        texts.append(entry[text_key])
+        if by_id:
+            if entry_id not in by_id:
+                raise KeyError(
+                    f"{id_field} {entry_id} from {input_jsonl} not found in {output_jsonl_input}"
+                )
+            data.append(by_id[entry_id])
+        else:
+            data.append(entry)
 
     existing_embs = None
     vec_offset = 0
@@ -327,7 +329,10 @@ def embed_and_save(
     os.makedirs(dir_path or ".", exist_ok=True)
     with open(output_jsonl, mode + "t", encoding="utf-8") as f_out:
         for d in data:
-            f_out.write(json.dumps(d) + "\n")
+            # ``ensure_ascii=False`` preserves non-ASCII characters in the
+            # stored metadata, keeping a 1:1 correspondence with the source
+            # passages.
+            f_out.write(json.dumps(d, ensure_ascii=False) + "\n")
 
     print(
         f"[Embeddings] Saved {len(data)} new vectors to {output_npy} and updated JSONL {output_jsonl}"
@@ -497,7 +502,7 @@ def retrieve_hybrid_candidates(
                 query_keywords, set(metadata[idx].get(keyword_field, []))
             )
         else:
-            logger.warning("No query keywords provided; skipping Jaccard rerank")
+            logger.debug("No query keywords provided; skipping Jaccard rerank")
             sim_jac = 0.0
         sim_hybrid = alpha * sim_cos + (1.0 - alpha) * sim_jac
         results.append(
@@ -717,7 +722,7 @@ if __name__ == "__main__":
     print(f"[BGE] Loaded {BGE_MODEL} on {DEVICE}")
 
     # Config
-    MODELS   = ["qwen2.5-7b-instruct"]  # ["deepseek-dis
+    MODELS   = ["llama-3.1-8b-instruct"]  # ["deepseek-dis
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     VARIANTS = ["baseline"]
     SPLIT = "dev"
