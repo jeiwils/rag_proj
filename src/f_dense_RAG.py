@@ -195,13 +195,20 @@ if __name__ == "__main__":
 
 
 
-    # READER_MODELS = [
-    #     "qwen2.5-7b-instruct",
-    #     "qwen2.5-14b-instruct",
-    #     "deepseek-r1-distill-qwen-7b",
-    #     "deepseek-r1-distill-qwen-14b",
-    #     "qwen2.5-moe-19b",
-    # ]
+    READER_MODELS = [
+
+        "qwen2.5-7b-instruct",
+        "qwen2.5-14b-instruct",
+
+        "deepseek-r1-distill-qwen-7b",
+        "deepseek-r1-distill-qwen-14b",
+
+        "qwen2.5-moe-19b",
+
+        "state-of-the-moe-rp-2x7b",
+
+        "qwen2.5-2x7b-power-coder-v4"
+    ]
 
 
     TOP_K = DEFAULT_SEED_TOP_K

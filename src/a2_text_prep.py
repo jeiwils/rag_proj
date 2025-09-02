@@ -448,7 +448,6 @@ def query_llm(
     use_chat = (
         isinstance(prompt, list) or is_deepseek or response_format is not None
     ) and not enforce_traversal_integer
-    supports_grammar = "llama" in model_name.lower()
 
     prompt_text = (
         "".join(m.get("content", "") for m in prompt) if isinstance(prompt, list) else prompt
@@ -484,8 +483,8 @@ def query_llm(
             payload["stop"] = stop
         if response_format is not None:
             payload["response_format"] = response_format
-        if grammar and supports_grammar:
-            payload["grammar"] = grammar  # llama.cpp supports grammar for chat
+        if grammar:
+            payload["grammar"] = grammar
     else:
         endpoint = "/completion"
         payload = {
@@ -495,7 +494,7 @@ def query_llm(
         }
         if stop:
             payload["stop"] = stop
-        if grammar and supports_grammar:
+        if grammar:
             payload["grammar"] = grammar
 
     r = _post(f"{server_url}{endpoint}", json=payload)

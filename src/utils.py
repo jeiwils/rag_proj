@@ -43,6 +43,12 @@ SERVER_CONFIGS = [
 
     # --- Traversal: Qwen2.5-MOE-19B (1) ---
     {"server_url": "http://localhost:8008", "model": "qwen2.5-moe-19b"},
+
+    # --- Traversal: State-of-the-MoE-RP-2x7B (1) ---
+    {"server_url": "http://localhost:8052", "model": "state-of-the-moe-rp-2x7b"},
+
+    # --- Traversal: Qwen2.5-2x7B-Power-Coder-V4 (1) ---
+    {"server_url": "http://localhost:8051", "model": "qwen2.5-2x7b-power-coder-v4"},
 ]
 
 
