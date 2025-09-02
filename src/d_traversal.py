@@ -486,6 +486,9 @@ def llm_choose_edge(
         return idx_val
 
     idx = _parse_idx(answer)
+    if idx is None:
+        print("[Edge Selection] no edge selected")
+        return None
     if idx == "invalid":
         grammar = _selection_grammar_allowing_null(k)
         answer, usage = query_llm(
@@ -513,9 +516,17 @@ def llm_choose_edge(
             answer = strip_think(answer)
 
         idx = _parse_idx(answer)
+
+        if idx is None:
+            print("[Edge Selection] no edge selected")
+            return None
+        
         if idx == "invalid":
             return None
-        return None
+        
+        print(f"[Edge Selection] idx={idx}")
+        return candidate_edges[idx]
+
 
     print(f"[Edge Selection] idx={idx}")
     return candidate_edges[idx]
