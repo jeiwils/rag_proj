@@ -351,39 +351,65 @@ def llm_choose_edge(
     if is_r1_like(oq_server["model"]):
         answer = strip_think(answer)
 
-    chosen = None
-    idx = None
-    parsed = None
+    # chosen = None
+    # idx = None
+    # parsed = None
+    # brace_match = re.search(r"\{.*?\}", answer, re.DOTALL)
+    # if brace_match:
+    #     try:
+    #         parsed = json.loads(brace_match.group(0).replace("'", '"'))
+    #     except json.JSONDecodeError:
+    #         parsed = None
+
+    # if parsed:
+    #     idx = parsed.get("edge_index")
+    #     if isinstance(idx, int):
+    #         idx -= 1
+    #         if 0 <= idx < len(candidate_edges):
+    #             chosen = candidate_edges[idx]
+
+    # if chosen is None:
+    #     match = re.search(r"[\"']edge_index[\"']\s*:\s*(\d+|null)", answer)
+    #     if match:
+    #         val = match.group(1)
+    #         if val != "null":
+    #             idx = int(val) - 1
+    #             if 0 <= idx < len(candidate_edges):
+    #                 chosen = candidate_edges[idx]
+
+    # if chosen is None:
+    #     print(f"[Edge Selection] raw answer (no valid index): {answer}")
+
+    # print(f"[Edge Selection] idx={idx}")
+
+    # return chosen
+
     brace_match = re.search(r"\{.*?\}", answer, re.DOTALL)
+    parsed = None
     if brace_match:
         try:
             parsed = json.loads(brace_match.group(0).replace("'", '"'))
         except json.JSONDecodeError:
             parsed = None
 
-    if parsed:
-        idx = parsed.get("edge_index")
-        if isinstance(idx, int):
-            idx -= 1
-            if 0 <= idx < len(candidate_edges):
-                chosen = candidate_edges[idx]
+    if not parsed:
+        print(f"[Edge Selection] invalid JSON: {answer}")
+        return None
 
-    if chosen is None:
-        match = re.search(r"[\"']edge_index[\"']\s*:\s*(\d+|null)", answer)
-        if match:
-            val = match.group(1)
-            if val != "null":
-                idx = int(val) - 1
-                if 0 <= idx < len(candidate_edges):
-                    chosen = candidate_edges[idx]
-
-    if chosen is None:
-        print(f"[Edge Selection] raw answer (no valid index): {answer}")
+    idx = parsed.get("edge_index")
+    if idx is None:
+        print(f"[Edge Selection] missing edge_index in: {parsed}")
+        return None
+    if not isinstance(idx, int):
+        print(f"[Edge Selection] invalid edge_index: {idx}")
+        return None
+    idx -= 1
+    if not (0 <= idx < len(candidate_edges)):
+        print(f"[Edge Selection] edge_index out of range: {idx}")
+        return None
 
     print(f"[Edge Selection] idx={idx}")
-
-    return chosen
-
+    return candidate_edges[idx]
 
 
 
