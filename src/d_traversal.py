@@ -359,6 +359,17 @@ def llm_choose_edge(
         f"Respond only with the index (1-{k}).\n"
     )
 
+    def _record_usage(usage: Optional[dict]):
+        if token_totals is not None and usage:
+            prompt_tokens = usage.get("prompt_tokens", 0)
+            completion_tokens = usage.get("completion_tokens", 0)
+            token_totals["prompt_tokens"] += prompt_tokens
+            token_totals["completion_tokens"] += completion_tokens
+            token_totals["total_tokens"] += usage.get(
+                "total_tokens", prompt_tokens + completion_tokens
+            )
+
+
     answer, usage = query_llm(
         prompt,
         server_url=oq_server["server_url"],
@@ -369,6 +380,9 @@ def llm_choose_edge(
         reason=reason,
         enforce_traversal_integer=True,
     )
+
+    _record_usage(usage)
+
 
     if token_totals is not None and usage:
         prompt_tokens = usage.get("prompt_tokens", 0)
@@ -383,8 +397,8 @@ def llm_choose_edge(
         answer = strip_think(answer)
 
     answer = answer.strip()
-    if answer == "null":
-        print("[Edge Selection] no edge selected")
+    # if answer == "null":
+    #     print("[Edge Selection] no edge selected")
 
     # chosen = None
     # idx = None
@@ -511,19 +525,52 @@ def llm_choose_edge(
     # if idx is None:
     #     print("[Edge Selection] no edge selected")
 
-    if not answer.isdigit():
-        print(f"[Edge Selection] invalid response: {answer}")
+    # if not answer.isdigit():
+    #     print(f"[Edge Selection] invalid response: {answer}")
+    #     return None
+
+    # idx = int(answer) - 1
+    # if not (0 <= idx < len(candidate_edges)):
+    #     print("[Edge Selection] edge_index out of range")
+    #     return None
+
+    retry_count = 0
+    while True:
+        if answer == "null":
+            mode = "null"
+            break
+        if re.fullmatch(r"[0-9]+", answer):
+            mode = "int"
+            break
+        if retry_count == 0:
+            retry_count = 1
+            answer, usage = query_llm(
+                prompt,
+                server_url=oq_server["server_url"],
+                temperature=0.2,
+                model_name=oq_server["model"],
+                phase="edge_selection",
+                stop=None,
+                reason=reason,
+                enforce_traversal_integer=True,
+            )
+            _record_usage(usage)
+            if is_r1_like(oq_server["model"]):
+                answer = strip_think(answer)
+            answer = answer.strip()
+            continue
+        raise TraversalOutputError(answer)
+
+    print(f"[Traversal] grammar=enforced retry={retry_count} mode={mode}")
+
+    if mode == "null":
         return None
 
     idx = int(answer) - 1
     if not (0 <= idx < len(candidate_edges)):
-        print("[Edge Selection] edge_index out of range")
-        return None
+        raise TraversalOutputError(answer)
 
-
-        return None
-
-    print(f"[Edge Selection] idx={idx}")
+    print(f"[Traversal] selected idx={idx}")
     return candidate_edges[idx]
 
 
