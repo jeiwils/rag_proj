@@ -1417,7 +1417,7 @@ if __name__ == "__main__":
 
     RESUME = True
     SPLIT = "dev"
-    SEEDS = [0]
+    SEEDS = [0, 1, 3]
 
     configs = [
         {
