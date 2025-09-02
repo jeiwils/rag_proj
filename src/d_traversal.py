@@ -826,7 +826,7 @@ def compute_gold_attention(ccount: Dict[str, int], gold_passages: List[str]) -> 
 
 
 
-def save_traversal_result( # helper for run_dev_set()
+def save_traversal_result(  # helper for run_dev_set()
     question_id,
     gold_passages,
     visited_passages,
@@ -835,11 +835,16 @@ def save_traversal_result( # helper for run_dev_set()
     traversal_alg,
     helpful_passages,
     hits_at_k,
+    dataset: str,
+    split: str,
+    variant: str,
+    retriever_name: str,
+    traverser_model: str,
+    reader_model: str | None = None,
     wall_time_sec: float | None = None,
     output_path="dev_results.jsonl",
     token_usage: Optional[Dict[str, int]] = None,
     seed: int | None = None,
-
 ):
     """
     Save a complete traversal + metric result for a single query.
@@ -854,7 +859,7 @@ def save_traversal_result( # helper for run_dev_set()
         "variant": variant,
         "retriever_name": retriever_name,
         "traverser_model": traverser_model,
-        "reader_model": None,
+        "reader_model": reader_model,
         "question_id": question_id,
         "gold_passages": gold_passages,
         "visited_passages": list(visited_passages),
