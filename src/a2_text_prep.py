@@ -515,6 +515,10 @@ def query_llm(
     model_name="",
     phase=None,
     reason: bool = True,
+    top_p: float = 0.95,
+    top_k: int = 0,
+    mirostat: int = 0,
+    repeat_penalty: float = 1.0,
 ):
     if response_format is not None and grammar is not None:
         raise ValueError("response_format and grammar cannot both be set")
@@ -542,6 +546,10 @@ def query_llm(
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            "top_p": top_p,
+            "top_k": top_k,
+            "mirostat": mirostat,
+            "repeat_penalty": repeat_penalty,
         }
         if stop:
             payload["stop"] = stop
@@ -558,6 +566,10 @@ def query_llm(
                 "max_tokens": max_tokens,
                 "temperature": temperature,
                 "grammar": grammar,
+                "top_p": top_p,
+                "top_k": top_k,
+                "mirostat": mirostat,
+                "repeat_penalty": repeat_penalty,
             }
             if stop:
                 payload["stop"] = stop
@@ -567,6 +579,10 @@ def query_llm(
                 "prompt": prompt,
                 "n_predict": max_tokens,
                 "temperature": temperature,
+                "top_p": top_p,
+                "top_k": top_k,
+                "mirostat": mirostat,
+                "repeat_penalty": repeat_penalty,
             }
             if stop:
                 payload["stop"] = stop

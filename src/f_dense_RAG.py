@@ -217,7 +217,7 @@ if __name__ == "__main__":
     ]
 
 
-    SEEDS = [0, 1, 2]
+    SEEDS = [0, 1, 3, 4, 5]
 
     TOP_K = DEFAULT_SEED_TOP_K
 

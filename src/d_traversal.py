@@ -349,13 +349,17 @@ def llm_choose_edge(
     answer, usage = query_llm(
         prompt,
         server_url=oq_server["server_url"],
-        max_tokens=8,
-        temperature=0.2,
+        max_tokens=1,
+        temperature=0.7,
         model_name=oq_server["model"],
         phase="edge_selection",
         stop=None,
         reason=reason,
         grammar=grammar,
+        top_p=0.95,
+        top_k=0,
+        mirostat=0,
+        repeat_penalty=1.0,
     )
 
     _record_usage(usage)
@@ -387,13 +391,17 @@ def llm_choose_edge(
             answer, usage = query_llm(
                 prompt,
                 server_url=oq_server["server_url"],
-                max_tokens=8,
-                temperature=0.2,
+                max_tokens=1,
+                temperature=0.7,
                 model_name=oq_server["model"],
                 phase="edge_selection",
                 stop=None,
                 reason=reason,
                 grammar=grammar,
+                top_p=0.95,
+                top_k=0,
+                mirostat=0,
+                repeat_penalty=1.0,
             )
             _record_usage(usage)
             if is_r1_like(oq_server["model"]):
@@ -1417,7 +1425,7 @@ if __name__ == "__main__":
 
     RESUME = True
     SPLIT = "dev"
-    SEEDS = [0, 1, 3]
+    SEEDS = [0, 1, 3, 4, 5]
 
     configs = [
         {
