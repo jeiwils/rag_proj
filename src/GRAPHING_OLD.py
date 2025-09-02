@@ -214,11 +214,12 @@ from src.utils import (
 
 
 DEFAULT_TOP_K = 50
-
+DEFAULT_SIM_THRESHOLD = 0.50
 DEFAULT_ALPHA = 1.0  # default for edge_budget_alpha
 
 DEFAULT_PARAMS = {
     "top_k": DEFAULT_TOP_K,
+    "sim_threshold": DEFAULT_SIM_THRESHOLD,
     "alpha": DEFAULT_ALPHA,  # edge_budget_alpha
 }
 
@@ -259,6 +260,7 @@ def build_edges(
     emb: np.ndarray,
     iq_index,
     top_k: int = DEFAULT_TOP_K,
+    sim_threshold: float = DEFAULT_SIM_THRESHOLD,
     output_jsonl: str = None,
     alpha: float = 0.5,
     exclude_self_loops: bool = True,
@@ -268,8 +270,8 @@ def build_edges(
     Hybrid retrieval is performed for each outgoing question using
     :func:`retrieve_hybrid_candidates`, combining dense FAISS search and
     sparse Jaccard keyword overlap.  The highest-scoring candidate per OQ is
-    kept as an edge regardless of similarity. ``iq_metadata`` must be aligned
-    with the FAISS index and embedding matrix ``emb``.
+    kept as an edge.  ``iq_metadata`` must be aligned with the FAISS index and
+    embedding matrix ``emb``.
     """
     edges: List[Dict] = []
 
@@ -299,7 +301,8 @@ def build_edges(
         candidate_edges: List[Dict] = []
         for cand in candidates:
             iq = iq_metadata[cand["idx"]]
-
+            if cand["sim_hybrid"] < sim_threshold:
+                continue
             candidate_edges.append(
                 {
                     "oq_id": oq["iqoq_id"],
@@ -337,11 +340,34 @@ def build_edges(
 
 
 
-def enforce_global_edge_budget(edges: List[Dict], budget: int) -> List[Dict]:
-    """Keep only the top ``budget`` edges by ``sim_hybrid``."""
-    if budget is None or len(edges) <= budget:
+def prune_edges_per_source(edges: List[Dict], max_edges: int) -> List[Dict]:
+    """Limit edges per source passage by hybrid similarity.
+
+    Edges are grouped by ``oq_parent``. For each source passage we retain at
+    most ``max_edges`` outgoing edges with the highest ``sim_hybrid`` scores.
+    When multiple edges from the same source point to the same target passage
+    (``iq_parent``), only the best-scoring edge is kept.
+    """
+    if max_edges is None:
         return edges
-    return sorted(edges, key=lambda x: x["sim_hybrid"], reverse=True)[:budget]
+
+    grouped = defaultdict(list)
+    for e in edges:
+        grouped[e["oq_parent"]].append(e)
+
+    pruned: List[Dict] = []
+    for src, src_edges in grouped.items():
+        merged = {}
+        for e in src_edges:
+            tgt = e["iq_parent"]
+            if tgt not in merged or e["sim_hybrid"] > merged[tgt]["sim_hybrid"]:
+                merged[tgt] = e
+        top_edges = sorted(
+            merged.values(), key=lambda x: x["sim_hybrid"], reverse=True
+        )[:max_edges]
+        pruned.extend(top_edges)
+
+    return pruned
 
 
 
@@ -563,10 +589,11 @@ def run_graph_pipeline(
     passages_file: str = None,
     iqoq_file: str = None,
     top_k: int = DEFAULT_TOP_K,
+    sim_threshold: float = DEFAULT_SIM_THRESHOLD,
     save_graph: bool = True,
     save_graphml: bool = False,
     resume: bool = True,
-    edge_budget_alpha: float = DEFAULT_ALPHA,
+    edge_budget_alpha: float = None,
 ):
     """
     Full pipeline:
@@ -580,8 +607,8 @@ def run_graph_pipeline(
 
 
     Args:
-        edge_budget_alpha: Controls the global O(n log n) edge budget. The total
-            number of edges retained is ``ceil(alpha * n_passages * log n)``.
+        edge_budget_alpha: Optional float controlling the per-source edge budget.
+            Defaults to ``DEFAULT_ALPHA`` when ``None``.
     """
     # ---------- 1) Load metadata + embeddings ----------
     pass_paths = dataset_rep_paths(dataset, split)
@@ -597,11 +624,9 @@ def run_graph_pipeline(
 
 
     n_passages = len(passages_md)
-    edge_budget = None
+    max_edges_per_source = None
     if edge_budget_alpha is not None:
-        edge_budget = math.ceil(
-            edge_budget_alpha * n_passages * math.log(max(n_passages, 2))
-        )
+        max_edges_per_source = math.ceil(edge_budget_alpha * math.log(max(n_passages, 2)))
 
     iqoq_emb = np.load(model_paths["iqoq_emb"])
 
@@ -610,7 +635,9 @@ def run_graph_pipeline(
     oq_items = [q for q in iqoq_md if q.get("type") == "OQ"]
 
     top_k = top_k if top_k is not None else DEFAULT_TOP_K
-
+    sim_threshold = (
+        sim_threshold if sim_threshold is not None else DEFAULT_SIM_THRESHOLD
+    )
 
     # ---------- 3) Build edges with optional resume ----------
     graph_paths = graph_output_paths(model, dataset, split, variant)
@@ -633,17 +660,17 @@ def run_graph_pipeline(
         emb=iqoq_emb,
         iq_index=iq_index,
         top_k=top_k,
+        sim_threshold=sim_threshold,
         output_jsonl=None,
     )
 
     edges = existing_edges + new_edges
-    if edge_budget is not None:
-        edges = enforce_global_edge_budget(edges, edge_budget)
-        print(f"[Edges] Applied global edge budget: {len(edges)}/{edge_budget}")
+    if max_edges_per_source is not None:
+        edges = prune_edges_per_source(edges, max_edges_per_source)
 
     os.makedirs(os.path.dirname(edges_out), exist_ok=True)
 
-    if new_edges or not existing_edges or edge_budget is not None:
+    if new_edges or not existing_edges or max_edges_per_source is not None:
         save_jsonl(edges_out, edges)
         print(f"[Edges] Saved {len(edges)} edges to {edges_out}")
     else:
@@ -679,8 +706,7 @@ def run_graph_pipeline(
             "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "params": {
                 "top_k": top_k,
-                "alpha": edge_budget_alpha,
-                "edge_budget": edge_budget,
+                "sim_threshold": sim_threshold,
             },
         },
     )
@@ -688,7 +714,8 @@ def run_graph_pipeline(
     # ---------- 6) Detailed stats ----------
 
     params_used = DEFAULT_PARAMS.copy()
-    params_used.update({"top_k": top_k, "edge_budget": edge_budget})
+    params_used.update({"top_k": top_k, "sim_threshold": sim_threshold})
+
     params_used["alpha"] = (
         edge_budget_alpha if edge_budget_alpha is not None else DEFAULT_ALPHA
     )

@@ -1490,7 +1490,7 @@ if __name__ == "__main__":
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
 
 
-    TRAVERSAL_MODELS = ["deepseek-r1-distill-qwen-14b"] 
+    TRAVERSAL_MODELS = ["qwen2.5-moe-19b"] 
 
 # [
 #         "qwen2.5-7b-instruct",
