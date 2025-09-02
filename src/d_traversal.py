@@ -863,7 +863,12 @@ def save_traversal_result( # helper for run_dev_set()
         result_entry["seed"] = seed
 
     if token_usage is not None:
-        result_entry["token_usage"] = token_usage
+        result_entry["trav_prompt_tokens"] = token_usage.get("prompt_tokens", 0)
+        result_entry["trav_completion_tokens"] = token_usage.get("completion_tokens", 0)
+        result_entry["trav_total_tokens"] = token_usage.get(
+            "total_tokens",
+            token_usage.get("prompt_tokens", 0) + token_usage.get("completion_tokens", 0),
+        )
 
 
     if wall_time_sec is not None:
@@ -1016,12 +1021,15 @@ def run_traversal(
 
         for k in token_totals:
             token_totals[k] += query_token_totals.get(k, 0)
-        per_query_usage[question_id] = query_token_totals
+        per_query_usage[question_id] = {
+            f"trav_{k}": v for k, v in query_token_totals.items()
+        }
 
     
     token_usage_path = output_paths["base"] / "token_usage.json"
+    global_usage = {f"trav_{k}": v for k, v in token_totals.items()}
     with open(token_usage_path, "wt", encoding="utf-8") as f:
-        json.dump({"per_query": per_query_usage, "global": token_totals}, f, indent=2)
+        json.dump({"per_query": per_query_usage, "global": global_usage}, f, indent=2)
 
 
 

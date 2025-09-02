@@ -117,8 +117,11 @@ def run_dense_rag(
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
     hits_at_k_scores: Dict[str, float] = {}
-    token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-
+    token_totals = {
+        "reader_prompt_tokens": 0,
+        "reader_completion_tokens": 0,
+        "reader_total_tokens": 0,
+    }
 
 
     for q in tqdm(queries, desc="queries"):
@@ -156,15 +159,21 @@ def run_dense_rag(
                 "prompt_len": llm_out.get("prompt_len", 0),
                 "output_tokens": llm_out.get("output_tokens", 0),
                 "total_tokens": llm_out.get("total_tokens", 0),
+                "reader_prompt_tokens": llm_out.get("prompt_len", 0),
+                "reader_completion_tokens": llm_out.get("output_tokens", 0),
+                "reader_total_tokens": llm_out.get(
+                    "total_tokens",
+                    llm_out.get("prompt_len", 0) + llm_out.get("output_tokens", 0),
+                ),
                 "seed": seed,
 
             },
         )
         predictions[q_id] = llm_out["normalised_answer"]
         hits_at_k_scores[q_id] = hits_val
-        token_totals["prompt_tokens"] += llm_out.get("prompt_len", 0)
-        token_totals["completion_tokens"] += llm_out.get("output_tokens", 0)
-        token_totals["total_tokens"] += llm_out.get(
+        token_totals["reader_prompt_tokens"] += llm_out.get("prompt_len", 0)
+        token_totals["reader_completion_tokens"] += llm_out.get("output_tokens", 0)
+        token_totals["reader_total_tokens"] += llm_out.get(
             "total_tokens", llm_out.get("prompt_len", 0) + llm_out.get("output_tokens", 0)
         )
 

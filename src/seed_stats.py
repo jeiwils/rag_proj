@@ -32,7 +32,24 @@ def _load_summary(path: Path) -> tuple[int | None, dict]:
         "F1": data.get("F1") or data.get("f1"),
         "tokens": data.get("tokens") or data.get("total_tokens"),
         "wall_time": data.get("wall_time") or data.get("wall_time_total_sec"),
+        "trav_tokens": data.get("trav_total_tokens"),
+        "reader_tokens": data.get("reader_total_tokens"),
     }
+
+    usage_path = path.parent / "token_usage.json"
+    if usage_path.exists():
+        with open(usage_path, "r", encoding="utf-8") as f:
+            usage_data = json.load(f)
+        if isinstance(usage_data, dict):
+            if "global" in usage_data:
+                usage_data = usage_data.get("global", {})
+            metrics.setdefault("trav_tokens", usage_data.get("trav_total_tokens"))
+            metrics.setdefault("reader_tokens", usage_data.get("reader_total_tokens"))
+            if metrics.get("tokens") is None:
+                totals = [usage_data.get("trav_total_tokens"), usage_data.get("reader_total_tokens")]
+                totals = [t for t in totals if t is not None]
+                if totals:
+                    metrics["tokens"] = sum(totals)
 
     # Attempt to collect per-query metrics for statistical tests
     per_query_em: list[float] = []
@@ -67,7 +84,7 @@ def main(base_dir: str) -> None:
     # Compute variance and standard deviation
     variance: dict[str, float] = {}
     std_dev: dict[str, float] = {}
-    for key in ("EM", "F1", "tokens", "wall_time"):
+    for key in ("EM", "F1", "tokens", "trav_tokens", "reader_tokens", "wall_time"):
         values = [m[key] for m in per_seed.values() if m.get(key) is not None]
         if values:
             arr = np.array(values, dtype=float)
