@@ -121,6 +121,8 @@ def run_dense_rag(
         "reader_prompt_tokens": 0,
         "reader_completion_tokens": 0,
         "reader_total_tokens": 0,
+        "n_reader_calls": 0,
+
     }
     per_query_reader: Dict[str, Dict[str, int]] = {}
     reader_time_total_ms = 0
@@ -179,6 +181,7 @@ def run_dense_rag(
         )
         predictions[q_id] = llm_out["normalised_answer"]
         hits_at_k_scores[q_id] = hits_val
+        token_totals["n_reader_calls"] += 1
         token_totals["reader_prompt_tokens"] += llm_out.get("prompt_len", 0)
         token_totals["reader_completion_tokens"] += llm_out.get("output_tokens", 0)
         token_totals["reader_total_tokens"] += llm_out.get(
@@ -191,6 +194,7 @@ def run_dense_rag(
                 "total_tokens",
                 llm_out.get("prompt_len", 0) + llm_out.get("output_tokens", 0),
             ),
+            "n_reader_calls": 1,
             "t_reader_ms": elapsed_ms,
         }
         reader_time_total_ms += elapsed_ms

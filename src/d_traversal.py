@@ -361,6 +361,9 @@ def llm_choose_edge(
         repeat_penalty=1.0,
     )
 
+    if token_totals is not None:
+        token_totals["n_traversal_calls"] += 1
+
     _record_usage(usage)
 
 
@@ -402,6 +405,8 @@ def llm_choose_edge(
                 mirostat=0,
                 repeat_penalty=1.0,
             )
+            if token_totals is not None:
+                token_totals["n_traversal_calls"] += 1
             _record_usage(usage)
             if is_r1_like(oq_server["model"]):
                 answer = strip_think(answer)
@@ -870,6 +875,8 @@ def save_traversal_result( # helper for run_dev_set()
             token_usage.get("trav_prompt_tokens", 0)
             + token_usage.get("trav_output_tokens", 0),
         )
+        result_entry["n_traversal_calls"] = token_usage.get("n_traversal_calls", 0)
+
 
 
     if wall_time_sec is not None:
@@ -934,6 +941,8 @@ def run_traversal(
         "trav_prompt_tokens": 0,
         "trav_output_tokens": 0,
         "trav_tokens_total": 0,
+        "n_traversal_calls": 0,
+
     }
     per_query_usage: Dict[str, Dict[str, int]] = {}
     total_time_ms = 0
@@ -958,6 +967,8 @@ def run_traversal(
             "trav_prompt_tokens": 0,
             "trav_output_tokens": 0,
             "trav_tokens_total": 0,
+            "n_traversal_calls": 0,
+
         }
         print(f"\n[Query] {question_id} - \"{query_text}\"")
 
@@ -1040,7 +1051,7 @@ def run_traversal(
     token_usage_path = output_paths["base"] / "token_usage.json"
     global_usage = {k: v for k, v in token_totals.items()}
     global_usage["t_traversal_ms"] = total_time_ms
-    
+
     tokens_total = global_usage.get("trav_tokens_total", 0)
     t_total_ms = global_usage.get("t_traversal_ms", 0)
     tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
@@ -1116,6 +1127,8 @@ def compute_traversal_summary(
 
     sum_hits = 0.0
     sum_gold_attention = 0.0
+    sum_traversal_calls = 0
+
 
     total_none = 0
     total_repeat = 0
@@ -1140,6 +1153,8 @@ def compute_traversal_summary(
             sum_f1 += final.get("f1", 0.0)
             sum_hits += entry.get("hits_at_k", 0.0)
             sum_gold_attention += entry.get("gold_attention_ratio", 0.0)
+            sum_traversal_calls += entry.get("n_traversal_calls", 0)
+
 
             if "wall_time_sec" in entry:
                 wall_times.append(entry["wall_time_sec"])
@@ -1187,6 +1202,8 @@ def compute_traversal_summary(
     mean_f1 = sum_f1 / total_queries if total_queries else 0
     mean_hits = sum_hits / total_queries if total_queries else 0
     mean_gold_attention = sum_gold_attention / total_queries if total_queries else 0
+    mean_traversal_calls = sum_traversal_calls / total_queries if total_queries else 0
+
 
 
     avg_first_gold = (
@@ -1209,6 +1226,8 @@ def compute_traversal_summary(
         "mean_f1": round(mean_f1, 4),
         "mean_hits_at_k": round(mean_hits, 4),
         "mean_gold_attention_ratio": round(mean_gold_attention, 4),
+        "avg_traversal_calls": round(mean_traversal_calls, 2),
+        "total_traversal_calls": sum_traversal_calls,
         "passage_coverage_all_gold_found": passage_coverage_all_gold_found,
         "initial_retrieval_coverage": initial_retrieval_coverage,
         "avg_hops_before_first_gold": avg_first_gold,
