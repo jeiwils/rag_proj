@@ -14,6 +14,8 @@ import random
 import numpy as np
 import time
 import json
+from datetime import datetime
+
 from tqdm import tqdm
 
 from src.b_sparse_dense_representations import (
@@ -45,6 +47,8 @@ def run_dense_rag(
     dataset: str,
     split: str,
     reader_model: str,
+    retriever_name: str = "dense",
+
     server_url: str | None = None,
     top_k: int = DEFAULT_SEED_TOP_K,
     seed: int | None = None,
@@ -62,6 +66,8 @@ def run_dense_rag(
         Name of the reader model used to generate answers. ``server_url``
         defaults to the first entry returned by
         :func:`src.utils.get_server_configs` for this model when ``None``.
+    retriever_name: str, optional
+        Identifier for the passage retriever used (e.g. ``"dense"``).
     server_url: str, optional
         URL of the completion endpoint for ``reader_model``. When ``None``,
         the first matching server from :func:`get_server_configs` is used.
@@ -158,6 +164,12 @@ def run_dense_rag(
         append_jsonl(
             str(paths["answers"]),
             {
+                "dataset": dataset,
+                "split": split,
+                "variant": variant,
+                "retriever_name": retriever_name,
+                "traverser_model": None,
+                "reader_model": reader_model,
                 "question_id": q_id,
                 "question": q_text,
                 "raw_answer": llm_out["raw_answer"],
@@ -175,6 +187,7 @@ def run_dense_rag(
                 ),
                 "t_reader_ms": elapsed_ms,
 
+                "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
                 "seed": seed,
 
             },
@@ -204,8 +217,20 @@ def run_dense_rag(
         return {}
 
     per_query = evaluate_answers(predictions, gold)
+    now_ts = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     metric_records = [
-        {"question_id": qid, **m} for qid, m in per_query.items()
+        {
+            "dataset": dataset,
+            "split": split,
+            "variant": variant,
+            "retriever_name": retriever_name,
+            "traverser_model": None,
+            "reader_model": reader_model,
+            "question_id": qid,
+            **m,
+            "timestamp": now_ts,
+        }
+        for qid, m in per_query.items()
     ]
     if resume:
         for rec in metric_records:
@@ -214,8 +239,15 @@ def run_dense_rag(
         save_jsonl(str(paths["answer_metrics"]), metric_records)
 
     metrics = {
+        "dataset": dataset,
+        "split": split,
+        "variant": variant,
+        "retriever_name": retriever_name,
+        "traverser_model": None,
+        "reader_model": reader_model,
         "EM": 100.0 * np.mean([m["em"] for m in per_query.values()]),
         "F1": 100.0 * np.mean([m["f1"] for m in per_query.values()]),
+        "timestamp": now_ts,
     }
     if seed is not None:
         metrics["seed"] = seed

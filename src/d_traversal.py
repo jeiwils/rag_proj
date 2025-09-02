@@ -144,6 +144,7 @@ class TraversalOutputError(Exception):
 
 DEFAULT_SEED_TOP_K = 20
 DEFAULT_NUMBER_HOPS = 2
+DEFAULT_RETRIEVER_NAME = "hybrid"
 
 
 
@@ -848,6 +849,12 @@ def save_traversal_result( # helper for run_dev_set()
     gold_counts, gold_attention_ratio = compute_gold_attention(ccount, gold_passages)
 
     result_entry = {
+        "dataset": dataset,
+        "split": split,
+        "variant": variant,
+        "retriever_name": retriever_name,
+        "traverser_model": traverser_model,
+        "reader_model": None,
         "question_id": question_id,
         "gold_passages": gold_passages,
         "visited_passages": list(visited_passages),
@@ -911,6 +918,11 @@ def run_traversal(
     emb_model,
     server_configs: List[Dict],
     output_paths: Dict[str, Path],  # use traversal_output_paths()
+    dataset: str,
+    split: str,
+    variant: str,
+    traverser_model: str,
+    retriever_name: str,
     seed_top_k=50,
     alpha=0.5,
     n_hops=2,
@@ -1308,6 +1320,11 @@ def process_query_batch(cfg: Dict) -> None:
         emb_model=emb_model,
         server_configs=[server_config],
         output_paths=cfg["output_paths"],
+        dataset=cfg["dataset"],
+        split=cfg["split"],
+        variant=cfg["variant"],
+        traverser_model=cfg["traverser_model"],
+        retriever_name=cfg["retriever_name"],
         seed_top_k=DEFAULT_SEED_TOP_K,
         alpha=DEFAULT_EDGE_BUDGET_ALPHA,
         n_hops=DEFAULT_NUMBER_HOPS,
@@ -1334,6 +1351,8 @@ def process_traversal(cfg: Dict) -> None:
     split = cfg["split"]
     resume = cfg["resume"]
     seed = cfg.get("seed")
+    retriever_name = cfg.get("retriever_name", DEFAULT_RETRIEVER_NAME)
+
 
     variant_cfg = {
         "baseline": hoprag_traversal_algorithm,
@@ -1409,8 +1428,11 @@ def process_traversal(cfg: Dict) -> None:
                 "resume": resume,
                 "resume_path": output_paths["results"],
                 "seed": seed,
-
-
+                "dataset": dataset,
+                "split": split,
+                "variant": variant_for_path,
+                "traverser_model": model,
+                "retriever_name": retriever_name,
             }
         )
 
@@ -1442,10 +1464,20 @@ def process_traversal(cfg: Dict) -> None:
     traversal_metrics = compute_traversal_summary(
         output_paths["results"], include_ids=new_ids
     )
+    extra_meta = {
+        "dataset": dataset,
+        "split": split,
+        "variant": variant_for_path,
+        "retriever_name": retriever_name,
+        "traverser_model": model,
+        "reader_model": None,
+    }
+    if seed is not None:
+        extra_meta["seed"] = seed
     append_global_result(
         save_path=output_paths["stats"],
         traversal_eval=traversal_metrics,
-        extra_metadata={"seed": seed} if seed is not None else None,
+        extra_metadata=extra_meta,
     )
 
     print(
