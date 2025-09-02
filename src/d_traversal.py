@@ -1040,9 +1040,25 @@ def run_traversal(
     token_usage_path = output_paths["base"] / "token_usage.json"
     global_usage = {k: v for k, v in token_totals.items()}
     global_usage["t_traversal_ms"] = total_time_ms
+    
+    tokens_total = global_usage.get("trav_tokens_total", 0)
+    t_total_ms = global_usage.get("t_traversal_ms", 0)
+    tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
+    global_usage.update(
+        {
+            "tokens_total": tokens_total,
+            "t_total_ms": t_total_ms,
+            "tps_overall": tps_overall,
+        }
+    )
+
     usage = {"per_query_traversal": per_query_usage, **global_usage}
     with open(token_usage_path, "wt", encoding="utf-8") as f:
         json.dump(usage, f, indent=2)
+
+    print(f"[summary] total traversal tokens: {tokens_total}")
+    print(f"[summary] traversal wall time: {t_total_ms} ms")
+    print(f"[summary] overall throughput: {tps_overall:.2f} tokens/s")
 
 
 

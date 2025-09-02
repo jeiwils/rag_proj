@@ -45,23 +45,28 @@ def _load_summary(path: Path) -> tuple[int | None, dict]:
         if isinstance(usage_data, dict):
             if "global" in usage_data:
                 usage_data = usage_data.get("global", {})
-            metrics.setdefault("trav_tokens", usage_data.get("trav_total_tokens"))
-            metrics.setdefault("reader_tokens", usage_data.get("reader_total_tokens"))
-            metrics.setdefault("t_total_ms", (
-                usage_data.get("t_traversal_ms", 0)
-                + usage_data.get("t_reader_ms", 0)
-            ))
-            if metrics.get("tokens") is None:
-                totals = [usage_data.get("trav_total_tokens"), usage_data.get("reader_total_tokens")]
+
+            trav_tok = usage_data.get("trav_total_tokens", usage_data.get("trav_tokens_total"))
+            metrics.setdefault("trav_tokens", trav_tok)
+            reader_tok = usage_data.get("reader_total_tokens")
+            metrics.setdefault("reader_tokens", reader_tok)
+
+            t_total_ms = usage_data.get("t_total_ms")
+            if t_total_ms is None:
+                t_total_ms = usage_data.get("t_traversal_ms", 0) + usage_data.get("t_reader_ms", 0)
+            metrics.setdefault("t_total_ms", t_total_ms)
+
+            tokens_total = usage_data.get("tokens_total")
+            if tokens_total is None:
+                totals = [trav_tok, reader_tok]
                 totals = [t for t in totals if t is not None]
-                if totals:
-                    metrics["tokens"] = sum(totals)
-            if metrics.get("tokens") is not None and metrics.get("t_total_ms"):
-                t_total_ms = metrics["t_total_ms"]
-                metrics.setdefault(
-                    "tps_overall",
-                    metrics["tokens"] / (t_total_ms / 1000) if t_total_ms else None,
-                )
+                tokens_total = sum(totals) if totals else None
+            metrics.setdefault("tokens", tokens_total)
+
+            tps_overall = usage_data.get("tps_overall")
+            if tps_overall is None and tokens_total is not None and t_total_ms:
+                tps_overall = tokens_total / (t_total_ms / 1000)
+            metrics.setdefault("tps_overall", tps_overall)
 
     # Attempt to collect per-query metrics for statistical tests
     per_query_em: list[float] = []
