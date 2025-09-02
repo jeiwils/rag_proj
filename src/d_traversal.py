@@ -469,25 +469,26 @@ def llm_choose_edge(
             except json.JSONDecodeError:
                 parsed = None
         if not parsed:
-            print(f"[Edge Selection] invalid JSON: {ans}")
-            return "invalid"
+            print("[Edge Selection] invalid JSON")
+            return "invalid", None
         if "edge_index" not in parsed:
-            print(f"[Edge Selection] missing edge_index in: {parsed}")
-            return "invalid"
+            print("[Edge Selection] missing edge_index")
+            return "invalid", None
         idx_val = parsed["edge_index"]
         if idx_val is None:
-            print(f"[Edge Selection] null edge_index in: {parsed}")
-            return None
+            print("[Edge Selection] null edge_index")
+            return None, None
         if not isinstance(idx_val, int):
-            print(f"[Edge Selection] invalid edge_index: {idx_val}")
-            return "invalid"
-        idx_val -= 1
-        if not (0 <= idx_val < len(candidate_edges)):
-            print(f"[Edge Selection] edge_index out of range: {idx_val}")
-            return "invalid"
-        return idx_val
+            print("[Edge Selection] invalid edge_index type")
+            return "invalid", None
+        idx_zero = idx_val - 1
+        if not (0 <= idx_zero < len(candidate_edges)):
+            print("[Edge Selection] edge_index out of range")
+            return "invalid", None
+        return idx_zero, idx_val
 
-    idx = _parse_idx(answer)
+    retry_count = 0
+    idx, value = _parse_idx(answer)
 
     if idx == "invalid":
         grammar = _selection_grammar_allowing_null(k)
@@ -515,13 +516,18 @@ def llm_choose_edge(
         if is_r1_like(oq_server["model"]):
             answer = strip_think(answer)
 
-        idx = _parse_idx(answer)
+        retry_count += 1
+        idx, value = _parse_idx(answer)
+
+    if idx == "invalid":
+        return None
+
+    print(
+        f"[Traversal] grammar=enforced retry={retry_count} mode={'null' if value is None else 'int'}"
+    )
 
     if idx is None:
         print("[Edge Selection] no edge selected")
-        return None
-
-    if idx == "invalid":
         return None
 
     print(f"[Edge Selection] idx={idx}")
