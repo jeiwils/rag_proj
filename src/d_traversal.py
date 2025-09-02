@@ -101,6 +101,8 @@ import faiss
 import networkx as nx
 import numpy as np
 from tqdm import tqdm
+from datetime import datetime
+
 
 from src.a2_text_prep import _temp_for, is_r1_like, query_llm, strip_think
 from src.b_sparse_dense_representations import (
@@ -874,6 +876,8 @@ def save_traversal_result(  # helper for run_dev_set()
             for pid, score in helpful_passages
         ],
         "hits_at_k": hits_at_k,
+        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+
     }
 
     if seed is not None and "seed" not in result_entry:
@@ -1237,7 +1241,7 @@ def compute_traversal_summary(
     wall_time_mean = wall_time_total / len(wall_times) if wall_times else 0.0
     wall_time_median = float(np.median(wall_times)) if wall_times else 0.0
 
-    return {
+    summary = {
         "mean_precision": round(mean_precision, 4),
         "mean_recall": round(mean_recall, 4),
         "mean_f1": round(mean_f1, 4),
@@ -1256,7 +1260,9 @@ def compute_traversal_summary(
         "wall_time_total_sec": round(wall_time_total, 4),
         "wall_time_mean_sec": round(wall_time_mean, 4),
         "wall_time_median_sec": round(wall_time_median, 4),
+        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
     }
+    return summary
 
 
 
