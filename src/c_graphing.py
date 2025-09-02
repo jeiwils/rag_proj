@@ -670,7 +670,6 @@ def run_graph_pipeline(
     global_path = str(graph_paths["graph_log"])
     stats_path = str(graph_paths["graph_results"])
 
-    os.makedirs("outputs", exist_ok=True)
     append_global_result(
         save_path=global_path,
         graph_eval=graph_eval,

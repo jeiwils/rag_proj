@@ -1,4 +1,13 @@
 You will be given a main question and several candidate auxiliary questions.
-Enumerate the candidates starting at 1 and pick the one most useful for answering the main question.
-If none are helpful, choose null.
-Respond ONLY with a JSON object of the form {"edge_index": <int>}
+
+Task:
+Enumerate the candidates starting at 0.
+Pick the auxiliary question that is most useful for answering the main question.
+
+Respond ONLY with the index of the chosen candidate (0, 1, 2, …).
+
+Main question:
+{MAIN_QUESTION}
+
+Candidate auxiliary questions:
+{CANDIDATE_LIST}  # 0. ..., 1. ..., 2. ..., etc.
