@@ -113,6 +113,9 @@ from typing import Callable, Dict, List
 
 import logging
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
 from tqdm import tqdm
 import tiktoken
 
@@ -130,6 +133,30 @@ from src.utils import (
     model_size,
     split_jsonl_for_models,
 )
+
+
+_session = requests.Session()
+_adapter = HTTPAdapter(
+    pool_connections=50,
+    pool_maxsize=50,
+    max_retries=Retry(
+        total=3,
+        backoff_factor=0.2,
+        status_forcelist=[502, 503, 504],
+    ),
+)
+_session.mount("http://", _adapter)
+_session.mount("https://", _adapter)
+
+
+def _post(url, json, timeout=60):
+    return _session.post(
+        url, json=json, timeout=timeout,
+        headers={"Connection": "keep-alive"}
+    )
+
+
+
 
 
 RESUME = True  #### WHY SET HERE????
@@ -418,7 +445,7 @@ def query_llm(
         if grammar:
             payload["grammar"] = grammar
 
-    r = requests.post(f"{server_url}{endpoint}", json=payload, timeout=60)
+    r = _post(f"{server_url}{endpoint}", json=payload)  #r = requests.post(f"{server_url}{endpoint}", json=payload, timeout=60)
     r.raise_for_status()
     data = r.json()
 
