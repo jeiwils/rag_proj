@@ -97,7 +97,9 @@ def run_dense_rag(
     query_path = processed_dataset_paths(dataset, split)["questions"]
     queries = list(load_jsonl(query_path))
 
-    paths = get_result_paths(reader_model, dataset, split, "dense")
+    variant = "dense" if seed is None else f"dense_seed{seed}"
+    paths = get_result_paths(reader_model, dataset, split, variant)
+
     done_ids, _ = compute_resume_sets(
         resume=resume,
         out_path=str(paths["answers"]),
@@ -152,6 +154,8 @@ def run_dense_rag(
                 "prompt_len": llm_out.get("prompt_len", 0),
                 "output_tokens": llm_out.get("output_tokens", 0),
                 "total_tokens": llm_out.get("total_tokens", 0),
+                "seed": seed,
+
             },
         )
         predictions[q_id] = llm_out["normalised_answer"]
@@ -167,6 +171,8 @@ def run_dense_rag(
         return {}
 
     metrics = evaluate_answers(predictions, gold)
+    if seed is not None:
+        metrics["seed"] = seed
     if hits_at_k_scores:
         metrics["hits_at_k"] = round(
             sum(hits_at_k_scores.values()) / len(hits_at_k_scores), 4
@@ -211,21 +217,25 @@ if __name__ == "__main__":
     ]
 
 
+    SEEDS = [0, 1, 2]
+
     TOP_K = DEFAULT_SEED_TOP_K
 
-    for dataset in DATASETS:
-        for split in SPLITS:
-            for reader in READER_MODELS:
-                print(
-                    f"[Dense RAG] dataset={dataset} split={split} reader={reader} top_k={TOP_K}"
-                )
-                metrics = run_dense_rag(
-                    dataset,
-                    split,
-                    reader_model=reader,
-                    top_k=TOP_K,
-                    resume=True,
-                )
-                print(metrics)
+    for seed in SEEDS:
+        for dataset in DATASETS:
+            for split in SPLITS:
+                for reader in READER_MODELS:
+                    print(
+                        f"[Dense RAG] dataset={dataset} split={split} reader={reader} top_k={TOP_K} seed={seed}"
+                    )
+                    metrics = run_dense_rag(
+                        dataset,
+                        split,
+                        reader_model=reader,
+                        top_k=TOP_K,
+                        seed=seed,
+                        resume=True,
+                    )
+                    print(metrics)
     print("\nDense RAG complete.")
     log_wall_time(__file__, start_time)

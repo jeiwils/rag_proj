@@ -4,10 +4,12 @@ Task:
 Enumerate the candidates starting at 0.
 Pick the auxiliary question that is most useful for answering the main question.
 
-Respond ONLY with the index of the chosen candidate (0, 1, 2, …).
+If none of the candidates are useful, respond with "null".
+
+Respond ONLY with the index of the chosen candidate (0, 1, 2, …) or "null".
 
 Main question:
 {MAIN_QUESTION}
 
 Candidate auxiliary questions:
-{CANDIDATE_LIST}  # 0. ..., 1. ..., 2. ..., etc.
+{CANDIDATE_LIST}  

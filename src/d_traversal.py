@@ -825,6 +825,8 @@ def save_traversal_result( # helper for run_dev_set()
     wall_time_sec: float | None = None,
     output_path="dev_results.jsonl",
     token_usage: Optional[Dict[str, int]] = None,
+    seed: int | None = None,
+
 ):
     """
     Save a complete traversal + metric result for a single query.
@@ -849,6 +851,9 @@ def save_traversal_result( # helper for run_dev_set()
         ],
         "hits_at_k": hits_at_k,
     }
+
+    if seed is not None:
+        result_entry["seed"] = seed
 
     if token_usage is not None:
         result_entry["token_usage"] = token_usage
@@ -998,6 +1003,8 @@ def run_traversal(
             wall_time_sec=elapsed,
             output_path=output_paths["results"],
             token_usage=query_token_totals,
+            seed=seed,
+
         )
 
         for k in token_totals:
@@ -1262,14 +1269,17 @@ def process_traversal(cfg: Dict) -> None:
     variant = cfg["variant"]
     split = cfg["split"]
     resume = cfg["resume"]
+    seed = cfg.get("seed")
 
     variant_cfg = {
         "baseline": hoprag_traversal_algorithm,
         "enhanced": enhanced_traversal_algorithm,
     }
 
+    variant_for_path = f"{variant}_seed{seed}" if seed is not None else variant
+
     print(
-        f"[Run] dataset={dataset} graph_model={graph_model} traversal_model={model} variant={variant} split={split}"
+        f"[Run] dataset={dataset} graph_model={graph_model} traversal_model={model} variant={variant_for_path} split={split}"
     )
 
     paths = dataset_rep_paths(dataset, split)
@@ -1309,7 +1319,7 @@ def process_traversal(cfg: Dict) -> None:
     )
     trav_alg = variant_cfg[variant]
 
-    output_paths = get_traversal_paths(model, dataset, split, variant)
+    output_paths = get_traversal_paths(model, dataset, split, variant_for_path)
 
     urls = get_server_urls(model)
     shards = split_jsonl_for_models(str(query_path), model, resume=resume)
@@ -1334,7 +1344,8 @@ def process_traversal(cfg: Dict) -> None:
                 "traversal_alg": trav_alg,
                 "resume": resume,
                 "resume_path": output_paths["results"],
-                "seed": cfg.get("seed"),
+                "seed": seed,
+
 
             }
         )
@@ -1368,11 +1379,13 @@ def process_traversal(cfg: Dict) -> None:
         output_paths["results"], include_ids=new_ids
     )
     append_global_result(
-        save_path=output_paths["stats"], traversal_eval=traversal_metrics
+        save_path=output_paths["stats"],
+        traversal_eval=traversal_metrics,
+        extra_metadata={"seed": seed} if seed is not None else None,
     )
 
     print(
-        f"[Done] dataset={dataset} graph_model={graph_model} traversal_model={model} variant={variant} split={split}"
+        f"[Done] dataset={dataset} graph_model={graph_model} traversal_model={model} variant={variant_for_path} split={split}"
     )
 
 
@@ -1388,7 +1401,7 @@ if __name__ == "__main__":
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
 
 
-    TRAVERSAL_MODELS = ["qwen2.5-14b-instruct"] 
+    TRAVERSAL_MODELS = ["state-of-the-moe-rp-2x7b"] 
 
 # [
 #         "qwen2.5-7b-instruct",
@@ -1396,12 +1409,15 @@ if __name__ == "__main__":
 #         "deepseek-r1-distill-qwen-7b",
 #         "deepseek-r1-distill-qwen-14b",
 #         "qwen2.5-moe-19b",
+        # "state-of-the-moe-rp-2x7b",
+        # "qwen2.5-2x7b-power-coder-v4"
 #     ]
 
     VARIANTS = ["baseline"]
 
     RESUME = True
     SPLIT = "dev"
+    SEEDS = [0]
 
     configs = [
         {
@@ -1411,19 +1427,23 @@ if __name__ == "__main__":
             "variant": v,
             "split": SPLIT,
             "resume": RESUME,
+            "seed": seed,
         }
         for d in DATASETS
         for gm in GRAPH_MODELS
         for tm in TRAVERSAL_MODELS
         for v in VARIANTS
+        for seed in SEEDS
     ]
 
     result_paths = set()
     for cfg in configs:
 
-        out_path = ( ################################# any way to do this more clearnly???
+        seed = cfg.get("seed")
+        variant_for_path = f"{cfg['variant']}_seed{seed}" if seed is not None else cfg["variant"]
+        out_path = (
             Path(
-                f"data/traversal/{cfg['model']}/{cfg['dataset']}/{cfg['split']}/{cfg['variant']}"
+                f"data/traversal/{cfg['model']}/{cfg['dataset']}/{cfg['split']}/{variant_for_path}"
             )
             / "per_query_traversal_results.jsonl"
         )
