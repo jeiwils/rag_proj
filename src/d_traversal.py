@@ -300,8 +300,10 @@ def llm_choose_edge(
     deterministic order is desired. ``graph`` is included for interface
     compatibility but is not used.
 
-    The LLM receives a single prompt enumerating all candidate auxiliary
-    questions and must respond with JSON of the form::
+    The ``traversal_prompt`` is a template containing ``{MAIN_QUESTION}`` and
+    ``{CANDIDATE_LIST}`` placeholders.  The LLM receives the formatted prompt
+    enumerating all candidate auxiliary questions and must respond with JSON of
+    the form::
 
         {"edge_index": int | null}
 
@@ -317,17 +319,15 @@ def llm_choose_edge(
     oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
     k = len(candidate_edges)
 
-    # Build a single prompt listing all candidate auxiliary questions
+    # Format prompt template with main question and candidate list
     option_lines = [
         f"{i}. {edge_data['oq_text']}"
         for i, (_, edge_data) in enumerate(candidate_edges)
     ]
     options = "\n".join(option_lines)
-    prompt = (
-        f"{traversal_prompt}\n"
-        f"Main Question: {query_text}\n"
-        "Candidate Auxiliary Questions:\n"
-        f"{options}\n\n"
+    prompt = traversal_prompt.format(
+        MAIN_QUESTION=query_text,
+        CANDIDATE_LIST=options,
     )
 
     def _record_usage(usage: Optional[dict]):
@@ -910,6 +910,8 @@ def run_traversal(
 
 
     if traversal_prompt is None:
+        # Load default template with {MAIN_QUESTION} and {CANDIDATE_LIST}
+        # placeholders used by ``llm_choose_edge``
         traversal_prompt = Path("data/prompts/traversal_prompt.txt").read_text()
 
     if seed is not None:
