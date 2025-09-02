@@ -382,14 +382,19 @@ def _temp_for(model_name: str, phase: str) -> float: ############ I GUESS I SHOU
 
 
 
-# def query_llm(prompt, server_url, max_tokens=128, temperature=0.2,
-#               stop=None, grammar=None, model_name="", phase=None):
-#     # If you want R1-style guidance inside the *user* message:
-#     def _wrap_for_deepseek_user(p):
-#         return ("All instructions are provided in this single user message. "
-#                 "Begin your output with '<think>\\n' for internal reasoning, "
-#                 "then give the final answer.\n\n" + p)
 
+
+# def query_llm(
+#     prompt,
+#     server_url,
+#     max_tokens=128,
+#     temperature=0.2,
+#     stop=None,
+#     grammar=None,
+#     model_name="",
+#     phase=None,
+#     reason: bool = True,
+# ):
 #     is_deepseek = "deepseek" in model_name.lower()
 #     use_chat = isinstance(prompt, list) or is_deepseek
 #     if use_chat:
@@ -397,7 +402,21 @@ def _temp_for(model_name: str, phase: str) -> float: ############ I GUESS I SHOU
 #         if isinstance(prompt, list):
 #             messages = prompt
 #         else:
-#             content = _wrap_for_deepseek_user(prompt) if is_deepseek else prompt
+#             content = (
+#                 _wrap_for_deepseek_user(prompt, phase or "", reason)
+#                 if is_deepseek
+#                 else prompt
+#             )
+#             messages = [{"role": "user", "content": content}]
+#         payload = {
+#             "model": "local",  # required by the spec; llama.cpp ignores the value
+#             "messages": messages,
+#             "temperature": temperature,
+#             "max_tokens": max_tokens,
+#         }
+#         if stop:
+#             payload["stop"] = stop
+
 
 def query_llm(
     prompt,
@@ -406,12 +425,16 @@ def query_llm(
     temperature=0.2,
     stop=None,
     grammar=None,
+    response_format: dict | None = None,
     model_name="",
     phase=None,
     reason: bool = True,
 ):
+    if response_format is not None and grammar is not None:
+        raise ValueError("response_format and grammar cannot both be set")
+
     is_deepseek = "deepseek" in model_name.lower()
-    use_chat = isinstance(prompt, list) or is_deepseek
+    use_chat = isinstance(prompt, list) or is_deepseek or response_format is not None
     if use_chat:
         endpoint = "/v1/chat/completions"
         if isinstance(prompt, list):
@@ -431,6 +454,8 @@ def query_llm(
         }
         if stop:
             payload["stop"] = stop
+        if response_format is not None:
+            payload["response_format"] = response_format
         if grammar and "llama" in model_name.lower():
             payload["grammar"] = grammar  # llama.cpp supports grammar for chat
     else:

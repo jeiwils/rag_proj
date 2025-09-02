@@ -332,6 +332,7 @@ def llm_choose_edge(
         server_url=oq_server["server_url"],
         max_tokens=2028,
         temperature=_temp_for(oq_server["model"], "edge_selection"),
+        response_format={"type": "json_object"},
         model_name=oq_server["model"],
         phase="edge_selection",
         stop=None,
@@ -1118,7 +1119,6 @@ def compute_traversal_summary(
         "mean_f1": round(mean_f1, 4),
         "mean_hits_at_k": round(mean_hits, 4),
         "mean_gold_attention_ratio": round(mean_gold_attention, 4),
-
         "passage_coverage_all_gold_found": passage_coverage_all_gold_found,
         "initial_retrieval_coverage": initial_retrieval_coverage,
         "avg_hops_before_first_gold": avg_first_gold,
