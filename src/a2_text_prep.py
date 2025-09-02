@@ -431,15 +431,33 @@ def query_llm(
     model_name="",
     phase=None,
     reason: bool = True,
+    enforce_integer: bool = False,
 ):
     if response_format is not None and grammar is not None:
         raise ValueError("response_format and grammar cannot both be set")
+    if enforce_integer and (grammar is not None or response_format is not None):
+        raise ValueError("enforce_integer cannot be combined with grammar or response_format")
 
     is_deepseek = "deepseek" in model_name.lower()
-    use_chat = isinstance(prompt, list) or is_deepseek or response_format is not None
+    use_chat = (
+        isinstance(prompt, list) or is_deepseek or response_format is not None
+    ) and not enforce_integer
     supports_grammar = "llama" in model_name.lower()
 
-    if use_chat:
+    prompt_text = (
+        "".join(m.get("content", "") for m in prompt) if isinstance(prompt, list) else prompt
+    )
+
+    if enforce_integer:
+        endpoint = "/v1/completions"
+        payload = {
+            "model": "local",
+            "prompt": prompt_text,
+            "max_tokens": 8,
+            "temperature": min(temperature, 0.3),
+            "grammar": "root ::= INT\nINT ::= [0-9]+",
+        }
+    elif use_chat:
         endpoint = "/v1/chat/completions"
         if isinstance(prompt, list):
             messages = prompt
@@ -460,7 +478,7 @@ def query_llm(
             payload["stop"] = stop
         if response_format is not None:
             payload["response_format"] = response_format
-        if grammar and supports_grammar: # if grammar and "llama" in model_name.lower():
+        if grammar and supports_grammar:
             payload["grammar"] = grammar  # llama.cpp supports grammar for chat
     else:
         endpoint = "/completion"
@@ -471,25 +489,26 @@ def query_llm(
         }
         if stop:
             payload["stop"] = stop
-        if grammar and supports_grammar:#        if grammar:
+        if grammar and supports_grammar:
             payload["grammar"] = grammar
 
-    r = _post(f"{server_url}{endpoint}", json=payload)  #r = requests.post(f"{server_url}{endpoint}", json=payload, timeout=60)
+    r = _post(f"{server_url}{endpoint}", json=payload)
     r.raise_for_status()
     data = r.json()
 
-    if use_chat:
+    if enforce_integer:
+        content = data.get("choices", [{}])[0].get("text", "")
+    elif use_chat:
         # OpenAI-style response
         content = data["choices"][0]["message"]["content"]
     else:
         # llama.cpp completion response
         content = data.get("content", data.get("message", ""))
 
-    if grammar and not supports_grammar:
+    if not enforce_integer and grammar and not supports_grammar:
         content = enforce_grammar(content, grammar)
 
     usage = data.get("usage") if isinstance(data, dict) else None
-    prompt_text = "".join(m.get("content", "") for m in prompt) if isinstance(prompt, list) else prompt
     if usage:
         prompt_tokens = usage.get("prompt_tokens", 0)
         completion_tokens = usage.get("completion_tokens", 0)
