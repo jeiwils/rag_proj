@@ -118,7 +118,6 @@ from urllib3.util.retry import Retry
 
 from tqdm import tqdm
 import tiktoken
-from src.grammar_enforcer import enforce_grammar
 
 
 from src.utils import (
@@ -511,9 +510,6 @@ def query_llm(
     else:
         # llama.cpp completion response
         content = data.get("content", data.get("message", ""))
-
-    if not enforce_traversal_integer and grammar and not supports_grammar:
-        content = enforce_grammar(content, grammar)
 
     usage = data.get("usage") if isinstance(data, dict) else None
     if usage:
