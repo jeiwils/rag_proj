@@ -282,27 +282,6 @@ def select_seed_passages(  # helper for run_dev_set()
 
 
 
-def _selection_schema_allowing_null(k: int) -> dict:
-    """JSON schema permitting 1..k or null for ``edge_index``."""
-    return {
-        "type": "object",
-        "properties": {"edge_index": {"enum": list(range(1, k + 1)) + [None]}},
-        "required": ["edge_index"],
-        "additionalProperties": False,
-    }
-
-
-
-def _selection_grammar_allowing_null(k: int) -> str:
-    """GBNF grammar permitting indexes 1..k or the string "null"."""
-    idx_options = " | ".join(f'"{i}"' for i in range(1, k + 1))
-    return (
-        "root ::= ws '{\"edge_index\": ' val '}' ws\n"
-        "val ::= idx | \"null\"\n"
-        f"idx ::= {idx_options}\n"
-        "ws ::= [ \t\n\r]*\n"
-    )
-
 
 def llm_choose_edge(
     query_text: str,
@@ -325,10 +304,12 @@ def llm_choose_edge(
 
         {"edge_index": int | null}
 
-    Indexes in the prompt start at 1. ``edge_index`` refers to this
-    1-based position of the chosen edge in ``candidate_edges``. The
-    function converts the model's reply to a zero-based list index and
-    returns the selected edge tuple (``(vk, edge_data)``) or ``None``.
+    The LLM receives a single prompt enumerating all candidate auxiliary
+    questions and must respond **only** with an integer ``1..k`` or the
+    literal string ``null`` if none apply. The returned integer refers to
+    the 1-based position of the chosen edge in ``candidate_edges``. The
+    function converts this to a zero-based index and returns the selected
+    edge tuple or ``None`` if ``null`` is returned.
     """
 
     # oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
@@ -374,9 +355,7 @@ def llm_choose_edge(
         "Candidate Auxiliary Questions:\n"
         f"{options}\n\n"
         "Select the auxiliary question that best helps answer the main question.\n"
-        "Respond with {\"edge_index\": <int>}.\n"
-        f"You MUST choose an integer 1..{k} unless ALL options appear irrelevant.\n"
-        "\"irrelevant\" means: they do not share entities or key terms with the main question and their brief content (if provided) does not help answer it.\n"
+        f"Respond only with the index (1-{k}) or 'null' if all options are irrelevant.\n"
         "If multiple options seem equally good, pick the lowest index."
     )
 
@@ -385,11 +364,11 @@ def llm_choose_edge(
         server_url=oq_server["server_url"],
         max_tokens=32,
         temperature=0.0,
-        response_format={"type": "json_schema", "json_schema": _selection_schema_allowing_null(k)},
         model_name=oq_server["model"],
         phase="edge_selection",
         stop=None,
-        reason=False,
+        reason=reason,
+        enforce_traversal_integer=True,
     )
 
     if token_totals is not None and usage:
@@ -403,6 +382,10 @@ def llm_choose_edge(
 
     if is_r1_like(oq_server["model"]):
         answer = strip_think(answer)
+
+    answer = answer.strip()
+    if answer == "null":
+        print("[Edge Selection] no edge selected")
 
     # chosen = None
     # idx = None
@@ -460,74 +443,85 @@ def llm_choose_edge(
     # if not (0 <= idx < len(candidate_edges)):
     #     print(f"[Edge Selection] edge_index out of range: {idx}")
 
-    def _parse_idx(ans: str):
-        brace_match = re.search(r"\{.*?\}", ans, re.DOTALL)
-        parsed = None
-        if brace_match:
-            try:
-                parsed = json.loads(brace_match.group(0).replace("'", '"'))
-            except json.JSONDecodeError:
-                parsed = None
-        if not parsed:
-            print("[Edge Selection] invalid JSON")
-            return "invalid", None
-        if "edge_index" not in parsed:
-            print("[Edge Selection] missing edge_index")
-            return "invalid", None
-        idx_val = parsed["edge_index"]
-        if idx_val is None:
-            print("[Edge Selection] null edge_index")
-            return None, None
-        if not isinstance(idx_val, int):
-            print("[Edge Selection] invalid edge_index type")
-            return "invalid", None
-        idx_zero = idx_val - 1
-        if not (0 <= idx_zero < len(candidate_edges)):
-            print("[Edge Selection] edge_index out of range")
-            return "invalid", None
-        return idx_zero, idx_val
+    # def _parse_idx(ans: str):
+    #     brace_match = re.search(r"\{.*?\}", ans, re.DOTALL)
+    #     parsed = None
+    #     if brace_match:
+    #         try:
+    #             parsed = json.loads(brace_match.group(0).replace("'", '"'))
+    #         except json.JSONDecodeError:
+    #             parsed = None
+    #     if not parsed:
+    #         print("[Edge Selection] invalid JSON")
+    #         return "invalid", None
+    #     if "edge_index" not in parsed:
+    #         print("[Edge Selection] missing edge_index")
+    #         return "invalid", None
+    #     idx_val = parsed["edge_index"]
+    #     if idx_val is None:
+    #         print("[Edge Selection] null edge_index")
+    #         return None, None
+    #     if not isinstance(idx_val, int):
+    #         print("[Edge Selection] invalid edge_index type")
+    #         return "invalid", None
+    #     idx_zero = idx_val - 1
+    #     if not (0 <= idx_zero < len(candidate_edges)):
+    #         print("[Edge Selection] edge_index out of range")
+    #         return "invalid", None
+    #     return idx_zero, idx_val
 
-    retry_count = 0
-    idx, value = _parse_idx(answer)
+    # retry_count = 0
+    # idx, value = _parse_idx(answer)
 
-    if idx == "invalid":
-        grammar = _selection_grammar_allowing_null(k)
-        answer, usage = query_llm(
-            prompt,
-            server_url=oq_server["server_url"],
-            max_tokens=32,
-            temperature=0.0,
-            grammar=grammar,
-            model_name=oq_server["model"],
-            phase="edge_selection",
-            stop=None,
-            reason=False,
-        )
+    # if idx == "invalid":
+    #     grammar = _selection_grammar_allowing_null(k)
+    #     answer, usage = query_llm(
+    #         prompt,
+    #         server_url=oq_server["server_url"],
+    #         max_tokens=32,
+    #         temperature=0.0,
+    #         grammar=grammar,
+    #         model_name=oq_server["model"],
+    #         phase="edge_selection",
+    #         stop=None,
+    #         reason=False,
+    #     )
 
-        if token_totals is not None and usage:
-            prompt_tokens = usage.get("prompt_tokens", 0)
-            completion_tokens = usage.get("completion_tokens", 0)
-            token_totals["prompt_tokens"] += prompt_tokens
-            token_totals["completion_tokens"] += completion_tokens
-            token_totals["total_tokens"] += usage.get(
-                "total_tokens", prompt_tokens + completion_tokens
-            )
+    #     if token_totals is not None and usage:
+    #         prompt_tokens = usage.get("prompt_tokens", 0)
+    #         completion_tokens = usage.get("completion_tokens", 0)
+    #         token_totals["prompt_tokens"] += prompt_tokens
+    #         token_totals["completion_tokens"] += completion_tokens
+    #         token_totals["total_tokens"] += usage.get(
+    #             "total_tokens", prompt_tokens + completion_tokens
+    #         )
 
-        if is_r1_like(oq_server["model"]):
-            answer = strip_think(answer)
+    #     if is_r1_like(oq_server["model"]):
+    #         answer = strip_think(answer)
 
-        retry_count += 1
-        idx, value = _parse_idx(answer)
+    #     retry_count += 1
+    #     idx, value = _parse_idx(answer)
 
-    if idx == "invalid":
+    # if idx == "invalid":
+    #     return None
+
+    # print(
+    #     f"[Traversal] grammar=enforced retry={retry_count} mode={'null' if value is None else 'int'}"
+    # )
+
+    # if idx is None:
+    #     print("[Edge Selection] no edge selected")
+
+    if not answer.isdigit():
+        print(f"[Edge Selection] invalid response: {answer}")
         return None
 
-    print(
-        f"[Traversal] grammar=enforced retry={retry_count} mode={'null' if value is None else 'int'}"
-    )
+    idx = int(answer) - 1
+    if not (0 <= idx < len(candidate_edges)):
+        print("[Edge Selection] edge_index out of range")
+        return None
 
-    if idx is None:
-        print("[Edge Selection] no edge selected")
+
         return None
 
     print(f"[Edge Selection] idx={idx}")
