@@ -113,7 +113,7 @@ from src.b_sparse_dense_representations import (
     build_and_save_faiss_index,
 )
 
-from src.c_graphing import DEFAULT_ALPHA, append_global_result
+from src.c_graphing import DEFAULT_EDGE_BUDGET_ALPHA, append_global_result
 from src.utils import (
     SERVER_CONFIGS,
     append_jsonl,
@@ -226,8 +226,10 @@ def select_seed_passages(  # helper for run_dev_set()
 ) -> List[str]:
     """Select top seed passages using dense (FAISS) and sparse (Jaccard) signals.
 
-    Logs the top ``seed_top_k`` FAISS and Jaccard results for ``question_id`` to
-    help verify that retrieval varies across queries.
+    The hybrid score is ``alpha * sim_cos + (1 - alpha) * sim_jac`` where
+    ``alpha`` weights dense vs. sparse similarity. Logs the top ``seed_top_k``
+    FAISS and Jaccard results for ``question_id`` to help verify that
+    retrieval varies across queries.
     """
 
     if passage_index.ntotal != len(passage_metadata):
@@ -758,11 +760,15 @@ def traverse_graph(
     n_hops: int,
     server_configs: list,
     traversal_alg: Callable,  # custom algorithm step (edge + queueing logic)
-    alpha: float = DEFAULT_ALPHA,
+    alpha: float = DEFAULT_EDGE_BUDGET_ALPHA,
     traversal_prompt: str = "",
     token_totals: Optional[Dict[str, int]] = None,
 ):
-    """Traverse the graph while recording query similarity for visited passages."""
+    """Traverse the graph while recording query similarity for visited passages.
+
+    ``alpha`` controls the hybrid weighting between cosine and Jaccard
+    similarity when computing ``sim_hybrid`` for each visited node.
+    """
 
     query_keywords = set(extract_keywords(query_text))
 
@@ -1001,6 +1007,9 @@ def run_traversal(
     seed: int | None = None,
 ):
     """Run LLM-guided multi-hop traversal over a QA query set (e.g., train, dev).
+
+    The parameter ``alpha`` controls hybrid weighting between dense cosine and
+    Jaccard similarity during seed selection and traversal scoring.
 
     Outputs
     -------
@@ -1340,7 +1349,7 @@ def process_query_batch(cfg: Dict) -> None:
         server_configs=[server_config],
         output_paths=cfg["output_paths"],
         seed_top_k=DEFAULT_SEED_TOP_K,
-        alpha=DEFAULT_ALPHA,
+        alpha=DEFAULT_EDGE_BUDGET_ALPHA,
         n_hops=DEFAULT_NUMBER_HOPS,
         traversal_alg=cfg["traversal_alg"],
         seed=cfg.get("seed"),

@@ -123,7 +123,7 @@ Edge:
   "edges_file": "data/graphs/llama-3.1-8b-instruct/hotpotqa/train/baseline/hotpotqa_train_edges.jsonl",
   "params": {
     "top_k": 50,
-    "alpha": 1.0,
+    "edge_budget_alpha": 1.0,
     "edge_budget": 1478
   }
 }
@@ -137,7 +137,7 @@ Edge:
   "timestamp": "2025-08-13T14:22:31",
   "params": {
     "top_k": 50,
-    "alpha": 1.0,
+    "edge_budget_alpha": 1.0,
     "edge_budget": 1478
   },
   "num_nodes": 1478,
@@ -215,11 +215,11 @@ from src.utils import (
 
 DEFAULT_TOP_K = 50
 
-DEFAULT_ALPHA = 1.0  # default for edge_budget_alpha
+DEFAULT_EDGE_BUDGET_ALPHA = 1.0  # default edge-budget scaling
 
 DEFAULT_PARAMS = {
     "top_k": DEFAULT_TOP_K,
-    "alpha": DEFAULT_ALPHA,  # edge_budget_alpha
+    "edge_budget_alpha": DEFAULT_EDGE_BUDGET_ALPHA,
 }
 
 
@@ -267,9 +267,11 @@ def build_edges(
 
     Hybrid retrieval is performed for each outgoing question using
     :func:`retrieve_hybrid_candidates`, combining dense FAISS search and
-    sparse Jaccard keyword overlap.  The highest-scoring candidate per OQ is
-    kept as an edge regardless of similarity. ``iq_metadata`` must be aligned
-    with the FAISS index and embedding matrix ``emb``.
+    sparse Jaccard keyword overlap. ``alpha`` is the hybrid weighting factor
+    applied to ``alpha * sim_cos + (1 - alpha) * sim_jac``. The highest-scoring
+    candidate per OQ is kept as an edge regardless of similarity.
+    ``iq_metadata`` must be aligned with the FAISS index and embedding matrix
+    ``emb``.
     """
     edges: List[Dict] = []
 
@@ -566,7 +568,7 @@ def run_graph_pipeline(
     save_graph: bool = True,
     save_graphml: bool = False,
     resume: bool = True,
-    edge_budget_alpha: float = DEFAULT_ALPHA,
+    edge_budget_alpha: float = DEFAULT_EDGE_BUDGET_ALPHA,
 ):
     """
     Full pipeline:
@@ -580,8 +582,9 @@ def run_graph_pipeline(
 
 
     Args:
-        edge_budget_alpha: Controls the global O(n log n) edge budget. The total
-            number of edges retained is ``ceil(alpha * n_passages * log n)``.
+        edge_budget_alpha: Edge-budget scaling factor for the global
+            :math:`O(n \log n)` edge budget. The total number of edges
+            retained is ``ceil(edge_budget_alpha * n_passages * log n)``.
     """
     # ---------- 1) Load metadata + embeddings ----------
     pass_paths = dataset_rep_paths(dataset, split)
@@ -679,7 +682,7 @@ def run_graph_pipeline(
             "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "params": {
                 "top_k": top_k,
-                "alpha": edge_budget_alpha,
+                "edge_budget_alpha": edge_budget_alpha,
                 "edge_budget": edge_budget,
             },
         },
@@ -689,8 +692,8 @@ def run_graph_pipeline(
 
     params_used = DEFAULT_PARAMS.copy()
     params_used.update({"top_k": top_k, "edge_budget": edge_budget})
-    params_used["alpha"] = (
-        edge_budget_alpha if edge_budget_alpha is not None else DEFAULT_ALPHA
+    params_used["edge_budget_alpha"] = (
+        edge_budget_alpha if edge_budget_alpha is not None else DEFAULT_EDGE_BUDGET_ALPHA
     )
 
     stats = graph_stats(
@@ -755,7 +758,7 @@ if __name__ == "__main__":
                     iqoq_file=None,
                     save_graph=True,
                     save_graphml=False,
-                    edge_budget_alpha=DEFAULT_ALPHA,
+                    edge_budget_alpha=DEFAULT_EDGE_BUDGET_ALPHA,
                 )
                 print(
                     f"[Done] dataset={dataset} model={model} variant={variant} split={SPLIT}"

@@ -146,6 +146,9 @@ _bge_model = None ########## WHY SET HERE?
 
 logger = logging.getLogger(__name__)
 
+# Default weighting for combining dense cosine and sparse Jaccard similarity.
+DEFAULT_HYBRID_ALPHA = 0.5
+
 
 def get_embedding_model():
     """Load and cache the BGE embedding model."""
@@ -434,7 +437,7 @@ def retrieve_hybrid_candidates(
     metadata: List[Dict],
     index,
     top_k: int,
-    alpha: float,
+    alpha: float = DEFAULT_HYBRID_ALPHA,
     *,
     keyword_field: str | None = None,
     filter_fn: Callable[[int], bool] | None = None,
