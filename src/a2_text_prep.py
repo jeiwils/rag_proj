@@ -118,6 +118,8 @@ from urllib3.util.retry import Retry
 
 from tqdm import tqdm
 import tiktoken
+from src.grammar_enforcer import enforce_grammar
+
 
 from src.utils import (
     append_jsonl,
@@ -435,6 +437,8 @@ def query_llm(
 
     is_deepseek = "deepseek" in model_name.lower()
     use_chat = isinstance(prompt, list) or is_deepseek or response_format is not None
+    supports_grammar = "llama" in model_name.lower()
+
     if use_chat:
         endpoint = "/v1/chat/completions"
         if isinstance(prompt, list):
@@ -456,7 +460,7 @@ def query_llm(
             payload["stop"] = stop
         if response_format is not None:
             payload["response_format"] = response_format
-        if grammar and "llama" in model_name.lower():
+        if grammar and supports_grammar: # if grammar and "llama" in model_name.lower():
             payload["grammar"] = grammar  # llama.cpp supports grammar for chat
     else:
         endpoint = "/completion"
@@ -467,7 +471,7 @@ def query_llm(
         }
         if stop:
             payload["stop"] = stop
-        if grammar:
+        if grammar and supports_grammar:#        if grammar:
             payload["grammar"] = grammar
 
     r = _post(f"{server_url}{endpoint}", json=payload)  #r = requests.post(f"{server_url}{endpoint}", json=payload, timeout=60)
@@ -480,6 +484,9 @@ def query_llm(
     else:
         # llama.cpp completion response
         content = data.get("content", data.get("message", ""))
+
+    if grammar and not supports_grammar:
+        content = enforce_grammar(content, grammar)
 
     usage = data.get("usage") if isinstance(data, dict) else None
     prompt_text = "".join(m.get("content", "") for m in prompt) if isinstance(prompt, list) else prompt
