@@ -280,7 +280,26 @@ def select_seed_passages(  # helper for run_dev_set()
 
 
 
+def _selection_schema_allowing_null(k: int) -> dict:
+    """JSON schema permitting 1..k or null for ``edge_index``."""
+    return {
+        "type": "object",
+        "properties": {"edge_index": {"enum": list(range(1, k + 1)) + [None]}},
+        "required": ["edge_index"],
+        "additionalProperties": False,
+    }
 
+
+
+def _selection_grammar_allowing_null(k: int) -> str:
+    """GBNF grammar permitting indexes 1..k or the string "null"."""
+    idx_options = " | ".join(f'"{i}"' for i in range(1, k + 1))
+    return (
+        "root ::= ws '{\"edge_index\": ' val '}' ws\n"
+        "val ::= idx | \"null\"\n"
+        f"idx ::= {idx_options}\n"
+        "ws ::= [ \t\n\r]*\n"
+    )
 
 
 def llm_choose_edge(
@@ -310,7 +329,36 @@ def llm_choose_edge(
     returns the selected edge tuple (``(vk, edge_data)``) or ``None``.
     """
 
+    # oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
+
+    # # Build a single prompt listing all candidate auxiliary questions
+    # option_lines = [
+    #     f"{i}. {edge_data['oq_text']}"
+    #     for i, (_, edge_data) in enumerate(candidate_edges, start=1)
+    # ]
+    # options = "\n".join(option_lines)
+    # prompt = (
+    #     f"{traversal_prompt}\n"
+    #     f"Main Question: {query_text}\n"
+    #     "Candidate Auxiliary Questions:\n"
+    #     f"{options}\n\n"
+    #     "Select the auxiliary question that best helps answer the main question. "
+    #     "Indexes start at 1. Respond with a JSON object {\"edge_index\": <int or null>}"
+    # )
+
+    # answer, usage = query_llm(
+    #     prompt,
+    #     server_url=oq_server["server_url"],
+    #     max_tokens=2028,
+    #     temperature=_temp_for(oq_server["model"], "edge_selection"),
+    #     response_format={"type": "json_object"},
+    #     model_name=oq_server["model"],
+    #     phase="edge_selection",
+    #     stop=None,
+    #     reason=reason,
+    # )
     oq_server = server_configs[1] if len(server_configs) > 1 else server_configs[0]
+    k = len(candidate_edges)
 
     # Build a single prompt listing all candidate auxiliary questions
     option_lines = [
@@ -323,20 +371,23 @@ def llm_choose_edge(
         f"Main Question: {query_text}\n"
         "Candidate Auxiliary Questions:\n"
         f"{options}\n\n"
-        "Select the auxiliary question that best helps answer the main question. "
-        "Indexes start at 1. Respond with a JSON object {\"edge_index\": <int or null>}"
+        "Select the auxiliary question that best helps answer the main question.\n"
+        "Respond with {\"edge_index\": <int or null>}.\n"
+        f"You MUST choose an integer 1..{k} unless ALL options appear irrelevant.\n"
+        "\"irrelevant\" means: they do not share entities or key terms with the main question and their brief content (if provided) does not help answer it.\n"
+        "If multiple options seem equally good, pick the lowest index."
     )
 
     answer, usage = query_llm(
         prompt,
         server_url=oq_server["server_url"],
-        max_tokens=2028,
-        temperature=_temp_for(oq_server["model"], "edge_selection"),
-        response_format={"type": "json_object"},
+        max_tokens=32,
+        temperature=0.0,
+        response_format={"type": "json_schema", "json_schema": _selection_schema_allowing_null(k)},
         model_name=oq_server["model"],
         phase="edge_selection",
         stop=None,
-        reason=reason,
+        reason=False,
     )
 
     if token_totals is not None and usage:
@@ -384,28 +435,86 @@ def llm_choose_edge(
 
     # return chosen
 
-    brace_match = re.search(r"\{.*?\}", answer, re.DOTALL)
-    parsed = None
-    if brace_match:
-        try:
-            parsed = json.loads(brace_match.group(0).replace("'", '"'))
-        except json.JSONDecodeError:
-            parsed = None
+    # brace_match = re.search(r"\{.*?\}", answer, re.DOTALL)
+    # parsed = None
+    # if brace_match:
+    #     try:
+    #         parsed = json.loads(brace_match.group(0).replace("'", '"'))
+    #     except json.JSONDecodeError:
+    #         parsed = None
 
-    if not parsed:
-        print(f"[Edge Selection] invalid JSON: {answer}")
-        return None
+    # if not parsed:
+    #     print(f"[Edge Selection] invalid JSON: {answer}")
+    #     return None
 
-    idx = parsed.get("edge_index")
-    if idx is None:
-        print(f"[Edge Selection] missing edge_index in: {parsed}")
-        return None
-    if not isinstance(idx, int):
-        print(f"[Edge Selection] invalid edge_index: {idx}")
-        return None
-    idx -= 1
-    if not (0 <= idx < len(candidate_edges)):
-        print(f"[Edge Selection] edge_index out of range: {idx}")
+    # idx = parsed.get("edge_index")
+    # if idx is None:
+    #     print(f"[Edge Selection] missing edge_index in: {parsed}")
+    #     return None
+    # if not isinstance(idx, int):
+    #     print(f"[Edge Selection] invalid edge_index: {idx}")
+    #     return None
+    # idx -= 1
+    # if not (0 <= idx < len(candidate_edges)):
+    #     print(f"[Edge Selection] edge_index out of range: {idx}")
+
+    def _parse_idx(ans: str):
+        brace_match = re.search(r"\{.*?\}", ans, re.DOTALL)
+        parsed = None
+        if brace_match:
+            try:
+                parsed = json.loads(brace_match.group(0).replace("'", '"'))
+            except json.JSONDecodeError:
+                parsed = None
+        if not parsed:
+            print(f"[Edge Selection] invalid JSON: {ans}")
+            return "invalid"
+        if "edge_index" not in parsed:
+            print(f"[Edge Selection] missing edge_index in: {parsed}")
+            return "invalid"
+        idx_val = parsed["edge_index"]
+        if idx_val is None:
+            print(f"[Edge Selection] null edge_index in: {parsed}")
+            return None
+        if not isinstance(idx_val, int):
+            print(f"[Edge Selection] invalid edge_index: {idx_val}")
+            return "invalid"
+        idx_val -= 1
+        if not (0 <= idx_val < len(candidate_edges)):
+            print(f"[Edge Selection] edge_index out of range: {idx_val}")
+            return "invalid"
+        return idx_val
+
+    idx = _parse_idx(answer)
+    if idx == "invalid":
+        grammar = _selection_grammar_allowing_null(k)
+        answer, usage = query_llm(
+            prompt,
+            server_url=oq_server["server_url"],
+            max_tokens=32,
+            temperature=0.0,
+            grammar=grammar,
+            model_name=oq_server["model"],
+            phase="edge_selection",
+            stop=None,
+            reason=False,
+        )
+
+        if token_totals is not None and usage:
+            prompt_tokens = usage.get("prompt_tokens", 0)
+            completion_tokens = usage.get("completion_tokens", 0)
+            token_totals["prompt_tokens"] += prompt_tokens
+            token_totals["completion_tokens"] += completion_tokens
+            token_totals["total_tokens"] += usage.get(
+                "total_tokens", prompt_tokens + completion_tokens
+            )
+
+        if is_r1_like(oq_server["model"]):
+            answer = strip_think(answer)
+
+        idx = _parse_idx(answer)
+        if idx == "invalid":
+            return None
         return None
 
     print(f"[Edge Selection] idx={idx}")
@@ -1376,7 +1485,7 @@ if __name__ == "__main__":
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
 
 
-    TRAVERSAL_MODELS = ["qwen2.5-moe-19b"] 
+    TRAVERSAL_MODELS = ["qwen2.5-14b-instruct"] 
 
 # [
 #         "qwen2.5-7b-instruct",
