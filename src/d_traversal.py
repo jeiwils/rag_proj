@@ -931,6 +931,8 @@ def run_traversal(
         
     token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     per_query_usage: Dict[str, Dict[str, int]] = {}
+    total_time_ms = 0
+
 
 
     if traversal_prompt is None:
@@ -1000,6 +1002,7 @@ def run_traversal(
         )
 
         elapsed = time.perf_counter() - start
+        elapsed_ms = int(elapsed * 1000)
 
 
         # --- Save per-query JSONL ---
@@ -1025,11 +1028,16 @@ def run_traversal(
             f"trav_{k}": v for k, v in query_token_totals.items()
         }
 
+        per_query_usage[question_id]["t_traversal_ms"] = elapsed_ms
+        total_time_ms += elapsed_ms
+
     
     token_usage_path = output_paths["base"] / "token_usage.json"
     global_usage = {f"trav_{k}": v for k, v in token_totals.items()}
+    global_usage["t_traversal_ms"] = total_time_ms
+    usage = {"per_query_traversal": per_query_usage, **global_usage}
     with open(token_usage_path, "wt", encoding="utf-8") as f:
-        json.dump({"per_query": per_query_usage, "global": global_usage}, f, indent=2)
+        json.dump(usage, f, indent=2)
 
 
 

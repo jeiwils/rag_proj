@@ -122,6 +122,8 @@ def run_dense_rag(
         "reader_completion_tokens": 0,
         "reader_total_tokens": 0,
     }
+    per_query_reader: Dict[str, Dict[str, int]] = {}
+    reader_time_total_ms = 0
 
 
     for q in tqdm(queries, desc="queries"):
@@ -137,6 +139,8 @@ def run_dense_rag(
         idxs, _ = faiss_search_topk(q_emb, index, top_k=top_k)
         passage_ids = [passages[i]["passage_id"] for i in idxs]
         hits_val = compute_hits_at_k(passage_ids, q.get("gold_passages", []), top_k)
+        start_time = time.perf_counter()
+
         llm_out = ask_llm_with_passages(
             query_text=q_text,
             passage_ids=passage_ids,
@@ -146,6 +150,8 @@ def run_dense_rag(
             model_name=reader_model,
             top_k_answer_passages=top_k,
         )
+        elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+
 
         append_jsonl(
             str(paths["answers"]),
@@ -165,6 +171,8 @@ def run_dense_rag(
                     "total_tokens",
                     llm_out.get("prompt_len", 0) + llm_out.get("output_tokens", 0),
                 ),
+                "t_reader_ms": elapsed_ms,
+
                 "seed": seed,
 
             },
@@ -176,6 +184,16 @@ def run_dense_rag(
         token_totals["reader_total_tokens"] += llm_out.get(
             "total_tokens", llm_out.get("prompt_len", 0) + llm_out.get("output_tokens", 0)
         )
+        per_query_reader[q_id] = {
+            "reader_prompt_tokens": llm_out.get("prompt_len", 0),
+            "reader_completion_tokens": llm_out.get("output_tokens", 0),
+            "reader_total_tokens": llm_out.get(
+                "total_tokens",
+                llm_out.get("prompt_len", 0) + llm_out.get("output_tokens", 0),
+            ),
+            "t_reader_ms": elapsed_ms,
+        }
+        reader_time_total_ms += elapsed_ms
 
     if not gold:
         print("No new queries to process.")
@@ -207,8 +225,30 @@ def run_dense_rag(
     extra = append_percentiles(paths["answer_metrics"], paths["summary"])
     metrics.update(extra)
 
+    t_reader_ms = reader_time_total_ms
+    usage = {
+        "per_query_traversal": {},
+        "per_query_reader": per_query_reader,
+        "trav_prompt_tokens": 0,
+        "trav_completion_tokens": 0,
+        "trav_total_tokens": 0,
+        **token_totals,
+        "t_traversal_ms": 0,
+        "t_reader_ms": t_reader_ms,
+    }
     with open(paths["base"] / "token_usage.json", "w", encoding="utf-8") as f:
-        json.dump(token_totals, f, indent=2)
+        json.dump(usage, f, indent=2)
+
+    metrics.update({
+        "trav_prompt_tokens": 0,
+        "trav_completion_tokens": 0,
+        "trav_total_tokens": 0,
+        **token_totals,
+        "t_traversal_ms": 0,
+        "t_reader_ms": t_reader_ms,
+    })
+    with open(paths["summary"], "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2)
 
     return metrics
 
