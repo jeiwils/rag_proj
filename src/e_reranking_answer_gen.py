@@ -97,6 +97,8 @@ import re
 import string
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+import numpy as np
+
 
 from functools import partial
 import networkx as nx
@@ -117,6 +119,7 @@ from src.utils import (
 
 )
 
+from src.metrics_summary import append_percentiles
 
 
 
@@ -329,6 +332,35 @@ def compute_f1(
     recall = num_same / len(gold_tokens)
     return 2 * precision * recall / (precision + recall)
 
+
+def evaluate_answers(
+    predictions: dict,
+    gold_answers: dict,
+) -> Dict[str, Dict[str, float]]:
+    """Compute exact match and F1 for each query.
+
+    Parameters
+    ----------
+    predictions: dict
+        Mapping ``{id: predicted_answer}``.
+    gold_answers: dict
+        Mapping ``{id: list_of_gold_answers}`` (allowing multiple paraphrases).
+
+    Returns
+    -------
+    Dict[str, Dict[str, float]]
+        Per-query scores with keys ``"em"`` and ``"f1"`` (0–1 range).
+    """
+
+    scores: Dict[str, Dict[str, float]] = {}
+
+    for qid, gold_list in gold_answers.items():
+        pred = predictions.get(qid, "")
+        em = max(compute_exact_match(pred, g) for g in gold_list)
+        f1 = max(compute_f1(pred, g) for g in gold_list)
+        scores[qid] = {"em": float(em), "f1": float(f1)}
+
+    return scores
 
 
 def evaluate_answers( 
@@ -599,11 +631,29 @@ def generate_answers_from_traversal(
     else:
         save_jsonl(result_paths["answers"], answers)
 
-    metrics = evaluate_answers(predictions, gold)
+    per_query = evaluate_answers(predictions, gold)
+    metric_records = [
+        {"question_id": qid, **m} for qid, m in per_query.items()
+    ]
+    if resume:
+        for rec in metric_records:
+            append_jsonl(result_paths["answer_metrics"], rec)
+    else:
+        save_jsonl(result_paths["answer_metrics"], metric_records)
+
+    metrics = {
+        "EM": 100.0 * np.mean([m["em"] for m in per_query.values()]),
+        "F1": 100.0 * np.mean([m["f1"] for m in per_query.values()]),
+    }
     if hits:
         metrics["hits_at_k"] = round(sum(hits.values()) / len(hits), 4)
     with open(result_paths["summary"], "wt", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
+
+    extra = append_percentiles(
+        result_paths["answer_metrics"], result_paths["summary"]
+    )
+    metrics.update(extra)
 
     with open(result_paths["base"] / "token_usage.json", "w", encoding="utf-8") as f:
         json.dump(token_totals, f, indent=2)

@@ -368,6 +368,7 @@ def get_result_paths(model, dataset, split, variant):
     return {
         "base": base,
         "answers": base / f"answer_per_query_{variant}_{split}.jsonl",
+        "answer_metrics": base / f"answer_metrics_{variant}_{split}.jsonl",
         "summary": base / f"summary_metrics_{variant}_{split}.json",
     }
 

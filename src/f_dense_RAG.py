@@ -35,8 +35,10 @@ from src.utils import (
     load_jsonl,
     processed_dataset_paths,
     compute_hits_at_k,
-    log_wall_time   
+    log_wall_time,
+    save_jsonl,
 )
+from src.metrics_summary import append_percentiles
 
 
 def run_dense_rag(
@@ -170,7 +172,20 @@ def run_dense_rag(
         print("No new queries to process.")
         return {}
 
-    metrics = evaluate_answers(predictions, gold)
+    per_query = evaluate_answers(predictions, gold)
+    metric_records = [
+        {"question_id": qid, **m} for qid, m in per_query.items()
+    ]
+    if resume:
+        for rec in metric_records:
+            append_jsonl(str(paths["answer_metrics"]), rec)
+    else:
+        save_jsonl(str(paths["answer_metrics"]), metric_records)
+
+    metrics = {
+        "EM": 100.0 * np.mean([m["em"] for m in per_query.values()]),
+        "F1": 100.0 * np.mean([m["f1"] for m in per_query.values()]),
+    }
     if seed is not None:
         metrics["seed"] = seed
     if hits_at_k_scores:
@@ -179,6 +194,9 @@ def run_dense_rag(
         )
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
+
+    extra = append_percentiles(paths["answer_metrics"], paths["summary"])
+    metrics.update(extra)
 
     with open(paths["base"] / "token_usage.json", "w", encoding="utf-8") as f:
         json.dump(token_totals, f, indent=2)
