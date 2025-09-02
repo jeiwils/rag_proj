@@ -8,6 +8,13 @@ import numpy as np
 def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Dict[str, float]:
     """Append median and p90 metrics to an existing summary file.
 
+    The function looks for two sources of per-query data within the same
+    directory as ``summary_path``:
+
+    * ``metrics_path`` – JSONL with ``em`` and ``f1`` per query.
+    * ``token_usage.json`` – JSON containing optional ``per_query_traversal``
+      and ``per_query_reader`` mappings with token usage and timings.
+
     Parameters
     ----------
     metrics_path: str or Path
@@ -47,6 +54,45 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
     if ems:
         stats["median_em"] = float(np.median(ems))
         stats["p90_em"] = float(np.percentile(ems, 90))
+
+    # Attempt to compute token and timing percentiles from token_usage.json
+    token_usage_path = summary_path.parent / "token_usage.json"
+    if token_usage_path.exists():
+        try:
+            with open(token_usage_path, "r", encoding="utf-8") as f:
+                usage = json.load(f)
+        except json.JSONDecodeError:
+            usage = {}
+
+        per_trav = usage.get("per_query_traversal", {}) or {}
+        per_read = usage.get("per_query_reader", {}) or {}
+        query_ids = set(per_trav) | set(per_read)
+
+        tokens: list[float] = []
+        times_ms: list[float] = []
+        tps: list[float] = []
+
+        for qid in query_ids:
+            trav = per_trav.get(qid, {})
+            read = per_read.get(qid, {})
+
+            tok = trav.get("trav_total_tokens") or trav.get("trav_tokens_total") or 0
+            tok += read.get("reader_total_tokens", 0)
+            t_ms = trav.get("t_traversal_ms", 0) + read.get("t_reader_ms", 0)
+
+            tokens.append(float(tok))
+            times_ms.append(float(t_ms))
+            tps.append(float(tok) / (t_ms / 1000) if t_ms else 0.0)
+
+        if tokens:
+            stats["median_tokens_total"] = float(np.median(tokens))
+            stats["p90_tokens_total"] = float(np.percentile(tokens, 90))
+        if times_ms:
+            stats["median_t_total_ms"] = float(np.median(times_ms))
+            stats["p90_t_total_ms"] = float(np.percentile(times_ms, 90))
+        if tps:
+            stats["median_tps_overall"] = float(np.median(tps))
+            stats["p90_tps_overall"] = float(np.percentile(tps, 90))
 
     if summary_path.exists():
         with open(summary_path, "r", encoding="utf-8") as f:
