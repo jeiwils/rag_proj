@@ -343,7 +343,7 @@ def llm_choose_edge(
     #     "Candidate Auxiliary Questions:\n"
     #     f"{options}\n\n"
     #     "Select the auxiliary question that best helps answer the main question. "
-    #     "Indexes start at 1. Respond with a JSON object {\"edge_index\": <int or null>}"
+    #     "Indexes start at 1. Respond with a JSON object {\"edge_index\": <int>}"
     # )
 
     # answer, usage = query_llm(
@@ -372,7 +372,7 @@ def llm_choose_edge(
         "Candidate Auxiliary Questions:\n"
         f"{options}\n\n"
         "Select the auxiliary question that best helps answer the main question.\n"
-        "Respond with {\"edge_index\": <int or null>}.\n"
+        "Respond with {\"edge_index\": <int>}.\n"
         f"You MUST choose an integer 1..{k} unless ALL options appear irrelevant.\n"
         "\"irrelevant\" means: they do not share entities or key terms with the main question and their brief content (if provided) does not help answer it.\n"
         "If multiple options seem equally good, pick the lowest index."

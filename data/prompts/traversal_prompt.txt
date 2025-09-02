@@ -1,4 +1,4 @@
 You will be given a main question and several candidate auxiliary questions.
 Enumerate the candidates starting at 1 and pick the one most useful for answering the main question.
 If none are helpful, choose null.
-Respond ONLY with a JSON object of the form {"edge_index": <int|null>}.
+Respond ONLY with a JSON object of the form {"edge_index": <int>}
