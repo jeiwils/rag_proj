@@ -306,11 +306,11 @@ def llm_choose_edge(
         {"edge_index": int | null}
 
     The LLM receives a single prompt enumerating all candidate auxiliary
-    questions and must respond **only** with an integer ``1..k`` or the
+    questions and must respond **only** with an integer ``0..k-1`` or the
     literal string ``null`` if none apply. The returned integer refers to
-    the 1-based position of the chosen edge in ``candidate_edges``. The
-    function converts this to a zero-based index and returns the selected
-    edge tuple or ``None`` if ``null`` is returned.
+    the zero-based position of the chosen edge in ``candidate_edges``. The
+    function returns the selected edge tuple or ``None`` if ``null`` is
+    returned.
     """
 
 
@@ -320,7 +320,7 @@ def llm_choose_edge(
     # Build a single prompt listing all candidate auxiliary questions
     option_lines = [
         f"{i}. {edge_data['oq_text']}"
-        for i, (_, edge_data) in enumerate(candidate_edges, start=1)
+        for i, (_, edge_data) in enumerate(candidate_edges)
     ]
     options = "\n".join(option_lines)
     prompt = (
@@ -328,8 +328,6 @@ def llm_choose_edge(
         f"Main Question: {query_text}\n"
         "Candidate Auxiliary Questions:\n"
         f"{options}\n\n"
-        "Select the auxiliary question that best helps answer the main question.\n"
-        f"Respond only with the index (1-{k}).\n"
     )
 
     def _record_usage(usage: Optional[dict]):
@@ -402,7 +400,7 @@ def llm_choose_edge(
     if mode == "null":
         return None
 
-    idx = int(answer) - 1
+    idx = int(answer)
     if not (0 <= idx < len(candidate_edges)):
         raise TraversalOutputError(answer)
 
