@@ -95,7 +95,7 @@ import string
 
 from collections import Counter
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple, Any
 
 import faiss
 import networkx as nx
@@ -292,7 +292,6 @@ def llm_choose_edge(
     traversal_prompt: str,
     token_totals: Optional[Dict[str, int]] = None,
     reason: bool = True,
-
 ):
     """Ask the local LLM to choose among multiple outgoing edges.
 
@@ -860,7 +859,7 @@ def save_traversal_result( # helper for run_dev_set()
         "hits_at_k": hits_at_k,
     }
 
-    if seed is not None:
+    if seed is not None and "seed" not in result_entry:
         result_entry["seed"] = seed
 
     if token_usage is not None:
