@@ -756,7 +756,23 @@ def compute_hop_metrics(
 
 
 
+def compute_gold_attention(ccount: Dict[str, int], gold_passages: List[str]) -> Tuple[Dict[str, int], float]:
+    """Compute visitation stats for gold passages.
 
+    Args:
+        ccount: Mapping of passage IDs to visitation counts during traversal.
+        gold_passages: List of gold passage identifiers for the query.
+
+    Returns:
+        Tuple ``(gold_counts, attention_ratio)`` where ``gold_counts`` maps each
+        gold passage ID to its visit count and ``attention_ratio`` is the fraction
+        of total visits accounted for by gold passages.
+    """
+
+    gold_counts = {pid: ccount.get(pid, 0) for pid in gold_passages}
+    total_visits = sum(ccount.values()) or 1
+    attention_ratio = sum(gold_counts.values()) / total_visits
+    return gold_counts, attention_ratio
 
 
 
@@ -781,12 +797,15 @@ def save_traversal_result( # helper for run_dev_set()
     """
 
     hop_trace_with_metrics, final_metrics = compute_hop_metrics(hop_trace, gold_passages)
+    gold_counts, gold_attention_ratio = compute_gold_attention(ccount, gold_passages)
 
     result_entry = {
         "question_id": question_id,
         "gold_passages": gold_passages,
         "visited_passages": list(visited_passages),
         "visit_counts": dict(ccount),
+        "gold_visit_counts": gold_counts,
+        "gold_attention_ratio": round(gold_attention_ratio, 4),
         "hop_trace": hop_trace_with_metrics,
         "final_metrics": final_metrics,
         "traversal_algorithm": traversal_alg.__name__,
@@ -994,8 +1013,9 @@ def compute_traversal_summary(
         ) -> dict:
     """Summarize traversal-wide metrics across all dev results or a filtered subset.
 
-    Computes aggregate precision, recall, F1, hits@k, and various hop statistics
-    over the provided per-query traversal results.
+    Computes aggregate precision, recall, F1, hits@k, mean attention to gold
+    passages, and various hop statistics over the provided per-query traversal
+    results.
     """
 
     total_queries = 0
@@ -1004,6 +1024,8 @@ def compute_traversal_summary(
     sum_f1 = 0.0
 
     sum_hits = 0.0
+    sum_gold_attention = 0.0
+
     total_none = 0
     total_repeat = 0
     passage_coverage_all_gold_found = 0
@@ -1026,6 +1048,8 @@ def compute_traversal_summary(
             sum_recall += final["recall"]
             sum_f1 += final.get("f1", 0.0)
             sum_hits += entry.get("hits_at_k", 0.0)
+            sum_gold_attention += entry.get("gold_attention_ratio", 0.0)
+
             if "wall_time_sec" in entry:
                 wall_times.append(entry["wall_time_sec"])
 
@@ -1071,6 +1095,8 @@ def compute_traversal_summary(
     mean_recall = sum_recall / total_queries if total_queries else 0
     mean_f1 = sum_f1 / total_queries if total_queries else 0
     mean_hits = sum_hits / total_queries if total_queries else 0
+    mean_gold_attention = sum_gold_attention / total_queries if total_queries else 0
+
 
     avg_first_gold = (
         round(sum(first_gold_hops) / len(first_gold_hops), 2)
@@ -1091,6 +1117,8 @@ def compute_traversal_summary(
         "mean_recall": round(mean_recall, 4),
         "mean_f1": round(mean_f1, 4),
         "mean_hits_at_k": round(mean_hits, 4),
+        "mean_gold_attention_ratio": round(mean_gold_attention, 4),
+
         "passage_coverage_all_gold_found": passage_coverage_all_gold_found,
         "initial_retrieval_coverage": initial_retrieval_coverage,
         "avg_hops_before_first_gold": avg_first_gold,
@@ -1321,7 +1349,7 @@ if __name__ == "__main__":
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
 
-    
+
     TRAVERSAL_MODELS = ["qwen2.5-moe-19b"] 
 
 # [
