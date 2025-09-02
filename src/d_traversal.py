@@ -330,6 +330,11 @@ def llm_choose_edge(
         CANDIDATE_LIST=options,
     )
 
+    grammar_choices = " | ".join(
+        [f'"{i}"' for i in range(k)] + ['"null"']
+    )
+    grammar = f"root ::= {grammar_choices}\n"
+
     def _record_usage(usage: Optional[dict]):
         if token_totals is not None and usage:
             prompt_tokens = usage.get("prompt_tokens", 0)
@@ -344,12 +349,13 @@ def llm_choose_edge(
     answer, usage = query_llm(
         prompt,
         server_url=oq_server["server_url"],
+        max_tokens=8,
         temperature=0.2,
         model_name=oq_server["model"],
         phase="edge_selection",
         stop=None,
         reason=reason,
-        enforce_traversal_integer=True,
+        grammar=grammar,
     )
 
     _record_usage(usage)
@@ -381,12 +387,14 @@ def llm_choose_edge(
             answer, usage = query_llm(
                 prompt,
                 server_url=oq_server["server_url"],
+                max_tokens=8,
+
                 temperature=0.2,
                 model_name=oq_server["model"],
                 phase="edge_selection",
                 stop=None,
                 reason=reason,
-                enforce_traversal_integer=True,
+                grammar=grammar,
             )
             _record_usage(usage)
             if is_r1_like(oq_server["model"]):
@@ -395,7 +403,7 @@ def llm_choose_edge(
             continue
         raise TraversalOutputError(answer)
 
-    print(f"[Traversal] grammar=enforced retry={retry_count} mode={mode}")
+    print(f"[Traversal] grammar=dynamic retry={retry_count} mode={mode}")
 
     if mode == "null":
         return None

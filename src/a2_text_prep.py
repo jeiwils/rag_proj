@@ -389,6 +389,7 @@ def _temp_for(model_name: str, phase: str) -> float: ############ I GUESS I SHOU
 
 
 
+
 # def query_llm(
 #     prompt,
 #     server_url,
@@ -396,13 +397,39 @@ def _temp_for(model_name: str, phase: str) -> float: ############ I GUESS I SHOU
 #     temperature=0.2,
 #     stop=None,
 #     grammar=None,
+#     response_format: dict | None = None,
 #     model_name="",
 #     phase=None,
 #     reason: bool = True,
+#     enforce_traversal_integer: bool = False,
 # ):
+#     if enforce_traversal_integer:
+#         stop = None
+#         grammar = None
+#         response_format = None
+#     else:
+#         if response_format is not None and grammar is not None:
+#             raise ValueError("response_format and grammar cannot both be set")
+
 #     is_deepseek = "deepseek" in model_name.lower()
-#     use_chat = isinstance(prompt, list) or is_deepseek
-#     if use_chat:
+#     use_chat = (
+#         isinstance(prompt, list) or is_deepseek or response_format is not None
+#     ) and not enforce_traversal_integer
+
+#     prompt_text = (
+#         "".join(m.get("content", "") for m in prompt) if isinstance(prompt, list) else prompt
+#     )
+
+#     if enforce_traversal_integer:
+#         endpoint = "/v1/completions"
+#         payload = {
+#             "model": "local",
+#             "prompt": prompt,
+#             "max_tokens": 8,
+#             "temperature": min(temperature, 0.3),
+#             "grammar": GRAMMAR_TRAVERSAL_INT_OR_NULL,
+#         }
+#     elif use_chat:
 #         endpoint = "/v1/chat/completions"
 #         if isinstance(prompt, list):
 #             messages = prompt
@@ -421,6 +448,60 @@ def _temp_for(model_name: str, phase: str) -> float: ############ I GUESS I SHOU
 #         }
 #         if stop:
 #             payload["stop"] = stop
+#         if response_format is not None:
+#             payload["response_format"] = response_format
+#         if grammar:
+#             payload["grammar"] = grammar
+#     else:
+#         endpoint = "/completion"
+#         payload = {
+#             "prompt": prompt,
+#             "n_predict": max_tokens,
+#             "temperature": temperature,
+#         }
+#         if stop:
+#             payload["stop"] = stop
+#         if grammar:
+#             payload["grammar"] = grammar
+
+#     r = _post(f"{server_url}{endpoint}", json=payload)
+#     r.raise_for_status()
+#     data = r.json()
+
+#     if enforce_traversal_integer:
+#         content = data.get("choices", [{}])[0].get("text", "")
+#     elif use_chat:
+#         # OpenAI-style response
+#         content = data["choices"][0]["message"]["content"]
+#     else:
+#         # llama.cpp completion response
+#         content = data.get("content", data.get("message", ""))
+
+#     usage = data.get("usage") if isinstance(data, dict) else None
+#     if usage:
+#         prompt_tokens = usage.get("prompt_tokens", 0)
+#         completion_tokens = usage.get("completion_tokens", 0)
+#     elif tiktoken is not None:
+#         try:
+#             enc = tiktoken.encoding_for_model(model_name)
+#         except Exception:
+#             enc = tiktoken.get_encoding("cl100k_base")
+#         prompt_tokens = len(enc.encode(prompt_text))
+#         completion_tokens = len(enc.encode(content))
+#     else:
+#         prompt_tokens = len(prompt_text.split())
+#         completion_tokens = len(content.split())
+#         logger.debug("tiktoken not available; using word counts as approximation")
+#     total_tokens = prompt_tokens + completion_tokens
+
+#     logger.debug(
+#         f"{phase or 'query'} tokens - prompt: {prompt_tokens}, completion: {completion_tokens}, total: {total_tokens}"
+#     )
+#     TOKEN_TOTALS["prompt"] += prompt_tokens
+
+    
+
+
 
 
 def query_llm(
@@ -434,35 +515,18 @@ def query_llm(
     model_name="",
     phase=None,
     reason: bool = True,
-    enforce_traversal_integer: bool = False,
 ):
-    if enforce_traversal_integer:
-        stop = None
-        grammar = None
-        response_format = None
-    else:
-        if response_format is not None and grammar is not None:
-            raise ValueError("response_format and grammar cannot both be set")
+    if response_format is not None and grammar is not None:
+        raise ValueError("response_format and grammar cannot both be set")
 
     is_deepseek = "deepseek" in model_name.lower()
-    use_chat = (
-        isinstance(prompt, list) or is_deepseek or response_format is not None
-    ) and not enforce_traversal_integer
+    use_chat = isinstance(prompt, list) or is_deepseek or response_format is not None
 
     prompt_text = (
         "".join(m.get("content", "") for m in prompt) if isinstance(prompt, list) else prompt
     )
 
-    if enforce_traversal_integer:
-        endpoint = "/v1/completions"
-        payload = {
-            "model": "local",
-            "prompt": prompt,
-            "max_tokens": 8,
-            "temperature": min(temperature, 0.3),
-            "grammar": GRAMMAR_TRAVERSAL_INT_OR_NULL,
-        }
-    elif use_chat:
+    if use_chat:
         endpoint = "/v1/chat/completions"
         if isinstance(prompt, list):
             messages = prompt
@@ -486,26 +550,35 @@ def query_llm(
         if grammar:
             payload["grammar"] = grammar
     else:
-        endpoint = "/completion"
-        payload = {
-            "prompt": prompt,
-            "n_predict": max_tokens,
-            "temperature": temperature,
-        }
-        if stop:
-            payload["stop"] = stop
         if grammar:
-            payload["grammar"] = grammar
+            endpoint = "/v1/completions"
+            payload = {
+                "model": "local",
+                "prompt": prompt,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "grammar": grammar,
+            }
+            if stop:
+                payload["stop"] = stop
+        else:
+            endpoint = "/completion"
+            payload = {
+                "prompt": prompt,
+                "n_predict": max_tokens,
+                "temperature": temperature,
+            }
+            if stop:
+                payload["stop"] = stop
 
     r = _post(f"{server_url}{endpoint}", json=payload)
     r.raise_for_status()
     data = r.json()
-
-    if enforce_traversal_integer:
-        content = data.get("choices", [{}])[0].get("text", "")
-    elif use_chat:
+    if use_chat:
         # OpenAI-style response
         content = data["choices"][0]["message"]["content"]
+    elif grammar:
+        content = data.get("choices", [{}])[0].get("text", "")
     else:
         # llama.cpp completion response
         content = data.get("content", data.get("message", ""))
@@ -543,8 +616,6 @@ def query_llm(
         "completion_tokens": completion_tokens,
         "total_tokens": total_tokens,
     }
-    
-
 
 
 
