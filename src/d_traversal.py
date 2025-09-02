@@ -388,7 +388,6 @@ def llm_choose_edge(
                 prompt,
                 server_url=oq_server["server_url"],
                 max_tokens=8,
-
                 temperature=0.2,
                 model_name=oq_server["model"],
                 phase="edge_selection",
