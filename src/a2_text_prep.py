@@ -435,45 +435,27 @@ def query_llm(
     model_name="",
     phase=None,
     reason: bool = True,
-    enforce_integer: bool = False,
     enforce_traversal_integer: bool = False,
 ):
     if enforce_traversal_integer:
-        if enforce_integer:
-            raise ValueError(
-                "enforce_traversal_integer cannot be combined with enforce_integer"
-            )
         stop = None
         grammar = None
         response_format = None
     else:
         if response_format is not None and grammar is not None:
             raise ValueError("response_format and grammar cannot both be set")
-        if enforce_integer and (grammar is not None or response_format is not None):
-            raise ValueError(
-                "enforce_integer cannot be combined with grammar or response_format"
-            )
 
     is_deepseek = "deepseek" in model_name.lower()
     use_chat = (
         isinstance(prompt, list) or is_deepseek or response_format is not None
-    ) and not enforce_integer and not enforce_traversal_integer
+    ) and not enforce_traversal_integer
     supports_grammar = "llama" in model_name.lower()
 
     prompt_text = (
         "".join(m.get("content", "") for m in prompt) if isinstance(prompt, list) else prompt
     )
 
-    if enforce_integer:
-        endpoint = "/v1/completions"
-        payload = {
-            "model": "local",
-            "prompt": prompt_text,
-            "max_tokens": 8,
-            "temperature": min(temperature, 0.3),
-            "grammar": "root ::= INT\nINT ::= [0-9]+",
-        }
-    elif enforce_traversal_integer:
+    if enforce_traversal_integer:
         endpoint = "/v1/completions"
         payload = {
             "model": "local",
@@ -521,7 +503,7 @@ def query_llm(
     r.raise_for_status()
     data = r.json()
 
-    if enforce_integer or enforce_traversal_integer:
+    if enforce_traversal_integer:
         content = data.get("choices", [{}])[0].get("text", "")
     elif use_chat:
         # OpenAI-style response
@@ -530,7 +512,7 @@ def query_llm(
         # llama.cpp completion response
         content = data.get("content", data.get("message", ""))
 
-    if not (enforce_integer or enforce_traversal_integer) and grammar and not supports_grammar:
+    if not enforce_traversal_integer and grammar and not supports_grammar:
         content = enforce_grammar(content, grammar)
 
     usage = data.get("usage") if isinstance(data, dict) else None
