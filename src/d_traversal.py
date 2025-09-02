@@ -338,9 +338,9 @@ def llm_choose_edge(
         if token_totals is not None and usage:
             prompt_tokens = usage.get("prompt_tokens", 0)
             completion_tokens = usage.get("completion_tokens", 0)
-            token_totals["prompt_tokens"] += prompt_tokens
-            token_totals["completion_tokens"] += completion_tokens
-            token_totals["total_tokens"] += usage.get(
+            token_totals["trav_prompt_tokens"] += prompt_tokens
+            token_totals["trav_output_tokens"] += completion_tokens
+            token_totals["trav_tokens_total"] += usage.get(
                 "total_tokens", prompt_tokens + completion_tokens
             )
 
@@ -367,9 +367,9 @@ def llm_choose_edge(
     if token_totals is not None and usage:
         prompt_tokens = usage.get("prompt_tokens", 0)
         completion_tokens = usage.get("completion_tokens", 0)
-        token_totals["prompt_tokens"] += prompt_tokens
-        token_totals["completion_tokens"] += completion_tokens
-        token_totals["total_tokens"] += usage.get(
+        token_totals["trav_prompt_tokens"] += prompt_tokens
+        token_totals["trav_output_tokens"] += completion_tokens
+        token_totals["trav_tokens_total"] += usage.get(
             "total_tokens", prompt_tokens + completion_tokens
         )
 
@@ -863,11 +863,12 @@ def save_traversal_result( # helper for run_dev_set()
         result_entry["seed"] = seed
 
     if token_usage is not None:
-        result_entry["trav_prompt_tokens"] = token_usage.get("prompt_tokens", 0)
-        result_entry["trav_completion_tokens"] = token_usage.get("completion_tokens", 0)
-        result_entry["trav_total_tokens"] = token_usage.get(
-            "total_tokens",
-            token_usage.get("prompt_tokens", 0) + token_usage.get("completion_tokens", 0),
+        result_entry["trav_prompt_tokens"] = token_usage.get("trav_prompt_tokens", 0)
+        result_entry["trav_output_tokens"] = token_usage.get("trav_output_tokens", 0)
+        result_entry["trav_tokens_total"] = token_usage.get(
+            "trav_tokens_total",
+            token_usage.get("trav_prompt_tokens", 0)
+            + token_usage.get("trav_output_tokens", 0),
         )
 
 
@@ -929,7 +930,11 @@ def run_traversal(
 
     output_paths["base"].mkdir(parents=True, exist_ok=True)
         
-    token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    token_totals = {
+        "trav_prompt_tokens": 0,
+        "trav_output_tokens": 0,
+        "trav_tokens_total": 0,
+    }
     per_query_usage: Dict[str, Dict[str, int]] = {}
     total_time_ms = 0
 
@@ -949,8 +954,11 @@ def run_traversal(
         question_id = entry["question_id"]
         query_text = entry["question"]
         gold_passages = entry["gold_passages"]
-        query_token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-
+        query_token_totals = {
+            "trav_prompt_tokens": 0,
+            "trav_output_tokens": 0,
+            "trav_tokens_total": 0,
+        }
         print(f"\n[Query] {question_id} - \"{query_text}\"")
 
         # --- Embed query ---
@@ -1024,20 +1032,18 @@ def run_traversal(
 
         for k in token_totals:
             token_totals[k] += query_token_totals.get(k, 0)
-        per_query_usage[question_id] = {
-            f"trav_{k}": v for k, v in query_token_totals.items()
-        }
-
+        per_query_usage[question_id] = dict(query_token_totals)
         per_query_usage[question_id]["t_traversal_ms"] = elapsed_ms
         total_time_ms += elapsed_ms
 
-    
+
     token_usage_path = output_paths["base"] / "token_usage.json"
-    global_usage = {f"trav_{k}": v for k, v in token_totals.items()}
+    global_usage = {k: v for k, v in token_totals.items()}
     global_usage["t_traversal_ms"] = total_time_ms
     usage = {"per_query_traversal": per_query_usage, **global_usage}
     with open(token_usage_path, "wt", encoding="utf-8") as f:
         json.dump(usage, f, indent=2)
+
 
 
 

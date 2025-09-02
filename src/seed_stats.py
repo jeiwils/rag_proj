@@ -34,6 +34,8 @@ def _load_summary(path: Path) -> tuple[int | None, dict]:
         "wall_time": data.get("wall_time") or data.get("wall_time_total_sec"),
         "trav_tokens": data.get("trav_total_tokens"),
         "reader_tokens": data.get("reader_total_tokens"),
+        "t_total_ms": data.get("t_total_ms"),
+        "tps_overall": data.get("tps_overall"),
     }
 
     usage_path = path.parent / "token_usage.json"
@@ -45,11 +47,21 @@ def _load_summary(path: Path) -> tuple[int | None, dict]:
                 usage_data = usage_data.get("global", {})
             metrics.setdefault("trav_tokens", usage_data.get("trav_total_tokens"))
             metrics.setdefault("reader_tokens", usage_data.get("reader_total_tokens"))
+            metrics.setdefault("t_total_ms", (
+                usage_data.get("t_traversal_ms", 0)
+                + usage_data.get("t_reader_ms", 0)
+            ))
             if metrics.get("tokens") is None:
                 totals = [usage_data.get("trav_total_tokens"), usage_data.get("reader_total_tokens")]
                 totals = [t for t in totals if t is not None]
                 if totals:
                     metrics["tokens"] = sum(totals)
+            if metrics.get("tokens") is not None and metrics.get("t_total_ms"):
+                t_total_ms = metrics["t_total_ms"]
+                metrics.setdefault(
+                    "tps_overall",
+                    metrics["tokens"] / (t_total_ms / 1000) if t_total_ms else None,
+                )
 
     # Attempt to collect per-query metrics for statistical tests
     per_query_em: list[float] = []
@@ -84,7 +96,15 @@ def main(base_dir: str) -> None:
     # Compute variance and standard deviation
     variance: dict[str, float] = {}
     std_dev: dict[str, float] = {}
-    for key in ("EM", "F1", "tokens", "trav_tokens", "reader_tokens", "wall_time"):
+    for key in (
+        "EM",
+        "F1",
+        "tokens",
+        "trav_tokens",
+        "reader_tokens",
+        "wall_time",
+        "tps_overall",
+    ):
         values = [m[key] for m in per_seed.values() if m.get(key) is not None]
         if values:
             arr = np.array(values, dtype=float)

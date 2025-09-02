@@ -247,6 +247,22 @@ def run_dense_rag(
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
     })
+
+    tokens_total = (
+        metrics.get("trav_total_tokens", 0)
+        + metrics.get("reader_total_tokens", 0)
+    )
+    t_total_ms = metrics.get("t_traversal_ms", 0) + metrics.get("t_reader_ms", 0)
+    tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
+    metrics.update(
+        {
+            "tokens_total": tokens_total,
+            "t_total_ms": t_total_ms,
+            "tps_overall": tps_overall,
+        }
+    )
+
+    print(f"[summary] overall throughput: {tps_overall:.2f} tokens/s")
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
