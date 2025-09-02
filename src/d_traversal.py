@@ -134,7 +134,8 @@ from src.utils import (
 )
 
 
-
+class TraversalOutputError(Exception):
+    pass
 
 
 
@@ -355,15 +356,13 @@ def llm_choose_edge(
         "Candidate Auxiliary Questions:\n"
         f"{options}\n\n"
         "Select the auxiliary question that best helps answer the main question.\n"
-        f"Respond only with the index (1-{k}) or 'null' if all options are irrelevant.\n"
-        "If multiple options seem equally good, pick the lowest index."
+        f"Respond only with the index (1-{k}).\n"
     )
 
     answer, usage = query_llm(
         prompt,
         server_url=oq_server["server_url"],
-        max_tokens=32,
-        temperature=0.0,
+        temperature=0.2,
         model_name=oq_server["model"],
         phase="edge_selection",
         stop=None,

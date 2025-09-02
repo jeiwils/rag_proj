@@ -192,6 +192,18 @@ if __name__ == "__main__":
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     SPLITS = ["dev"]
     READER_MODELS = ["llama-3.1-8b-instruct"]
+
+
+
+    # READER_MODELS = [
+    #     "qwen2.5-7b-instruct",
+    #     "qwen2.5-14b-instruct",
+    #     "deepseek-r1-distill-qwen-7b",
+    #     "deepseek-r1-distill-qwen-14b",
+    #     "qwen2.5-moe-19b",
+    # ]
+
+
     TOP_K = DEFAULT_SEED_TOP_K
 
     for dataset in DATASETS:
