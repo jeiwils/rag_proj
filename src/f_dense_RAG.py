@@ -328,7 +328,7 @@ if __name__ == "__main__":
         "deepseek-r1-distill-qwen-7b",
         "deepseek-r1-distill-qwen-14b",
 
-        "qwen2.5-moe-19b",
+        "qwen2.5-moe-14b",
 
         "state-of-the-moe-rp-2x7b",
 

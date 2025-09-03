@@ -31,7 +31,7 @@ Sharded output files written to:
 
 data/models/{model}/{dataset}/{split}/shards/
     - {split}_passages_shard{N}_{size}.jsonl
-        → Raw input shards split by model size (1.5b → 4 shards, 7b → 2, 8b → 2, 14b/19b → 1).
+        → Raw input shards split by model size (1.5b → 4 shards, 7b → 2, 8b → 2, 14b → 1).
         
 data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/
 
@@ -372,14 +372,6 @@ def _wrap_for_deepseek_user(prompt: str, task: str, reason: bool = True) -> str:
     return prompt
 
 
-def _temp_for(model_name: str, phase: str) -> float: ############ I GUESS I SHOULD EVENTUALLY REMOVE THIS 
-    # # DeepSeek-R1 rec: 0.5–0.7 for generative tasks; keep CS deterministic
-    # if is_r1_like(model_name) and phase in {"iqoq_generation","answer_generation","edge_selection"}:
-    #     return 0.6
-    return TEMPERATURE.get(phase, 0.1)
-
-
-
 
 
 
@@ -716,7 +708,7 @@ def get_conditioned_score(
             cs_prompt_filled,
             server_url,
             max_tokens=cs_tokens,          # keep this small
-            temperature=_temp_for(model_name, "cs"),
+            temperature=TEMPERATURE.get("cs", 0.1),
             stop=["\n"],                   # stop at first newline
             grammar=CS_GRAMMAR,             # hard-constrain output
             model_name=model_name,
@@ -859,8 +851,8 @@ def generate_iqoq(
 
     # Temperatures (allow mid diversity unless you override)
     if is_r1_like(model_name):
-        iq_temperature = _temp_for(model_name, "iqoq_generation")
-        oq_temperature = _temp_for(model_name, "iqoq_generation")
+        iq_temperature = TEMPERATURE.get("iqoq_generation", 0.1)
+        oq_temperature = TEMPERATURE.get("iqoq_generation", 0.1)
 
     # Query (use /completion; grammar only supported there)
     try:

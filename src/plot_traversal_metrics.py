@@ -21,10 +21,19 @@ from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
 import matplotlib.pyplot as plt
+import logging
 
 
+logger = logging.getLogger(__name__)
 TRAVERSAL_FIELDS = ["mean_precision", "mean_recall", "mean_f1"]
 ANSWER_FIELDS = ["EM", "F1"]
+
+
+def _validate_keys(metrics: Dict[str, float], expected: Sequence[str]) -> None:
+    """Log a warning if expected metric keys are missing."""
+    missing = [k for k in expected if k not in metrics]
+    if missing:
+        logger.warning("Missing metrics: %s", ", ".join(missing))
 
 
 def _load_metrics(result_dir: Path) -> Dict[str, float]:
@@ -33,7 +42,9 @@ def _load_metrics(result_dir: Path) -> Dict[str, float]:
     stats_path = result_dir / "final_traversal_stats.json"
     with stats_path.open("r", encoding="utf-8") as f:
         data = json.load(f)
-    return data.get("traversal_eval", {})
+    metrics = data.get("traversal_eval", {})
+    _validate_keys(metrics, TRAVERSAL_FIELDS)
+    return metrics
 
 
 def _infer_components(result_dir: Path) -> Tuple[str, str, str, str]:
@@ -76,7 +87,10 @@ def _load_answer_metrics(result_dir: Path) -> Dict[str, float]:
     if not summary_path.exists():
         return {}
     with summary_path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    metrics = data.get("answer_eval", data)
+    _validate_keys(metrics, ANSWER_FIELDS)
+    return metrics
 
 
 def _model_label(result_dir: Path) -> str:

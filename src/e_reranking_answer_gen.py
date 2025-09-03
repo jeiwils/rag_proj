@@ -29,13 +29,16 @@ Inputs
 Outputs
 -------
 
-### data/traversal/{model}/{dataset}/{split}/{variant}/
+### data/results/{model}/{dataset}/{split}/{variant}/
 
-- `per_query_traversal_results.jsonl`
-    One entry per query with hop trace, visited nodes, and precision/recall/F1 metrics.
+- `answer_per_query_{variant}_{split}.jsonl`
+    LLM-generated answers per query.
 
-- `final_traversal_stats.json`  
-    Aggregate metrics across the full query set (e.g., mean precision, recall, hop stats).
+- `answer_metrics_{variant}_{split}.jsonl`
+    Exact-match and F1 metrics for each query.
+
+- `summary_metrics_{variant}_{split}.json`
+    Aggregate answer metrics in the form `{ "timestamp": ..., "answer_eval": {..} }`.
 
 
 File Schemas
@@ -61,21 +64,21 @@ Each line contains a dict with the full traversal trace and evaluation:
 
 
 
-### final_traversal_stats.json
+### summary_metrics_{variant}_{split}.json
 
-Aggregated summary across all queries:
+Aggregated answer evaluation:
 
 {
-  "mean_precision": float,
-  "mean_recall": float,
-  "passage_coverage_all_gold_found": int,
-  "initial_retrieval_coverage": int,
-  "avg_hops_before_first_gold": float | null, 
-  "avg_total_hops": float,
-  "avg_repeat_visits": float,
-  "avg_none_count_per_query": float,
-  "max_hop_depth_reached": int,
-  "hop_depth_distribution": List[int]
+  "timestamp": "2025-08-13T14:22:31",
+  "answer_eval": {
+    "EM": float,
+    "F1": float,
+    "hits_at_k": float,
+    "median_f1": float,
+    "p90_f1": float,
+    "median_em": float,
+    "p90_em": float
+  }
 }
 
 
@@ -87,7 +90,7 @@ Notes
 - `enhanced` = prioritises edges by destination `conditioned_score` but also
   avoids revisiting nodes.
 - All outputs are saved in:
-  `data/traversal/{model}/{dataset}/{split}/{variant}/`
+  `data/results/{model}/{dataset}/{split}/{variant}/`
 """
 
 
@@ -99,12 +102,13 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 
+from datetime import datetime
 
 from functools import partial
 import networkx as nx
 import pickle
 
-from src.a2_text_prep import _temp_for, is_r1_like, query_llm, strip_think, model_size
+from src.a2_text_prep import TEMPERATURE, is_r1_like, query_llm, strip_think, model_size
 from src.utils import (
     append_jsonl,
     compute_resume_sets,
@@ -262,7 +266,7 @@ def ask_llm_with_passages(
         max_tokens=max_tokens,
         model_name=model_name,
         stop=["\n", "Answer:", "Final answer:"],
-        temperature=_temp_for(model_name, "answer_generation"),
+        temperature=TEMPERATURE.get("answer_generation", 0.1),
         phase="answer_generation",
     )
 
@@ -475,7 +479,7 @@ def generate_answers_from_traversal(
         :func:`get_server_configs` for ``reader_model`` when not provided.
     num_workers:
         Number of worker processes. When ``None``, uses :func:`model_size` to
-        choose ``1`` worker for ``14b``/``19b`` models, ``2`` for ``7b`` models,
+        choose ``1`` worker for ``14b`` models, ``2`` for ``7b`` models,
         and ``4`` otherwise.
     resume:
         When ``True``, skip questions already present in the output file and
@@ -586,7 +590,7 @@ def generate_answers_from_traversal(
 
     if num_workers is None:
         size = model_size(traversal_model if model_name is None else model_name)
-        num_workers = {"14b": 1, "19b": 1, "7b": 2}.get(size, 4)
+        num_workers = {"14b": 1, "7b": 2}.get(size, 4)
 
     worker = partial(
         _generate_answer,
@@ -655,6 +659,13 @@ def generate_answers_from_traversal(
     )
     metrics.update(extra)
 
+    stats_payload = {
+        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "answer_eval": metrics,
+    }
+    with open(result_paths["summary"], "w", encoding="utf-8") as f:
+        json.dump(stats_payload, f, indent=2)
+
     with open(result_paths["base"] / "token_usage.json", "w", encoding="utf-8") as f:
         json.dump(token_totals, f, indent=2)
 
@@ -695,7 +706,7 @@ if __name__ == "__main__":
     #     "qwen2.5-14b-instruct",
     #     "deepseek-r1-distill-qwen-7b",
     #     "deepseek-r1-distill-qwen-14b",
-    #     "qwen2.5-moe-19b",
+    #     "qwen2.5-moe-14b",
     # ]
     VARIANTS = ["baseline"]  
 

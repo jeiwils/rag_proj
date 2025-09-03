@@ -42,7 +42,7 @@ SERVER_CONFIGS = [
     {"server_url": "http://localhost:8007", "model": "deepseek-r1-distill-qwen-14b"},
 
     # --- Traversal: Qwen2.5-MOE-19B (1) ---
-    {"server_url": "http://localhost:8008", "model": "qwen2.5-moe-19b"},
+    {"server_url": "http://localhost:8008", "model": "qwen2.5-moe-14b"},
 
     # --- Traversal: State-of-the-MoE-RP-2x7B (1) ---
     {"server_url": "http://localhost:8052", "model": "state-of-the-moe-rp-2x7b"},
@@ -416,7 +416,7 @@ def model_size(model: str) -> str:
     --------
     ``qwen2.5-7b-instruct`` → ``7b``
     ``deepseek-r1-distill-qwen-14b`` → ``14b``
-    ``qwen2.5-moe-19b`` → ``19b``
+    ``qwen2.5-moe-14b`` → ``14b``
 
     This is used purely for file naming and shard selection.
     """
@@ -516,10 +516,10 @@ def model_shard_paths(model: str, dataset: str, split: str, stem: str, size: str
     stem:
         Base filename (typically input JSONL stem).
     size:
-        Model size string (``"1.5b"``, ``"7b"``, ``"8b"``, ``"14b"`` or ``"19b"``).
+        Model size string (``"1.5b"``, ``"7b"``, ``"8b"``, ``"14b"``).
     """
     out_dir = model_shard_dir(model, dataset, split)
-    counts = {"1.5b": 4, "7b": 2, "8b": 2, "14b": 1, "19b": 1}
+    counts = {"1.5b": 4, "7b": 2, "8b": 2, "14b": 1}
     n_shards = counts.get(size)
     if n_shards is None:
         raise ValueError(f"Unsupported model size: {size}")
@@ -531,7 +531,7 @@ def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> Li
     """Split ``path`` into shards appropriate for ``model``.
 
     Supported model sizes and shard counts:
-    ``1.5b`` → 4 shards, ``7b``/``8b`` → 2 shards, ``14b``/``19b`` → 1 shard.
+    ``1.5b`` → 4 shards, ``7b``/``8b`` → 2 shards, ``14b`` → 1 shard.
 
     Parameters
     ----------
@@ -563,7 +563,7 @@ def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> Li
         split_jsonl_into_four(path, *(str(op) for op in out_paths))
     elif size in {"7b", "8b"}:
         split_jsonl(path, str(out_paths[0]), str(out_paths[1]))
-    elif size in {"14b", "19b"}:
+    elif size == "14b":
         data = list(load_jsonl(path))
         save_jsonl(str(out_paths[0]), data)
     else:

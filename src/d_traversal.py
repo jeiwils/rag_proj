@@ -104,7 +104,7 @@ from tqdm import tqdm
 from datetime import datetime
 
 
-from src.a2_text_prep import _temp_for, is_r1_like, query_llm, strip_think
+from src.a2_text_prep import is_r1_like, query_llm, strip_think
 from src.b_sparse_dense_representations import (
     dataset_rep_paths,
     extract_keywords,
@@ -115,7 +115,7 @@ from src.b_sparse_dense_representations import (
     build_and_save_faiss_index,
 )
 
-from src.c_graphing import DEFAULT_EDGE_BUDGET_ALPHA, append_global_result
+from src.c_graphing import DEFAULT_EDGE_BUDGET_ALPHA
 from src.utils import (
     SERVER_CONFIGS,
     append_jsonl,
@@ -1260,7 +1260,6 @@ def compute_traversal_summary(
         "wall_time_total_sec": round(wall_time_total, 4),
         "wall_time_mean_sec": round(wall_time_mean, 4),
         "wall_time_median_sec": round(wall_time_median, 4),
-        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
     }
     return summary
 
@@ -1475,26 +1474,16 @@ def process_traversal(cfg: Dict) -> None:
     traversal_metrics = compute_traversal_summary(
         output_paths["results"], include_ids=new_ids
     )
-    extra_meta = {
-        "dataset": dataset,
-        "split": split,
-        "variant": variant_for_path,
-        "retriever_name": retriever_name,
-        "traverser_model": model,
-        "reader_model": None,
+    stats_payload = {
+        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "traversal_eval": traversal_metrics,
     }
-    if seed is not None:
-        extra_meta["seed"] = seed
-    append_global_result(
-        save_path=output_paths["stats"],
-        traversal_eval=traversal_metrics,
-        extra_metadata=extra_meta,
-    )
+    with open(output_paths["stats"], "w", encoding="utf-8") as f:
+        json.dump(stats_payload, f, indent=2)
 
     print(
         f"[Done] dataset={dataset} graph_model={graph_model} traversal_model={model} variant={variant_for_path} split={split}"
     )
-
 
 
 
@@ -1515,7 +1504,7 @@ if __name__ == "__main__":
 #         "qwen2.5-14b-instruct",
 #         "deepseek-r1-distill-qwen-7b",
 #         "deepseek-r1-distill-qwen-14b",
-#         "qwen2.5-moe-19b",
+#         "qwen2.5-moe-14b",
         # "state-of-the-moe-rp-2x7b",
         # "qwen2.5-2x7b-power-coder-v4"
 #     ]
