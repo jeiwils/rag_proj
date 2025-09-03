@@ -21,9 +21,7 @@ from .utils import (
     load_jsonl,
     stylized_subplots,
     get_result_dirs,
-    answer_run_paths,
-    traversal_run_paths,
-    parse_traversal_run_dir
+    rag_run_paths
 )
 
 logger = logging.getLogger(__name__)
@@ -135,8 +133,11 @@ def _validate_keys(metrics: Dict[str, float], expected: Sequence[str]) -> None:
 
 
 def _load_metrics(result_dir: Path, fields: Sequence[str]) -> Tuple[Dict[str, float], Dict[str, Any]]:
-    model, dataset, split, seed = parse_traversal_run_dir(result_dir)
-    stats_path = traversal_run_paths(model, dataset, split, seed)["final_stats"]
+    parts = result_dir.resolve().parts
+    model, dataset, split = parts[-4], parts[-3], parts[-2]
+    mode, seed_str = result_dir.name.rsplit("_seed", 1)
+    seed = int(seed_str)
+    stats_path = rag_run_paths(model, dataset, split, seed, mode)["traversal"]["final_stats"]
     data = load_json(stats_path)
     meta = {k: data.get(k) for k in META_FIELDS}
     metrics = data.get("traversal_eval", {})
@@ -152,8 +153,8 @@ def _load_answer_metrics(meta: Dict[str, Any]) -> Dict[str, float]:
     split = meta.get("split")
     if None in (mode, seed, model, dataset, split):
         return {}
-    paths = answer_run_paths(model, dataset, split, mode, seed)
-    summary_path = paths["summary"]
+    paths = rag_run_paths(model, dataset, split, seed, mode)
+    summary_path = paths["answers"]["summary"]
     if not summary_path.exists():
         return {}
     data = load_json(summary_path)

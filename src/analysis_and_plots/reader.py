@@ -8,7 +8,7 @@ from typing import Sequence
 
 import matplotlib.pyplot as plt
 
-from .utils import ensure_output_path, load_json, stylized_subplots, answer_run_paths
+from .utils import ensure_output_path, load_json, stylized_subplots, rag_run_paths
 
 logger = logging.getLogger(__name__)
 
@@ -106,9 +106,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     for mode in ("baseline", "dense"):
-        path = answer_run_paths(args.model, args.dataset, args.split, mode, args.seed)[
-            "token_usage"
-        ]
+        path = rag_run_paths(args.model, args.dataset, args.split, args.seed, mode)[
+            "answers"]["token_usage"]
         if path.exists():
             process_usage_file(path)
 

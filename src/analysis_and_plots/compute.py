@@ -18,10 +18,9 @@ from .utils import (
     load_json,
     stylized_subplots,
     get_result_dirs,
-    parse_traversal_run_dir,
-    traversal_run_paths,
-    answer_run_paths,
+    rag_run_paths,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +47,11 @@ def _validate_keys(metrics: Dict[str, float], expected: Sequence[str]) -> None:
 
 def _load_usage(result_dir: Path, fields: Sequence[str]) -> Dict[str, float]:
     """Return compute usage metrics from ``token_usage.json`` in ``result_dir``."""
-    model, dataset, split, seed = parse_traversal_run_dir(result_dir)
-    usage_path = traversal_run_paths(model, dataset, split, seed)["token_usage"]
+    parts = result_dir.resolve().parts
+    model, dataset, split = parts[-4], parts[-3], parts[-2]
+    mode, seed_str = result_dir.name.rsplit("_seed", 1)
+    seed = int(seed_str)
+    usage_path = rag_run_paths(model, dataset, split, seed, mode)["answers"]["token_usage"]
     if not usage_path.exists():
         logger.warning("token_usage.json not found in %s", result_dir)
         return {f: 0.0 for f in fields}
@@ -121,7 +123,7 @@ if __name__ == "__main__":
     # Example usage: compare baseline and dense RAG runs for a single seed.
     model, dataset, split, seed = "MODEL", "DATASET", "dev", 0
     dirs = [
-        answer_run_paths(model, dataset, split, mode, seed)["base"]
+        rag_run_paths(model, dataset, split, seed, mode)["answers"]["base"]
         for mode in ("baseline", "dense")
     ]
     plot_compute_usage(dirs, Path("analysis/compute_usage.png"))

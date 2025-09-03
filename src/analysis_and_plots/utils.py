@@ -70,6 +70,12 @@ def traversal_run_paths(model: str, dataset: str, split: str, seed: int) -> dict
         "token_usage": root / "token_usage.json",
     }
 
+def rag_run_paths(model: str, dataset: str, split: str, seed: int, mode: str) -> dict[str, dict[str, Path]]:
+    """Return traversal and answer-generation paths for a run."""
+    return {
+        "traversal": traversal_run_paths(model, dataset, split, seed),
+        "answers":   answer_run_paths(model, dataset, split, mode, seed),
+    }
 
 def parse_traversal_run_dir(path: Path) -> tuple[str, str, str, int]:
     """Extract ``(model, dataset, split, seed)`` from a traversal run directory."""
@@ -245,6 +251,5 @@ __all__ = [
     "get_result_dirs",
     "answer_run_paths",
     "traversal_run_paths",
-
-
+    "rag_run_paths"
 ]
