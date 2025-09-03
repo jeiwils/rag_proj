@@ -553,8 +553,13 @@ def generate_answers_from_traversal(
     hits: Dict[str, float] = {}
     recalls: Dict[str, float] = {}
 
-    token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-
+    token_totals = {
+        "reader_prompt_tokens": 0,
+        "reader_output_tokens": 0,
+        "reader_total_tokens": 0,
+        "n_reader_calls": 0,
+    }
+    per_query_reader: Dict[str, Dict[str, int]] = {}
 
 
 
@@ -653,11 +658,21 @@ def generate_answers_from_traversal(
         hits[qid] = answer.get("hits_at_k", 0.0)
         recalls[qid] = answer.get("recall_at_k", 0.0)
 
-        token_totals["prompt_tokens"] += answer.get("prompt_len", 0)
-        token_totals["completion_tokens"] += answer.get("output_tokens", 0)
-        token_totals["total_tokens"] += answer.get(
+        token_totals["n_reader_calls"] += 1
+        token_totals["reader_prompt_tokens"] += answer.get("prompt_len", 0)
+        token_totals["reader_output_tokens"] += answer.get("output_tokens", 0)
+        token_totals["reader_total_tokens"] += answer.get(
             "total_tokens", answer.get("prompt_len", 0) + answer.get("output_tokens", 0)
         )
+        per_query_reader[qid] = {
+            "reader_prompt_tokens": answer.get("prompt_len", 0),
+            "reader_output_tokens": answer.get("output_tokens", 0),
+            "reader_total_tokens": answer.get(
+                "total_tokens",
+                answer.get("prompt_len", 0) + answer.get("output_tokens", 0),
+            ),
+            "n_reader_calls": 1,
+        }
 
     result_paths["base"].mkdir(parents=True, exist_ok=True)
     if resume:
@@ -704,8 +719,18 @@ def generate_answers_from_traversal(
 
     run_id = str(int(time.time()))  # Identifier to group token usage shards
     usage_path = result_paths["base"] / f"token_usage_{run_id}_{os.getpid()}.json"
+    usage = {
+        "per_query_traversal": {},
+        "per_query_reader": per_query_reader,
+        "trav_prompt_tokens": 0,
+        "trav_completion_tokens": 0,
+        "trav_tokens_total": 0,
+        **token_totals,
+        "t_traversal_ms": 0,
+        "t_reader_ms": 0,
+    }
     with open(usage_path, "w", encoding="utf-8") as f:
-        json.dump(token_totals, f, indent=2)
+        json.dump(usage, f, indent=2)
 
     # Consolidate token usage files for this run and remove the temporary parts
     merge_token_usage(result_paths["base"], run_id=run_id, cleanup=True)
