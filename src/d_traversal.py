@@ -365,7 +365,7 @@ def llm_choose_edge(
     answer, usage = query_llm(
         prompt,
         server_url=oq_server["server_url"],
-        max_tokens=4,
+        max_tokens=5,
         temperature=0.7,
         model_name=oq_server["model"],
         phase="edge_selection",
@@ -412,7 +412,7 @@ def llm_choose_edge(
             answer, usage = query_llm(
                 prompt,
                 server_url=oq_server["server_url"],
-                max_tokens=4,
+                max_tokens=5,
                 temperature=0.7,
                 model_name=oq_server["model"],
                 phase="edge_selection",

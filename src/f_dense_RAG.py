@@ -352,20 +352,20 @@ if __name__ == "__main__":
 
 
 
-    READER_MODELS = [
+    READER_MODELS = ["qwen2.5-moe-14b"]
 
-        "qwen2.5-7b-instruct",
-        "qwen2.5-14b-instruct",
+    #     "qwen2.5-7b-instruct",
+    #     "qwen2.5-14b-instruct",
 
-        "deepseek-r1-distill-qwen-7b",
-        "deepseek-r1-distill-qwen-14b",
+    #     "deepseek-r1-distill-qwen-7b",
+    #     "deepseek-r1-distill-qwen-14b",
 
-        "qwen2.5-moe-14b",
+    #     "qwen2.5-moe-14b",
 
-        "state-of-the-moe-rp-2x7b",
+    #     "state-of-the-moe-rp-2x7b",
 
-        "qwen2.5-2x7b-power-coder-v4"
-    ]
+    #     "qwen2.5-2x7b-power-coder-v4"
+    # ]
 
 
     SEEDS = [1, 2, 3, 4, 5] 

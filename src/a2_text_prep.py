@@ -151,17 +151,22 @@ _session.mount("http://", _adapter)
 _session.mount("https://", _adapter)
 
 
+# def _post(url, json, timeout=300):
+#     return _session.post(
+#         url, json=json, timeout=timeout,
+#         headers={"Connection": "keep-alive"}
+#     )
+
 def _post(url, json, timeout=300):
     return _session.post(
-        url, json=json, timeout=timeout,
-        headers={"Connection": "keep-alive"}
+        url, json=json, timeout=timeout, 
+        headers={"Connection": "close"}
     )
 
 
 
 
-
-RESUME = True  #### WHY SET HERE????
+RESUME = True  
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
