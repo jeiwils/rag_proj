@@ -98,7 +98,8 @@ def main(base_dir: str) -> None:
         print("No seed summaries found in", base)
         return
 
-    # Compute variance and standard deviation
+    # Compute average, variance, and standard deviation across seeds
+    mean: dict[str, float] = {}
     variance: dict[str, float] = {}
     std_dev: dict[str, float] = {}
     for key in (
@@ -113,6 +114,8 @@ def main(base_dir: str) -> None:
         values = [m[key] for m in per_seed.values() if m.get(key) is not None]
         if values:
             arr = np.array(values, dtype=float)
+            mean[key] = float(np.mean(arr))
+
             variance[key] = float(np.var(arr))
             std_dev[key] = float(np.std(arr))
 
@@ -144,6 +147,7 @@ def main(base_dir: str) -> None:
             str(seed): {k: v for k, v in m.items() if not k.startswith("per_query")}
             for seed, m in per_seed.items()
         },
+        "mean": mean,
         "variance": variance,
         "std_dev": std_dev,
         "wilcoxon": wilcoxon,

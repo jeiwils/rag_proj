@@ -24,7 +24,7 @@ from pathlib import Path
 
 
 
-SERVER_CONFIGS = [ # put 'moe' in the 'model' name to bypass 7b sharding
+SERVER_CONFIGS = [ 
     {"server_url": "http://localhost:8000", "model": "llama-3.1-8b-instruct"},
     {"server_url": "http://localhost:8001", "model": "llama-3.1-8b-instruct"},
 
@@ -42,7 +42,7 @@ SERVER_CONFIGS = [ # put 'moe' in the 'model' name to bypass 7b sharding
 
     {"server_url": "http://localhost:8052", "model": "state-of-the-moe-rp-2x7b"},
 
-    {"server_url": "http://localhost:8051", "model": "qwen2.5-2x7b-power-coder-v4-moe"},
+    {"server_url": "http://localhost:8051", "model": "qwen2.5-2x7b-moe-power-coder-v4"},
 ]
 
 
@@ -77,18 +77,7 @@ def get_server_urls(model: str) -> List[str]:
     return [cfg["server_url"] for cfg in get_server_configs(model)]
 
 
-# def get_server_urls(model):
-#     """
-#     Return all server URLs for a given model (e.g., 4 for 1.5B, 2 for 7B).
 
-
-#     goes in the __main__ loop to activate all relevant servers 
-
-#     """
-#     urls = [config["server_url"] for config in SERVER_CONFIGS if config["model"] == model]
-#     if not urls:
-#         raise ValueError(f"Unknown model: {model}")
-#     return urls
 
 
 
@@ -528,7 +517,7 @@ def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> Li
     size = model_size(model)
     if "moe" in model.lower():
         size = "14b"
-        
+
     p = Path(path)
     dataset = p.parent.parent.name
     split = p.parent.name
