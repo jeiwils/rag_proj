@@ -69,6 +69,12 @@ File Schema
 ### final_traversal_stats.json
 
 {
+  "dataset": str,
+  "split": str,
+  "variant": str,
+  "model": str,
+  "retriever": str | null,
+  "seed": int | null,
   "timestamp": "2025-08-13T14:22:31",
   "traversal_eval": {
     "mean_precision": float,
@@ -1576,6 +1582,12 @@ def process_traversal(cfg: Dict) -> None:
         output_paths["results"], include_ids=new_ids
     )
     stats_payload = {
+        "dataset": dataset,
+        "split": split,
+        "variant": variant,
+        "model": model,
+        "retriever": retriever_name,
+        "seed": seed,
         "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         "traversal_eval": traversal_metrics,
     }

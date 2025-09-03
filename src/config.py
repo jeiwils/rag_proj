@@ -1,4 +1,4 @@
-AX_TOKENS = {
+MAX_TOKENS = {
     "cs": 200,  # 50,
     "iqoq_generation": 192,
     "edge_selection": 64,

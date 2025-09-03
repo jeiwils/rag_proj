@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Sequence, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -97,7 +97,15 @@ def plot_traversal_distributions(
 TRAVERSAL_FIELDS = ["mean_precision", "mean_recall", "mean_f1", "mean_hits_at_k"]
 RECALL_AT_K_FIELD = "mean_recall_at_k"
 ANSWER_FIELDS = ["EM", "F1"]
-
+META_FIELDS = (
+    "dataset",
+    "split",
+    "variant",
+    "model",
+    "retriever",
+    "seed",
+    "timestamp",
+)
 
 def _validate_keys(metrics: Dict[str, float], expected: Sequence[str]) -> None:
     missing = [k for k in expected if k not in metrics]
@@ -105,40 +113,30 @@ def _validate_keys(metrics: Dict[str, float], expected: Sequence[str]) -> None:
         logger.warning("Missing metrics: %s", ", ".join(missing))
 
 
-def _load_metrics(result_dir: Path, fields: Sequence[str]) -> Dict[str, float]:
+def _load_metrics(result_dir: Path, fields: Sequence[str]) -> Tuple[Dict[str, float], Dict[str, Any]]:
     stats_path = result_dir / "final_traversal_stats.json"
     data = load_json(stats_path)
+    meta = {k: data.get(k) for k in META_FIELDS}
     metrics = data.get("traversal_eval", {})
     _validate_keys(metrics, fields)
-    return metrics
+    return metrics, meta
 
 
-def _infer_components(result_dir: Path) -> Tuple[str, str, str, str]:
-    parts = result_dir.resolve().parts
-    if "traversal" in parts:
-        idx = parts.index("traversal")
-        variant = parts[idx - 1]
-        split = parts[idx - 2]
-        dataset = parts[idx - 3]
-        model = parts[idx - 4]
-        return model, dataset, split, variant
-    variant = parts[-1]
-    split = parts[-2]
-    dataset = parts[-3]
-    model = parts[-4]
-    return model, dataset, split, variant
-
-
-def _load_answer_metrics(result_dir: Path) -> Dict[str, float]:
-    model, dataset, split, variant = _infer_components(result_dir)
+def _load_answer_metrics(meta: Dict[str, Any]) -> Dict[str, float]:
+    variant_for_path = meta.get("variant")
+    seed = meta.get("seed")
+    if variant_for_path is None:
+        return {}
+    if seed is not None:
+        variant_for_path = f"{variant_for_path}_seed{seed}"
     summary_path = (
         Path("data")
         / "results"
-        / model
-        / dataset
-        / split
-        / variant
-        / f"summary_metrics_{variant}_{split}.json"
+        / meta.get("model", "")
+        / meta.get("dataset", "")
+        / meta.get("split", "")
+        / variant_for_path
+        / f"summary_metrics_{variant_for_path}_{meta.get('split', '')}.json"
     )
     if not summary_path.exists():
         return {}
@@ -170,15 +168,17 @@ def plot_traversal_metrics(
     traversal_by_model: Dict[str, Dict[str, float]] = {}
     hop_distributions: Dict[str, List[int]] = {}
     answer_by_model: Dict[str, Dict[str, float]] = {}
+    metadata_by_model: Dict[str, Dict[str, Any]] = {}
 
     for rdir in result_dirs:
-        metrics = _load_metrics(rdir, traversal_fields)
+        metrics, meta = _load_metrics(rdir, traversal_fields)
         label = _model_label(rdir)
         traversal_by_model[label] = metrics
         dist = metrics.get("hop_depth_distribution")
         if isinstance(dist, list):
             hop_distributions[label] = dist
-        answer_by_model[label] = _load_answer_metrics(rdir)
+        answer_by_model[label] = _load_answer_metrics(meta)
+        metadata_by_model[label] = meta
 
     labels = list(traversal_by_model.keys())
     num_traversal_axes = len(traversal_fields)
@@ -222,6 +222,12 @@ def plot_traversal_metrics(
     fig.savefig(ensure_output_path(output))
     plt.close(fig)
 
+    if metadata_by_model:
+        header = ["label"] + list(META_FIELDS)
+        print("\t".join(header))
+        for label, meta in metadata_by_model.items():
+            row = [label] + [str(meta.get(k, "")) for k in META_FIELDS]
+            print("\t".join(row))
 
 __all__ = [
     "find_result_files",

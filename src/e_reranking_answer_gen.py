@@ -70,21 +70,26 @@ Each line contains a dict with the full traversal trace and evaluation:
 
 ### summary_metrics_{variant}_{split}.json
 
-Aggregated answer evaluation:
+Aggregated answer evaluation with run metadata:
 
 {
+  "dataset": str,
+  "split": str,
+  "variant": str,
+  "model": str,
+  "retriever": str | null,
+  "seed": int | null,
   "timestamp": "2025-08-13T14:22:31",
   "answer_eval": {
     "EM": float,
     "F1": float,
     "hits_at_k": float,
-    "recall_at_k": float,
-
-    "median_f1": float,
-    "p90_f1": float,
-    "median_em": float,
-    "p90_em": float
-  }
+    "recall_at_k": float
+  },
+  "median_f1": float,
+  "p90_f1": float,
+  "median_em": float,
+  "p90_em": float
 }
 
 
@@ -602,6 +607,8 @@ def generate_answers_from_traversal(
     query_file = processed_dataset_paths(dataset, split)["questions"]
 
     traversal_records = {r["question_id"]: r for r in load_jsonl(traversal_file)}
+    sample_record = next(iter(traversal_records.values()), {})
+    retriever_name = sample_record.get("retriever_name")
     with open(graph_file, "rb") as f:
         graph = pickle.load(f)
     passage_lookup = {pid: data.get("text", "") for pid, data in graph.nodes(data=True)}
@@ -722,13 +729,25 @@ def generate_answers_from_traversal(
             sum(recalls.values()) / len(recalls), 4
         )
 
+    timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    summary_payload = {
+        "dataset": dataset,
+        "split": split,
+        "variant": variant,
+        "model": traversal_model,
+        "retriever": retriever_name,
+        "seed": seed,
+        "timestamp": timestamp,
+        "answer_eval": metrics.copy(),
+    }
     with open(result_paths["summary"], "wt", encoding="utf-8") as f:
-        json.dump(metrics, f, indent=2)
+        json.dump(summary_payload, f, indent=2)
 
     extra = append_percentiles(
         result_paths["answer_metrics"], result_paths["summary"]
     )
     metrics.update(extra)
+    summary_payload.update(extra)
 
     t_reader_ms = reader_time_total_ms
     usage = {
@@ -771,12 +790,9 @@ def generate_answers_from_traversal(
         "tps_overall": tps_overall,
     })
 
-    stats_payload = {
-        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-        "answer_eval": metrics,
-    }
+    summary_payload["answer_eval"] = metrics
     with open(result_paths["summary"], "w", encoding="utf-8") as f:
-        json.dump(stats_payload, f, indent=2)
+        json.dump(summary_payload, f, indent=2)
 
     print(f"[summary] overall throughput: {tps_overall:.2f} tokens/s")
 

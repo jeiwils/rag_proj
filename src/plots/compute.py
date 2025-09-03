@@ -16,7 +16,12 @@ USAGE_FIELDS = [
     "tps_overall",
     "trav_tokens_total",
     "reader_total_tokens",
+    "trav_prompt_tokens",
+    "trav_output_tokens",
+    "reader_prompt_tokens",
+    "reader_output_tokens",
 ]
+
 
 
 def _validate_keys(metrics: Dict[str, float], expected: Sequence[str]) -> None:
@@ -31,10 +36,25 @@ def _load_usage(result_dir: Path, fields: Sequence[str]) -> Dict[str, float]:
     usage_path = result_dir / "token_usage.json"
     if not usage_path.exists():
         logger.warning("token_usage.json not found in %s", result_dir)
-        return {}
+        return {f: 0.0 for f in fields}
+
     data = load_json(usage_path)
+
+    # Backfill missing fields using per-query metrics when available.
+    for field in fields:
+        if field not in data:
+            if field.startswith("trav") and "per_query_traversal" in data:
+                data[field] = sum(
+                    m.get(field, 0.0) for m in data["per_query_traversal"].values()
+                )
+            elif field.startswith("reader") and "per_query_reader" in data:
+                data[field] = sum(
+                    m.get(field, 0.0) for m in data["per_query_reader"].values()
+                )
+
     _validate_keys(data, fields)
-    return data
+    # Ensure all expected fields are present in the returned mapping.
+    return {field: data.get(field, 0.0) for field in fields}
 
 
 def _model_label(result_dir: Path) -> str:
