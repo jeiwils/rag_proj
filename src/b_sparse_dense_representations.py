@@ -140,9 +140,9 @@ from src.utils import (
 
 
 
-RESUME = True ########## WHY SET HERE?
+RESUME = True 
 
-_bge_model = None ########## WHY SET HERE?
+_bge_model = None 
 
 logger = logging.getLogger(__name__)
 

@@ -138,75 +138,16 @@ from src.utils import (
     split_jsonl_for_models,
 )
 
-RESUME = True
-
-
-
-CS_GRAMMAR = r''' #### WHY SET HERE????
-root ::= "CS: 0.00" | "CS: 0.25" | "CS: 0.50" | "CS: 0.75" | "CS: 1.00"
-'''
-
-GRAMMAR_TRAVERSAL_INT_OR_NULL = (
-    'root  ::= INT | NULL\n'
-    'INT   ::= [0-9]+\n'
-    'NULL  ::= "null"\n'
+from src.prompts import (
+    CS_GRAMMAR,
+    GRAMMAR_TRAVERSAL_INT_OR_NULL,
+    CS_PROMPT,
+    HOPRAG_IQ_PROMPT,
+    HOPRAG_OQ_PROMPT,
 )
 
-# MAX_TOKENS = { #### WHY SET HERE????
-#     "cs": 200, # 50, 
-#     "iqoq_generation": 192, 
-#     "edge_selection": 64, 
-#     "answer_generation": 256 
-# }
+RESUME = True
 
-# TEMPERATURE = { #### WHY SET HERE????
-#     "cs": 0.6, 
-#     "iqoq_generation": 0.6, 
-#     "edge_selection": 0.1, #0.6
-#     "answer_generation": 0.6, 
-# }
-
-
-
-CS_PROMPT = Path("data/prompts/cs_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
-
-HOPRAG_IQ_PROMPT = Path("data/prompts/hoprag_iq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
-HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding="utf-8") #### WHY SET HERE????
-
-
-
-
-
-
-
-
-
-
-
-
-
-# --- Prompt builders ---
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
 
 
 
@@ -899,17 +840,9 @@ if __name__ == "__main__":
 
 
 __all__ = [
-    "get_server_urls",
-    "model_size",
-    "split_jsonl",
-    "split_jsonl_into_four",
-    "split_jsonl_for_models",
     "write_debug_file",
     "get_conditioned_score",
     "iqoq_ratio",
     "generate_iqoq",
     "process_server_task",
-    "load_jsonl",
-    "save_jsonl",
-    "append_jsonl",
 ]
