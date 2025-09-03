@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-09-03T15:41:12",
+  "traversal_eval": {
+    "mean_precision": 0.0869,
+    "mean_recall": 0.938,
+    "mean_f1": 0.1578,
+    "mean_hits_at_k": 1.0,
+    "mean_recall_at_k": 0.9238,
+    "mean_gold_attention_ratio": 0.099,
+    "avg_traversal_calls": 26.78,
+    "total_traversal_calls": 2678,
+    "passage_coverage_all_gold_found": 83,
+    "initial_retrieval_coverage": 100,
+    "avg_hops_before_first_gold": 0.0,
+    "avg_total_hops": 2.0,
+    "avg_repeat_visits": 3.88,
+    "avg_none_count_per_query": 13.81,
+    "max_hop_depth_reached": 2,
+    "hop_depth_distribution": [
+      0,
+      0,
+      100
+    ],
+    "wall_time_total_sec": 172.3096,
+    "wall_time_mean_sec": 1.7231,
+    "wall_time_median_sec": 1.2369
+  },
+  "median_final_f1": 0.1429,
+  "p90_final_f1": 0.2222,
+  "median_trav_tokens_total": 9416.0,
+  "p90_trav_tokens_total": 10737.4,
+  "median_t_traversal_ms": 1236.0,
+  "p90_t_traversal_ms": 3238.8,
+  "median_tps_overall": 7644.605982452673,
+  "p90_tps_overall": 9402.335771025093
+}

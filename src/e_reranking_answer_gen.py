@@ -825,8 +825,7 @@ if __name__ == "__main__":
     # ]
     VARIANTS = ["baseline"]
     TOP_K_ANSWER_PASSAGES = 5
-    SEEDS = [0, 1, 3, 4, 5]
-
+    SEEDS = [1, 2, 3, 4, 5] 
     for dataset in DATASETS:
         for split in SPLITS:
             for graph_model in GRAPH_MODELS:
