@@ -216,7 +216,7 @@ def first_fragment(text: str) -> str:
 
 def post_process_answer(
     text: str,
-    max_words: int = 20,
+    max_words: int = 40,
     repeat_threshold: int = 3,
 ) -> Optional[str]:
     """Validate and possibly reject an LLM answer.
@@ -794,7 +794,7 @@ if __name__ == "__main__":
     READER_MODEL = "llama-3.1-8b-instruct"
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
     TRAVERSAL_MODELS = [
-        "qwen2.5-7b-instruct"]
+        "qwen2.5-14b-instruct"]
     #     "qwen2.5-14b-instruct",
     #     "deepseek-r1-distill-qwen-7b",
     #     "deepseek-r1-distill-qwen-14b",
