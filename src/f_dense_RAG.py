@@ -17,6 +17,7 @@ import numpy as np
 import time
 import json
 from datetime import datetime
+import os
 
 from tqdm import tqdm
 
@@ -45,6 +46,7 @@ from src.utils import (
     save_jsonl,
 )
 from src.metrics_summary import append_percentiles
+from src.utils.merge_token_usage import merge_token_usage
 
 
 def run_dense_rag(
@@ -297,8 +299,12 @@ def run_dense_rag(
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
     }
-    with open(paths["base"] / "token_usage.json", "w", encoding="utf-8") as f:
+    unique = f"{os.getpid()}_{int(time.time())}"
+    usage_path = paths["base"] / f"token_usage_{unique}.json"
+    with open(usage_path, "w", encoding="utf-8") as f:
         json.dump(usage, f, indent=2)
+
+    merge_token_usage(paths["base"])
 
     metrics.update({
         "trav_prompt_tokens": 0,

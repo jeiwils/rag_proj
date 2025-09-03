@@ -95,7 +95,8 @@ Notes
   `data/results/{model}/{dataset}/{split}/{variant}/`
 """
 
-
+import os
+import time
 import json
 import pickle
 import re
@@ -128,6 +129,7 @@ from src.utils import (
 )
 
 from src.metrics_summary import append_percentiles
+from src.utils.merge_token_usage import merge_token_usage
 
 
 
@@ -690,8 +692,12 @@ def generate_answers_from_traversal(
     with open(result_paths["summary"], "w", encoding="utf-8") as f:
         json.dump(stats_payload, f, indent=2)
 
-    with open(result_paths["base"] / "token_usage.json", "w", encoding="utf-8") as f:
+    unique = f"{os.getpid()}_{int(time.time())}"
+    usage_path = result_paths["base"] / f"token_usage_{unique}.json"
+    with open(usage_path, "w", encoding="utf-8") as f:
         json.dump(token_totals, f, indent=2)
+
+    merge_token_usage(result_paths["base"])
 
     return metrics
 

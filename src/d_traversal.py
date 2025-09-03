@@ -142,8 +142,9 @@ from src.utils import (
     log_wall_time,
     validate_vec_ids,
 )
+from src.utils.merge_token_usage import merge_token_usage
 from src.metrics_summary import append_traversal_percentiles
-
+import os
 
 class TraversalOutputError(Exception):
     pass
@@ -1129,8 +1130,12 @@ def run_traversal(
         total_time_ms += elapsed_ms
 
 
-    token_usage_path = output_paths.get(
+    base_usage_path = output_paths.get(
         "token_usage", output_paths["base"] / "token_usage.json"
+    )
+    unique = f"{os.getpid()}_{int(time.time())}"
+    token_usage_path = base_usage_path.with_name(
+        f"{base_usage_path.stem}_{unique}{base_usage_path.suffix}"
     )
     global_usage = {k: v for k, v in token_totals.items()}
     global_usage["t_traversal_ms"] = total_time_ms
@@ -1519,6 +1524,9 @@ def process_traversal(cfg: Dict) -> None:
         )
 
     run_multiprocess(process_query_batch, batch_configs)
+
+    merge_token_usage(output_paths["base"])
+
 
     new_ids: Set[str] = set()
     with open(output_paths["results"], "at", encoding="utf-8") as fout:
