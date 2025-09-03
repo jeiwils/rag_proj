@@ -833,7 +833,7 @@ if __name__ == "__main__":
     #     "deepseek-r1-distill-qwen-7b",
     #     "deepseek-r1-distill-qwen-14b",
     #     "qwen2.5-moe-14b",
-    # ]
+    # "qwen2.5-2x7b-moe-power-coder-v4" ]
     VARIANTS = ["baseline"]
     TOP_K_ANSWER_PASSAGES = 20
     SEEDS = [1, 2, 3]

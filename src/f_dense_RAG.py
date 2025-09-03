@@ -365,7 +365,7 @@ if __name__ == "__main__":
 
     #     "state-of-the-moe-rp-2x7b",
 
-    #     "qwen2.5-2x7b-power-coder-v4"
+    #     "qwen2.5-2x7b-moe-power-coder-v4"
     # ]
 
 
