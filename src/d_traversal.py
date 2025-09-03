@@ -115,6 +115,7 @@ import networkx as nx
 import numpy as np
 from tqdm import tqdm
 from datetime import datetime
+from src.config import MAX_TOKENS, TEMPERATURE
 
 
 from src.llm_utils import is_r1_like, query_llm, strip_think
@@ -371,8 +372,8 @@ def llm_choose_edge(
     answer, usage = query_llm(
         prompt,
         server_url=oq_server["server_url"],
-        max_tokens=5,
-        temperature=0.7,
+        max_tokens=MAX_TOKENS["edge_selection"],
+        temperature=TEMPERATURE["edge_selection"],
         model_name=oq_server["model"],
         phase="edge_selection",
         stop=None,
@@ -418,8 +419,8 @@ def llm_choose_edge(
             answer, usage = query_llm(
                 prompt,
                 server_url=oq_server["server_url"],
-                max_tokens=5,
-                temperature=0.7,
+                max_tokens=MAX_TOKENS["edge_selection"],
+                temperature=TEMPERATURE["edge_selection"],
                 model_name=oq_server["model"],
                 phase="edge_selection",
                 stop=None,
@@ -1614,7 +1615,7 @@ if __name__ == "__main__":
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
 
 
-    TRAVERSAL_MODELS = ["qwen2.5-14b-instruct"] 
+    TRAVERSAL_MODELS = ["qwen2.5-moe-14b"] 
 
 # [
 #         "qwen2.5-7b-instruct",
