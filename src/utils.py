@@ -24,33 +24,25 @@ from pathlib import Path
 
 
 
-SERVER_CONFIGS = [
-    # --- Graphing & Reading: Meta-Llama-3.1-8B-Instruct (2) ---
+SERVER_CONFIGS = [ # put 'moe' in the 'model' name to bypass 7b sharding
     {"server_url": "http://localhost:8000", "model": "llama-3.1-8b-instruct"},
     {"server_url": "http://localhost:8001", "model": "llama-3.1-8b-instruct"},
 
-    # --- Traversal: Qwen2.5-7B-Instruct (2) ---
     {"server_url": "http://localhost:8002", "model": "qwen2.5-7b-instruct"},
     {"server_url": "http://localhost:8003", "model": "qwen2.5-7b-instruct"},
 
-    # --- Traversal: Qwen2.5-14B-Instruct (1) ---
     {"server_url": "http://localhost:8004", "model": "qwen2.5-14b-instruct"},
 
-    # --- Traversal: DeepSeek-R1-Distill-Qwen-7B (2) ---
     {"server_url": "http://localhost:8005", "model": "deepseek-r1-distill-qwen-7b"},
     {"server_url": "http://localhost:8006", "model": "deepseek-r1-distill-qwen-7b"},
 
-    # --- Traversal: DeepSeek-R1-Distill-Qwen-14B (1) ---
     {"server_url": "http://localhost:8007", "model": "deepseek-r1-distill-qwen-14b"},
 
-    # --- Traversal: Qwen2.5-MOE-19B (1) ---
     {"server_url": "http://localhost:8008", "model": "qwen2.5-moe-14b"},
 
-    # --- Traversal: State-of-the-MoE-RP-2x7B (1) ---
     {"server_url": "http://localhost:8052", "model": "state-of-the-moe-rp-2x7b"},
 
-    # --- Traversal: Qwen2.5-2x7B-Power-Coder-V4 (1) ---
-    {"server_url": "http://localhost:8051", "model": "qwen2.5-2x7b-power-coder-v4"},
+    {"server_url": "http://localhost:8051", "model": "qwen2.5-2x7b-power-coder-v4-moe"},
 ]
 
 
@@ -514,6 +506,9 @@ def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> Li
     Supported model sizes and shard counts:
     ``1.5b`` → 4 shards, ``7b``/``8b`` → 2 shards, ``14b`` → 1 shard.
 
+    Models with ``"moe"`` (case-insensitive) in their name are treated as
+    ``14b`` models and are kept as a single shard regardless of any size token.
+
     Parameters
     ----------
     path:
@@ -531,6 +526,9 @@ def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> Li
     """
 
     size = model_size(model)
+    if "moe" in model.lower():
+        size = "14b"
+        
     p = Path(path)
     dataset = p.parent.parent.name
     split = p.parent.name
