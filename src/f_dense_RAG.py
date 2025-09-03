@@ -295,7 +295,7 @@ def run_dense_rag(
         "per_query_reader": per_query_reader,
         "trav_prompt_tokens": 0,
         "trav_completion_tokens": 0,
-        "trav_total_tokens": 0,
+        "trav_tokens_total": 0,
         **token_totals,
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
@@ -310,14 +310,14 @@ def run_dense_rag(
     metrics.update({
         "trav_prompt_tokens": 0,
         "trav_completion_tokens": 0,
-        "trav_total_tokens": 0,
+        "trav_tokens_total": 0,
         **token_totals,
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
     })
 
     tokens_total = (
-        metrics.get("trav_total_tokens", 0)
+        metrics.get("trav_tokens_total", 0)
         + metrics.get("reader_total_tokens", 0)
     )
     t_total_ms = metrics.get("t_traversal_ms", 0) + metrics.get("t_reader_ms", 0)

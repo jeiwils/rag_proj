@@ -76,7 +76,7 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
             trav = per_trav.get(qid, {})
             read = per_read.get(qid, {})
 
-            tok = trav.get("trav_total_tokens") or trav.get("trav_tokens_total") or 0
+            tok = trav.get("trav_tokens_total", 0)
             tok += read.get("reader_total_tokens", 0)
             t_ms = trav.get("t_traversal_ms", 0) + read.get("t_reader_ms", 0)
 

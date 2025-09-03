@@ -805,9 +805,7 @@ def merge_token_usage(output_dir: str | Path) -> Path:
 
     tokens_total = (
         global_totals.get("trav_tokens_total", 0)
-        + global_totals.get("trav_total_tokens", 0)
         + global_totals.get("reader_total_tokens", 0)
-        + global_totals.get("reader_tokens_total", 0)
     )
     t_total_ms = global_totals.get("t_traversal_ms", 0) + global_totals.get("t_reader_ms", 0)
 

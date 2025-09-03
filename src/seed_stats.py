@@ -32,7 +32,7 @@ def _load_summary(path: Path) -> tuple[int | None, dict]:
         "F1": data.get("F1") or data.get("f1"),
         "tokens": data.get("tokens") or data.get("total_tokens"),
         "wall_time": data.get("wall_time") or data.get("wall_time_total_sec"),
-        "trav_tokens": data.get("trav_total_tokens"),
+        "trav_tokens": data.get("trav_tokens_total"),
         "reader_tokens": data.get("reader_total_tokens"),
         "t_total_ms": data.get("t_total_ms"),
         "tps_overall": data.get("tps_overall"),
@@ -46,7 +46,7 @@ def _load_summary(path: Path) -> tuple[int | None, dict]:
             if "global" in usage_data:
                 usage_data = usage_data.get("global", {})
 
-            trav_tok = usage_data.get("trav_total_tokens", usage_data.get("trav_tokens_total"))
+            trav_tok = usage_data.get("trav_tokens_total")
             metrics.setdefault("trav_tokens", trav_tok)
             reader_tok = usage_data.get("reader_total_tokens")
             metrics.setdefault("reader_tokens", reader_tok)
