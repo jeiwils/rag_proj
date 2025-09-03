@@ -124,12 +124,12 @@ from src.utils import (
     pool_map,
     compute_hits_at_k,
     compute_recall_at_k,
+    merge_token_usage,
 
 
 )
 
 from src.metrics_summary import append_percentiles
-from src.utils.merge_token_usage import merge_token_usage
 
 
 

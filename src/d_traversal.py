@@ -141,8 +141,9 @@ from src.utils import (
 
     log_wall_time,
     validate_vec_ids,
+    merge_token_usage,
+
 )
-from src.utils.merge_token_usage import merge_token_usage
 from src.metrics_summary import append_traversal_percentiles
 import os
 

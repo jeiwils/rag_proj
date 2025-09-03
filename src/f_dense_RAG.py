@@ -44,9 +44,10 @@ from src.utils import (
 
     log_wall_time,
     save_jsonl,
+    merge_token_usage,
+
 )
 from src.metrics_summary import append_percentiles
-from src.utils.merge_token_usage import merge_token_usage
 
 
 def run_dense_rag(
