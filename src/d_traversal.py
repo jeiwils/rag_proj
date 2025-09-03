@@ -413,7 +413,7 @@ def llm_choose_edge(
             break
         if retry_count == 0:
             retry_count = 1
-            
+
             answer, usage = query_llm(
                 prompt,
                 server_url=oq_server["server_url"],
@@ -1606,7 +1606,7 @@ def process_traversal(cfg: Dict) -> None:
 if __name__ == "__main__":
     start_time = time.time()
 
-    DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
+    DATASETS = ["musique"] #, "hotpotqa", "2wikimultihopqa"]
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
 
 
