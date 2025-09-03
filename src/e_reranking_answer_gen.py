@@ -439,6 +439,7 @@ def _generate_answer(
         passage_ids_sorted, q.get("gold_passages", []), top_k
     )
 
+    start_time = time.perf_counter()
     llm_out = ask_llm_with_passages(
         query_text=question,
         passage_ids=passage_ids_sorted,
@@ -450,6 +451,13 @@ def _generate_answer(
         seed=seed,
 
     )
+    elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+
+    prompt_tokens = llm_out.get("prompt_len", 0)
+    output_tokens = llm_out.get("output_tokens", 0)
+    total_tokens = llm_out.get(
+        "total_tokens", prompt_tokens + output_tokens
+    )
 
     answer_dict = {
         "question_id": qid,
@@ -460,9 +468,17 @@ def _generate_answer(
         "hits_at_k": hits_val,
         "recall_at_k": recall_val,
 
-        "prompt_len": llm_out.get("prompt_len", 0),
-        "output_tokens": llm_out.get("output_tokens", 0),
-        "total_tokens": llm_out.get("total_tokens", 0),
+        # Legacy token fields
+        "prompt_len": prompt_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+
+        # Reader usage fields
+        "reader_prompt_tokens": prompt_tokens,
+        "reader_output_tokens": output_tokens,
+        "reader_total_tokens": total_tokens,
+        "n_reader_calls": 1,
+        "t_reader_ms": elapsed_ms,
     }
 
     return qid, answer_dict, llm_out["normalised_answer"]
@@ -560,6 +576,7 @@ def generate_answers_from_traversal(
         "n_reader_calls": 0,
     }
     per_query_reader: Dict[str, Dict[str, int]] = {}
+    reader_time_total_ms = 0
 
 
 
@@ -658,20 +675,27 @@ def generate_answers_from_traversal(
         hits[qid] = answer.get("hits_at_k", 0.0)
         recalls[qid] = answer.get("recall_at_k", 0.0)
 
-        token_totals["n_reader_calls"] += 1
-        token_totals["reader_prompt_tokens"] += answer.get("prompt_len", 0)
-        token_totals["reader_output_tokens"] += answer.get("output_tokens", 0)
-        token_totals["reader_total_tokens"] += answer.get(
-            "total_tokens", answer.get("prompt_len", 0) + answer.get("output_tokens", 0)
+        rp = answer.get("reader_prompt_tokens", answer.get("prompt_len", 0))
+        ro = answer.get("reader_output_tokens", answer.get("output_tokens", 0))
+        rt = answer.get(
+            "reader_total_tokens",
+            answer.get("total_tokens", rp + ro),
         )
+        n_calls = answer.get("n_reader_calls", 1)
+        t_ms = answer.get("t_reader_ms", 0)
+
+        token_totals["reader_prompt_tokens"] += rp
+        token_totals["reader_output_tokens"] += ro
+        token_totals["reader_total_tokens"] += rt
+        token_totals["n_reader_calls"] += n_calls
+        reader_time_total_ms += t_ms
+
         per_query_reader[qid] = {
-            "reader_prompt_tokens": answer.get("prompt_len", 0),
-            "reader_output_tokens": answer.get("output_tokens", 0),
-            "reader_total_tokens": answer.get(
-                "total_tokens",
-                answer.get("prompt_len", 0) + answer.get("output_tokens", 0),
-            ),
-            "n_reader_calls": 1,
+            "reader_prompt_tokens": rp,
+            "reader_output_tokens": ro,
+            "reader_total_tokens": rt,
+            "n_reader_calls": n_calls,
+            "t_reader_ms": t_ms,
         }
 
     result_paths["base"].mkdir(parents=True, exist_ok=True)
@@ -710,15 +734,7 @@ def generate_answers_from_traversal(
     )
     metrics.update(extra)
 
-    stats_payload = {
-        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-        "answer_eval": metrics,
-    }
-    with open(result_paths["summary"], "w", encoding="utf-8") as f:
-        json.dump(stats_payload, f, indent=2)
-
-    run_id = str(int(time.time()))  # Identifier to group token usage shards
-    usage_path = result_paths["base"] / f"token_usage_{run_id}_{os.getpid()}.json"
+    t_reader_ms = reader_time_total_ms
     usage = {
         "per_query_traversal": {},
         "per_query_reader": per_query_reader,
@@ -727,13 +743,46 @@ def generate_answers_from_traversal(
         "trav_tokens_total": 0,
         **token_totals,
         "t_traversal_ms": 0,
-        "t_reader_ms": 0,
+        "t_reader_ms": t_reader_ms,
     }
+
+    run_id = str(int(time.time()))  # Identifier to group token usage shards
+    usage_path = result_paths["base"] / f"token_usage_{run_id}_{os.getpid()}.json"
     with open(usage_path, "w", encoding="utf-8") as f:
         json.dump(usage, f, indent=2)
 
     # Consolidate token usage files for this run and remove the temporary parts
     merge_token_usage(result_paths["base"], run_id=run_id, cleanup=True)
+
+    metrics.update({
+        "trav_prompt_tokens": 0,
+        "trav_completion_tokens": 0,
+        "trav_tokens_total": 0,
+        **token_totals,
+        "t_traversal_ms": 0,
+        "t_reader_ms": t_reader_ms,
+    })
+
+    tokens_total = (
+        metrics.get("trav_tokens_total", 0)
+        + metrics.get("reader_total_tokens", 0)
+    )
+    t_total_ms = metrics.get("t_traversal_ms", 0) + metrics.get("t_reader_ms", 0)
+    tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
+    metrics.update({
+        "tokens_total": tokens_total,
+        "t_total_ms": t_total_ms,
+        "tps_overall": tps_overall,
+    })
+
+    stats_payload = {
+        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "answer_eval": metrics,
+    }
+    with open(result_paths["summary"], "w", encoding="utf-8") as f:
+        json.dump(stats_payload, f, indent=2)
+
+    print(f"[summary] overall throughput: {tps_overall:.2f} tokens/s")
 
     return metrics
 
