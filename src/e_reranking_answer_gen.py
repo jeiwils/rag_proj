@@ -108,7 +108,8 @@ import string
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import numpy as np
-
+from multiprocessing import Pool
+from tqdm import tqdm
 from datetime import datetime
 
 from functools import partial
@@ -476,6 +477,7 @@ def _generate_answer(
         passage_ids_sorted, q.get("gold_passages", []), top_k
     )
 
+    print(f"\n[Query] {qid} - \"{question}\"")
     start_time = time.perf_counter()
     llm_out = ask_llm_with_passages(
         query_text=question,
@@ -570,7 +572,7 @@ def generate_answers_from_traversal(
     Notes
     -----
     Shared data for worker processes is passed via ``functools.partial`` and
-    tasks are distributed using :func:`src.utils.pool_map` to avoid global
+    tasks are distributed using :class:`multiprocessing.Pool` to avoid global
     state and maintain consistent multiprocessing patterns.
     """
 
@@ -653,36 +655,41 @@ def generate_answers_from_traversal(
         print("No new queries to process.")
         return {}
 
-    results = pool_map(worker, traversal_records.items(), processes=num_workers)
-    for qid, answer, norm_ans in results:
-        answers.append(answer)
-        predictions[qid] = norm_ans
-        gold[qid] = [queries[qid].get("gold_answer", "")]
-        hits[qid] = answer.get("hits_at_k", 0.0)
-        recalls[qid] = answer.get("recall_at_k", 0.0)
+    items = list(traversal_records.items())
+    with Pool(num_workers) as pool:
+        for qid, answer, norm_ans in tqdm(
+            pool.imap(worker, items),
+            total=len(items),
+            desc="queries",
+        ):
+            answers.append(answer)
+            predictions[qid] = norm_ans
+            gold[qid] = [queries[qid].get("gold_answer", "")]
+            hits[qid] = answer.get("hits_at_k", 0.0)
+            recalls[qid] = answer.get("recall_at_k", 0.0)
 
-        rp = answer.get("reader_prompt_tokens", answer.get("prompt_len", 0))
-        ro = answer.get("reader_output_tokens", answer.get("output_tokens", 0))
-        rt = answer.get(
-            "reader_total_tokens",
-            answer.get("total_tokens", rp + ro),
-        )
-        n_calls = answer.get("n_reader_calls", 1)
-        t_ms = answer.get("t_reader_ms", 0)
+            rp = answer.get("reader_prompt_tokens", answer.get("prompt_len", 0))
+            ro = answer.get("reader_output_tokens", answer.get("output_tokens", 0))
+            rt = answer.get(
+                "reader_total_tokens",
+                answer.get("total_tokens", rp + ro),
+            )
+            n_calls = answer.get("n_reader_calls", 1)
+            t_ms = answer.get("t_reader_ms", 0)
 
-        token_totals["reader_prompt_tokens"] += rp
-        token_totals["reader_output_tokens"] += ro
-        token_totals["reader_total_tokens"] += rt
-        token_totals["n_reader_calls"] += n_calls
-        reader_time_total_ms += t_ms
+            token_totals["reader_prompt_tokens"] += rp
+            token_totals["reader_output_tokens"] += ro
+            token_totals["reader_total_tokens"] += rt
+            token_totals["n_reader_calls"] += n_calls
+            reader_time_total_ms += t_ms
 
-        per_query_reader[qid] = {
-            "reader_prompt_tokens": rp,
-            "reader_output_tokens": ro,
-            "reader_total_tokens": rt,
-            "n_reader_calls": n_calls,
-            "t_reader_ms": t_ms,
-        }
+            per_query_reader[qid] = {
+                "reader_prompt_tokens": rp,
+                "reader_output_tokens": ro,
+                "reader_total_tokens": rt,
+                "n_reader_calls": n_calls,
+                "t_reader_ms": t_ms,
+            }
 
     result_paths["base"].mkdir(parents=True, exist_ok=True)
     if resume:
@@ -839,7 +846,7 @@ if __name__ == "__main__":
                                 num_workers=None,
                                 seed=seed,
                             )
-    print("\n✅ Answers-only complete.")
+    print("\nAnswers-only complete.")
 
 
 
