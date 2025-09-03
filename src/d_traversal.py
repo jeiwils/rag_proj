@@ -9,7 +9,8 @@ are saved per query and summarized globally.
 
 It supports both baseline traversal (no node revisits) and an enhanced variant
 that biases edge ordering by each destination node's ``conditioned_score``
-while still avoiding node revisits. Outputs are stored in
+while still avoiding node revisits. Both variants forward an optional
+``seed`` to llama.cpp so edge choices are reproducible. Outputs are stored in
 ``data/traversal/{model}/{dataset}/{split}/{variant}/``.
 
 
@@ -490,7 +491,9 @@ def hoprag_traversal_algorithm(
     7. **Update counts/queue** – update visit counts, enqueue unseen nodes, and
        log repeat visits (HopRAG Step 7: visit accounting).
 
-    ``hop`` exists for API compatibility but is otherwise unused.
+    ``hop`` exists for API compatibility but is otherwise unused. Providing a
+    ``seed`` enables deterministic llama.cpp edge selection via
+    :func:`llm_choose_edge`.
     """
     # Consider all outgoing edges from ``vj``.  We rely solely on
     # ``state['Evisited']`` to avoid traversing the exact same edge more
@@ -585,18 +588,29 @@ def hoprag_traversal_algorithm(
 
 
 def enhanced_traversal_algorithm(
-    vj, graph, query_text, visited_passages,
-    server_configs, ccount, next_Cqueue, hop_log, state,
+    vj,
+    graph,
+    query_text,
+    visited_passages,
+    server_configs,
+    ccount,
+    next_Cqueue,
+    hop_log,
+    state,
     traversal_prompt: str,
     hop: int,
+    token_totals: Optional[Dict[str, int]] = None,
+    seed: int | None = None,
+    **kwargs,
 ):
     """Enhanced traversal with hop-aware conditioned score bias.
 
-    This variant mirrors ``hoprag_traversal_algorithm``'s no-revisit policy but
-    orders untraversed edges by the destination node's ``conditioned_score``.
-    At ``hop == 0`` edges are ranked in descending order (high-score first);
-    for later hops the order is ascending to explore lower scored options
-    sooner.  All eligible edges are shown to the LLM for selection.
+    Mirrors :func:`hoprag_traversal_algorithm`'s no-revisit policy but orders
+    untraversed edges by each destination node's ``conditioned_score``. At
+    ``hop == 0`` edges are ranked in descending order (high-score first); for
+    later hops the order is ascending to explore lower scored options sooner.
+    All eligible edges are shown to the LLM for selection. Supplying ``seed``
+    yields deterministic llama.cpp decisions via :func:`llm_choose_edge`.
     """
 
     # 1) Gather outgoing edges not yet traversed
@@ -642,7 +656,9 @@ def enhanced_traversal_algorithm(
         graph=graph,
         server_configs=server_configs,
         traversal_prompt=traversal_prompt,
+        token_totals=token_totals,
         reason=is_r1_like(edge_model),
+        seed=seed,
     )
 
     if chosen is None:
@@ -710,7 +726,9 @@ def traverse_graph(
     """Traverse the graph while recording query similarity for visited passages.
 
     ``alpha`` controls the hybrid weighting between cosine and Jaccard
-    similarity when computing ``sim_hybrid`` for each visited node.
+    similarity when computing ``sim_hybrid`` for each visited node. The optional
+    ``seed`` propagates to ``traversal_alg`` and ultimately
+    :func:`llm_choose_edge` so llama.cpp edge decisions are reproducible.
     """
 
     query_keywords = set(extract_keywords(query_text))
@@ -1002,8 +1020,8 @@ def run_traversal(
     Parameters
     ----------
     seed: int, optional
-        Seed used to initialize :mod:`random` and :mod:`numpy` for
-        deterministic behaviour.
+        Seed used to initialize :mod:`random`, :mod:`numpy`, and the llama.cpp
+        calls made during traversal for deterministic behaviour.
     """
 
     output_paths["base"].mkdir(parents=True, exist_ok=True)
