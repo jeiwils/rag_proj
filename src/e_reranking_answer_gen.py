@@ -707,7 +707,7 @@ def generate_answers_from_traversal(
     with open(usage_path, "w", encoding="utf-8") as f:
         json.dump(token_totals, f, indent=2)
 
-    merge_token_usage(output_paths["base"], cleanup=True)
+    merge_token_usage(result_paths["base"], cleanup=True)
 
     return metrics
 
