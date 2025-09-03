@@ -1606,7 +1606,7 @@ def process_traversal(cfg: Dict) -> None:
 if __name__ == "__main__":
     start_time = time.time()
 
-    DATASETS = ["musique"] #, "hotpotqa", "2wikimultihopqa"]
+    DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"] # ["2wikimultihopqa"] # ["hotpotqa"] #["musique", "hotpotqa", "2wikimultihopqa"]
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
 
 
