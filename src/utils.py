@@ -764,8 +764,13 @@ def _merge_numeric(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
     return dst
 
 
-def merge_token_usage(output_dir: str | Path, *, cleanup: bool = False) -> Path:
-    """Merge ``token_usage_*.json`` files in ``output_dir`` into one.
+def merge_token_usage(
+    output_dir: str | Path,
+    *,
+    run_id: str | None = None,
+    cleanup: bool = False,
+) -> Path:
+    """Merge ``token_usage`` shards in ``output_dir`` into one.
 
     The function aggregates global token counts and per-query metrics across
     multiple partial usage files. If no usage files are found, an empty
@@ -775,6 +780,10 @@ def merge_token_usage(output_dir: str | Path, *, cleanup: bool = False) -> Path:
     ----------
     output_dir:
         Directory containing ``token_usage_*.json`` shard files.
+    run_id:
+        Optional identifier used in shard filenames. When provided, only files
+        matching ``token_usage_{run_id}_*.json`` are merged. Any non-matching
+        shards are ignored and, if ``cleanup`` is ``True``, removed.
     cleanup:
         If ``True``, the individual shard files are removed after the merged
         ``token_usage.json`` is written. Defaults to ``False`` to preserve
@@ -782,7 +791,17 @@ def merge_token_usage(output_dir: str | Path, *, cleanup: bool = False) -> Path:
     """
 
     out_dir = Path(output_dir)
-    usage_files = sorted(out_dir.glob("token_usage_*.json"))
+    if run_id is not None:
+        stale = [fp for fp in out_dir.glob("token_usage_*.json") if run_id not in fp.name]
+        for fp in stale:
+            try:
+                fp.unlink()
+            except OSError:
+                pass
+        pattern = f"token_usage_{run_id}_*.json"
+    else:
+        pattern = "token_usage_*.json"
+    usage_files = sorted(out_dir.glob(pattern))
     if not usage_files:
         out_path = out_dir / "token_usage.json"
         with open(out_path, "w", encoding="utf-8") as f:

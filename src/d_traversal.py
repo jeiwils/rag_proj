@@ -1511,6 +1511,7 @@ def process_traversal(cfg: Dict) -> None:
     urls = get_server_urls(model)
     shards = split_jsonl_for_models(str(query_path), model, resume=resume)
 
+    run_id = str(int(time.time()))  # Identifier to group token usage shards
     batch_configs = []
     for i, (url, shard) in enumerate(zip(urls, shards)):
         batch_paths = {
@@ -1518,7 +1519,8 @@ def process_traversal(cfg: Dict) -> None:
             "results": output_paths["base"] / f"results_part{i}.jsonl",
             "visited_passages": output_paths["base"]
             / f"visited_passages_part{i}.json",
-            "token_usage": output_paths["base"] / f"token_usage_part{i}.json",
+            "token_usage": output_paths["base"]
+            / f"token_usage_{run_id}_part{i}.json",
         }
         batch_configs.append(
             {
@@ -1544,7 +1546,7 @@ def process_traversal(cfg: Dict) -> None:
 
     run_multiprocess(process_query_batch, batch_configs)
 
-    merge_token_usage(output_paths["base"], cleanup=True)
+    merge_token_usage(output_paths["base"], run_id=run_id, cleanup=True)
 
 
     new_ids: Set[str] = set()

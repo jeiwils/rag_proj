@@ -300,12 +300,12 @@ def run_dense_rag(
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
     }
-    unique = f"{os.getpid()}_{int(time.time())}"
-    usage_path = paths["base"] / f"token_usage_{unique}.json"
+    run_id = str(int(time.time()))  # Identifier to group token usage shards
+    usage_path = paths["base"] / f"token_usage_{run_id}_{os.getpid()}.json"
     with open(usage_path, "w", encoding="utf-8") as f:
         json.dump(usage, f, indent=2)
 
-    merge_token_usage(paths["base"], cleanup=True)
+    merge_token_usage(paths["base"], run_id=run_id, cleanup=True)
 
     metrics.update({
         "trav_prompt_tokens": 0,

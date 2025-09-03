@@ -702,13 +702,13 @@ def generate_answers_from_traversal(
     with open(result_paths["summary"], "w", encoding="utf-8") as f:
         json.dump(stats_payload, f, indent=2)
 
-    unique = f"{os.getpid()}_{int(time.time())}"
-    usage_path = result_paths["base"] / f"token_usage_{unique}.json"
+    run_id = str(int(time.time()))  # Identifier to group token usage shards
+    usage_path = result_paths["base"] / f"token_usage_{run_id}_{os.getpid()}.json"
     with open(usage_path, "w", encoding="utf-8") as f:
         json.dump(token_totals, f, indent=2)
 
-    # Consolidate token usage files and remove the temporary parts
-    merge_token_usage(result_paths["base"], cleanup=True)
+    # Consolidate token usage files for this run and remove the temporary parts
+    merge_token_usage(result_paths["base"], run_id=run_id, cleanup=True)
 
     return metrics
 
