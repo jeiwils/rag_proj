@@ -5,7 +5,9 @@ Run a simple dense Retrieval-Augmented Generation (RAG) pipeline.
 This module reuses the existing FAISS indexes and embedding model to
 answer questions directly without graph traversal. It retrieves the
 most similar passages for each query and asks a reader model to
-produce an answer from those passages.
+produce an answer from those passages. Per-query retrieval metrics such
+as ``hits_at_k`` and ``recall_at_k`` are logged alongside the generated
+answers.
 """
 
 from typing import Dict, List
@@ -37,6 +39,8 @@ from src.utils import (
     load_jsonl,
     processed_dataset_paths,
     compute_hits_at_k,
+    compute_recall_at_k,
+
     log_wall_time,
     save_jsonl,
 )
@@ -55,6 +59,11 @@ def run_dense_rag(
     resume: bool = False,
 ) -> Dict[str, float]:
     """Answer queries using dense retrieval over passages and evaluate EM/F1.
+
+    The function retrieves top-``k`` passages for each query and asks a reader
+    model to generate an answer. Retrieval metrics ``hits_at_k`` and
+    ``recall_at_k`` are computed per query and included in both the per-query
+    JSONL output and the summary metrics file.
 
     Parameters
     ----------
@@ -86,7 +95,8 @@ def run_dense_rag(
     Returns
     -------
     Dict[str, float]
-        Exact Match and F1 scores across the query set.
+        Exact Match, F1, ``hits_at_k`` and ``recall_at_k`` scores across the
+        query set.
     """
 
     if seed is not None:
@@ -123,6 +133,8 @@ def run_dense_rag(
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
     hits_at_k_scores: Dict[str, float] = {}
+    recall_at_k_scores: Dict[str, float] = {}
+
     token_totals = {
         "reader_prompt_tokens": 0,
         "reader_completion_tokens": 0,
@@ -147,6 +159,9 @@ def run_dense_rag(
         idxs, _ = faiss_search_topk(q_emb, index, top_k=top_k)
         passage_ids = [passages[i]["passage_id"] for i in idxs]
         hits_val = compute_hits_at_k(passage_ids, q.get("gold_passages", []), top_k)
+        recall_val = compute_recall_at_k(
+            passage_ids, q.get("gold_passages", []), top_k
+        )
         start_time = time.perf_counter()
 
         llm_out = ask_llm_with_passages(
@@ -176,6 +191,8 @@ def run_dense_rag(
                 "normalised_answer": llm_out["normalised_answer"],
                 "used_passages": passage_ids,
                 "hits_at_k": hits_val,
+                "recall_at_k": recall_val,
+
                 "prompt_len": llm_out.get("prompt_len", 0),
                 "output_tokens": llm_out.get("output_tokens", 0),
                 "total_tokens": llm_out.get("total_tokens", 0),
@@ -194,6 +211,8 @@ def run_dense_rag(
         )
         predictions[q_id] = llm_out["normalised_answer"]
         hits_at_k_scores[q_id] = hits_val
+        recall_at_k_scores[q_id] = recall_val
+
         token_totals["n_reader_calls"] += 1
         token_totals["reader_prompt_tokens"] += llm_out.get("prompt_len", 0)
         token_totals["reader_completion_tokens"] += llm_out.get("output_tokens", 0)
@@ -254,6 +273,10 @@ def run_dense_rag(
     if hits_at_k_scores:
         metrics["hits_at_k"] = round(
             sum(hits_at_k_scores.values()) / len(hits_at_k_scores), 4
+        )
+    if recall_at_k_scores:
+        metrics["recall_at_k"] = round(
+            sum(recall_at_k_scores.values()) / len(recall_at_k_scores), 4
         )
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)

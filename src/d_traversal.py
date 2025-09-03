@@ -33,11 +33,13 @@ Outputs
 
 ### data/graphs/{model}/{dataset}/{split}/{variant}/traversal/
 
-- `per_query_traversal_results.jsonl'
-    One entry per query with hop trace, visited nodes, and precision/recall/F1.
+  - `per_query_traversal_results.jsonl'
+      One entry per query with hop trace, visited nodes, precision/recall/F1, and
+      retrieval metrics (hits@k, recall@k).
 
-- `final_traversal_stats.json`  
-    Aggregate metrics across the full query set (e.g., mean precision, recall, hop stats).
+- `final_traversal_stats.json`
+    Aggregate metrics across the full query set (e.g., mean precision, recall,
+    hits@k, recall@k, hop stats).
 
 
 
@@ -57,6 +59,8 @@ File Schema
     "recall": float,
     "f1": float
   },
+  "hits_at_k": float,
+  "recall_at_k": float,
   "traversal_algorithm": "{algorithm_name}",
   "wall_time_sec": float
 }
@@ -69,6 +73,8 @@ File Schema
     "mean_precision": float,
     "mean_recall": float,
     "mean_f1": float,
+    "mean_hits_at_k": float,
+    "mean_recall_at_k": float,
     "passage_coverage_all_gold_found": int,
     "initial_retrieval_coverage": int,
     "avg_hops_before_first_gold": float | null,
@@ -131,6 +137,8 @@ from src.utils import (
     model_size,
     pool_map,
     compute_hits_at_k,
+    compute_recall_at_k,
+
     log_wall_time,
     validate_vec_ids,
 )
@@ -452,9 +460,27 @@ def hoprag_traversal_algorithm(
     token_totals: Optional[Dict[str, int]] = None,
     **kwargs,
 ):
-    """Baseline HopRAG traversal step that respects existing edge visitation.
+    """Single HopRAG traversal step as described in the HopRAG article.
 
-    ``hop`` is accepted for interface compatibility but is not used.
+    Follows the article's step terminology:
+
+    1. **Gather edges** – collect outgoing edges from ``vj`` that are not in
+       ``state['Evisited']`` (HopRAG Step 1: eligible edge expansion).
+    2. **Sort deterministically** – order candidates for reproducible traversal
+       (HopRAG Step 2: canonical ordering).
+    3. **Log candidates** – record each option in ``hop_log['candidate_edges']``
+       (HopRAG Step 3: trace logging).
+    4. **LLM selection** – invoke ``llm_choose_edge`` to pick an edge
+       (HopRAG Step 4: LLM-guided choice).
+    5. **Handle none** – increment counters and return if no edge is chosen
+       (HopRAG Step 5: none case).
+    6. **Record choice** – add the selected edge to ``state['Evisited']`` and
+       note whether the destination was already visited
+       (HopRAG Step 6: edge commit).
+    7. **Update counts/queue** – update visit counts, enqueue unseen nodes, and
+       log repeat visits (HopRAG Step 7: visit accounting).
+
+    ``hop`` exists for API compatibility but is otherwise unused.
     """
     # Consider all outgoing edges from ``vj``.  We rely solely on
     # ``state['Evisited']`` to avoid traversing the exact same edge more
@@ -838,6 +864,8 @@ def save_traversal_result(  # helper for run_dev_set()
     traversal_alg,
     helpful_passages,
     hits_at_k,
+    recall_at_k,
+
     dataset: str,
     split: str,
     variant: str,
@@ -851,6 +879,9 @@ def save_traversal_result(  # helper for run_dev_set()
 ):
     """
     Save a complete traversal + metric result for a single query.
+
+    Records per-query traversal traces along with seed retrieval metrics such
+    as ``hits_at_k`` and ``recall_at_k``.
     """
 
     hop_trace_with_metrics, final_metrics = compute_hop_metrics(hop_trace, gold_passages)
@@ -877,6 +908,8 @@ def save_traversal_result(  # helper for run_dev_set()
             for pid, score in helpful_passages
         ],
         "hits_at_k": hits_at_k,
+        "recall_at_k": recall_at_k,
+
         "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
 
     }
@@ -1016,6 +1049,8 @@ def run_traversal(
         print(f"[Seeds] Retrieved {len(seed_passages)} passages.")
 
         hits_val = compute_hits_at_k(seed_passages, gold_passages, seed_top_k)
+        recall_val = compute_recall_at_k(seed_passages, gold_passages, seed_top_k)
+
 
         # --- Traverse ---
         visited_passages, ccount, hop_trace, stats = traverse_graph(
@@ -1056,6 +1091,8 @@ def run_traversal(
             traversal_alg=traversal_alg,
             helpful_passages=helpful_passages,
             hits_at_k=hits_val,
+            recall_at_k=recall_val,
+
             wall_time_sec=elapsed,
             output_path=output_paths["results"],
             token_usage=query_token_totals,
@@ -1137,9 +1174,9 @@ def compute_traversal_summary(
         ) -> dict:
     """Summarize traversal-wide metrics across all dev results or a filtered subset.
 
-    Computes aggregate precision, recall, F1, hits@k, mean attention to gold
-    passages, and various hop statistics over the provided per-query traversal
-    results.
+    Computes aggregate precision, recall, F1, hits@k, recall@k, mean attention
+    to gold passages, and various hop statistics over the provided per-query
+    traversal results.
     """
 
     total_queries = 0
@@ -1174,6 +1211,8 @@ def compute_traversal_summary(
             sum_recall += final["recall"]
             sum_f1 += final.get("f1", 0.0)
             sum_hits += entry.get("hits_at_k", 0.0)
+            sum_recall_at_k += entry.get("recall_at_k", 0.0)
+
             sum_gold_attention += entry.get("gold_attention_ratio", 0.0)
             sum_traversal_calls += entry.get("n_traversal_calls", 0)
 
@@ -1223,6 +1262,8 @@ def compute_traversal_summary(
     mean_recall = sum_recall / total_queries if total_queries else 0
     mean_f1 = sum_f1 / total_queries if total_queries else 0
     mean_hits = sum_hits / total_queries if total_queries else 0
+    mean_recall_at_k = sum_recall_at_k / total_queries if total_queries else 0
+
     mean_gold_attention = sum_gold_attention / total_queries if total_queries else 0
     mean_traversal_calls = sum_traversal_calls / total_queries if total_queries else 0
 
@@ -1247,6 +1288,8 @@ def compute_traversal_summary(
         "mean_recall": round(mean_recall, 4),
         "mean_f1": round(mean_f1, 4),
         "mean_hits_at_k": round(mean_hits, 4),
+        "mean_recall_at_k": round(mean_recall_at_k, 4),
+
         "mean_gold_attention_ratio": round(mean_gold_attention, 4),
         "avg_traversal_calls": round(mean_traversal_calls, 2),
         "total_traversal_calls": sum_traversal_calls,
