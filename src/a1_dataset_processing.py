@@ -1,309 +1,191 @@
 """Utilities for processing raw QA datasets into a unified format.
 
-This module contains light-weight dataset processors that read each dataset's
-raw files and emit question and passage JSONL files under
-``data/processed_datasets/{dataset}/{split}/``.  The original project stored
-these processors in a small registry spread across multiple modules.  For this
-exercise the logic is consolidated here so the processors can be created with a
-simple mapping.
+This module exposes a single :func:`process_dataset` helper which converts a
+dataset's raw examples into the project wide question and passage JSONL files.
+Callers must supply a ``field_map`` describing how to extract the necessary
+fields from each example.  Previous wrappers like ``process_hotpotqa`` and the
+``PROCESSORS`` registry have been removed so that new datasets can be processed
+without modifying this module.
+
+Example
+-------
+
+To process a HotpotQA style JSON file::
+
+    from src.a1_dataset_processing import process_dataset
+    from src.utils import pid_plus_title
+
+    field_map = {
+        "get_id": lambda ex: ex["_id"],
+        "get_question": lambda ex: ex["question"],
+        "get_answer": lambda ex: ex.get("answer", ""),
+        "iter_passages": lambda ex: [
+            (pid_plus_title(ex["_id"], title, i), title, sent)
+            for title, sents in ex["context"]
+            for i, sent in enumerate(sents)
+        ],
+        "gold_passage_ids": lambda ex: [
+            pid_plus_title(ex["_id"], title, idx)
+            for title, idx in ex.get("supporting_facts", [])
+        ],
+    }
+
+    process_dataset(
+        dataset="hotpotqa",
+        split="dev",
+        file_path="data/raw_datasets/hotpotqa/hotpot_dev_fullwiki_v1.json",
+        field_map=field_map,
+    )
+
+The ``field_map`` supplies callables to extract the question id, question
+text, gold answer, passage iterator and gold passage IDs.  The processing logic
+is otherwise dataset agnostic.
 """
 
 from __future__ import annotations
 
 import json
-from typing import Dict, Iterable, List, Type
+from typing import Callable, Dict, Iterable, List, Tuple
 
 from src.utils import (
     append_jsonl,
     clean_text,
     compute_resume_sets,
-    pid_plus_title,
     processed_dataset_paths,
+    pid_plus_title
 )
 
+# ---------------------------------------------------------------------------
+# Generic dataset processing
 
-class DatasetProcessor:
-    """Base class for dataset processors.
+FieldMap = Dict[str, Callable[[Dict], Iterable]]
 
-    Sub-classes implement :meth:`process` which performs the end to end
-    transformation from raw data to the processed JSONL outputs.  The base class
-    simply stores common configuration options.
+
+def process_dataset(
+    *,
+    dataset: str,
+    split: str,
+    file_path: str,
+    field_map: Dict[str, Callable[[Dict], Iterable]],
+    max_examples: int | None = None,
+    overwrite: bool = False,
+    resume: bool = False,
+) -> None:
+    """Process ``file_path`` using ``field_map``.
+
+    Parameters
+    ----------
+    dataset:
+        Name of the dataset being processed.
+    split:
+        Dataset split (``train``, ``dev`` ...).
+    file_path:
+        Path to the raw dataset file.  JSON or JSONL files are supported.
+    field_map:
+        Mapping of callables that extract fields from each example.  Required
+        keys are ``get_id``, ``get_question``, ``get_answer``,
+        ``iter_passages`` and ``gold_passage_ids``.  The callables operate on a
+        single example and either return a value or an iterable of values.
+    max_examples:
+        Optional limit for the number of examples processed.
+    overwrite:
+        Unused but kept for backward compatibility.
+    resume:
+        Whether to resume from existing processed files.
     """
 
-    DATASET: str = ""
-
-    def __init__(
-        self,
-        *,
-        split: str,
-        file_path: str,
-        max_examples: int | None = None,
-        overwrite: bool = False,
-        resume: bool = False,
-    ) -> None:
-        self.split = split
-        self.file_path = file_path
-        self.max_examples = max_examples
-        self.overwrite = overwrite
-        self.resume = resume
-
-    def process(self) -> None:  # pragma: no cover - interface only
-        raise NotImplementedError
-
-
-class HotpotQAProcessor(DatasetProcessor):
-    """Processor for the HotpotQA dataset."""
-
-    DATASET = "hotpotqa"
-
-    def process(self) -> None:  # noqa: D401 - short override
-        with open(self.file_path, "r", encoding="utf-8") as f:
-            examples = json.load(f)
-
-        if isinstance(self.max_examples, int):
-            examples = examples[: self.max_examples]
-
-        paths = processed_dataset_paths(self.DATASET, self.split)
-        qa_path = str(paths["questions"])
-        passages_path = str(paths["passages"])
-
-        done_qids, _ = compute_resume_sets(
-            resume=self.resume,
-            out_path=qa_path,
-            items=examples,
-            get_id=lambda ex, i: ex["_id"],
-            phase_label=f"{self.DATASET} {self.split} questions",
-            id_field="question_id",
-        )
-
-        def iter_pids() -> Iterable[str]:
-            for ex in examples:
-                qid = ex["_id"]
-                for title, sents in ex["context"]:
-                    for i, _ in enumerate(sents):
-                        yield pid_plus_title(qid, title, i)
-
-        done_pids, _ = compute_resume_sets(
-            resume=self.resume,
-            out_path=passages_path,
-            items=iter_pids(),
-            get_id=lambda pid, i: pid,
-            phase_label=f"{self.DATASET} {self.split} passages",
-            id_field="passage_id",
-        )
-
-        for ex in examples:
-            qid = ex["_id"]
-            if qid not in done_qids:
-                gold_ids, seen = [], set()
-                for title, idx in ex.get("supporting_facts", []):
-                    pid = pid_plus_title(qid, title, idx)
-                    if pid not in seen:
-                        gold_ids.append(pid)
-                        seen.add(pid)
-
-                append_jsonl(
-                    qa_path,
-                    {
-                        "question_id": qid,
-                        "dataset": self.DATASET,
-                        "split": self.split,
-                        "question": clean_text(ex["question"]),
-                        "gold_answer": clean_text(ex.get("answer", "")),
-                        "gold_passages": gold_ids,
-                    },
-                )
-
-            for title, sents in ex["context"]:
-                for i, sent in enumerate(sents):
-                    pid = pid_plus_title(qid, title, i)
-                    if pid in done_pids:
-                        continue
-                    append_jsonl(
-                        passages_path,
-                        {
-                            "passage_id": pid,
-                            "title": title,
-                            "text": clean_text(sent),
-                        },
-                    )
-
-
-class TwoWikiProcessor(DatasetProcessor):
-    """Processor for the 2WikiMultiHopQA dataset."""
-
-    DATASET = "2wikimultihopqa"
-
-    def process(self) -> None:  # noqa: D401 - short override
-        with open(self.file_path, "r", encoding="utf-8") as f:
-            examples = json.load(f)
-
-        if isinstance(self.max_examples, int):
-            examples = examples[: self.max_examples]
-
-        paths = processed_dataset_paths(self.DATASET, self.split)
-        qa_path = str(paths["questions"])
-        passages_path = str(paths["passages"])
-
-        done_qids, _ = compute_resume_sets(
-            resume=self.resume,
-            out_path=qa_path,
-            items=examples,
-            get_id=lambda ex, i: ex["_id"],
-            phase_label=f"{self.DATASET} {self.split} questions",
-            id_field="question_id",
-        )
-
-        def iter_pids() -> Iterable[str]:
-            for ex in examples:
-                qid = ex["_id"]
-                for title, sents in ex["context"]:
-                    for i, _ in enumerate(sents):
-                        yield pid_plus_title(qid, title, i)
-
-        done_pids, _ = compute_resume_sets(
-            resume=self.resume,
-            out_path=passages_path,
-            items=iter_pids(),
-            get_id=lambda pid, i: pid,
-            phase_label=f"{self.DATASET} {self.split} passages",
-            id_field="passage_id",
-        )
-
-        for ex in examples:
-            qid = ex["_id"]
-            if qid not in done_qids:
-                gold_ids, seen = [], set()
-                for title, idx in ex.get("supporting_facts", []):
-                    pid = pid_plus_title(qid, title, idx)
-                    if pid not in seen:
-                        gold_ids.append(pid)
-                        seen.add(pid)
-
-
-                append_jsonl(
-                    qa_path,
-                    {
-                        "question_id": qid,
-                        "dataset": self.DATASET,
-                        "split": self.split,
-                        "question": clean_text(ex["question"]),
-                        "gold_answer": clean_text(ex.get("answer", "")),
-                        "gold_passages": gold_ids,
-                    },
-                )
-
-            for title, sents in ex["context"]:
-                for i, sent in enumerate(sents):
-                    pid = pid_plus_title(qid, title, i)
-                    if pid in done_pids:
-                        continue
-                    append_jsonl(
-                        passages_path,
-                        {
-                            "passage_id": pid,
-                            "title": title,
-                            "text": clean_text(sent),
-                        },
-                    )
-
-
-class MuSiQueProcessor(DatasetProcessor):
-    """Processor for the MuSiQue dataset."""
-
-    DATASET = "musique"
-
-    def process(self) -> None:  # noqa: D401 - short override
-        examples: List[Dict] = []
-        with open(self.file_path, "r", encoding="utf-8") as f:
-            for k, line in enumerate(f):
-                if isinstance(self.max_examples, int) and k >= self.max_examples:
+    # ---- Load raw examples -------------------------------------------------
+    examples: List[Dict]
+    with open(file_path, "r", encoding="utf-8") as f:
+        if file_path.endswith(".jsonl"):
+            examples = []
+            for i, line in enumerate(f):
+                if isinstance(max_examples, int) and i >= max_examples:
                     break
                 examples.append(json.loads(line))
+        else:
+            examples = json.load(f)
+            if isinstance(max_examples, int):
+                examples = examples[:max_examples]
 
-        paths = processed_dataset_paths(self.DATASET, self.split)
-        qa_path = str(paths["questions"])
-        passages_path = str(paths["passages"])
+    paths = processed_dataset_paths(dataset, split)
+    qa_path = str(paths["questions"])
+    passages_path = str(paths["passages"])
 
-        done_qids, _ = compute_resume_sets(
-            resume=self.resume,
-            out_path=qa_path,
-            items=examples,
-            get_id=lambda ex, i: ex["id"],
-            phase_label=f"{self.DATASET} {self.split} questions",
-            id_field="question_id",
-        )
+    get_id = field_map["get_id"]
+    get_question = field_map["get_question"]
+    get_answer = field_map.get("get_answer", lambda ex: "")
+    iter_passages_fn = field_map["iter_passages"]
+    gold_ids_fn = field_map.get("gold_passage_ids", lambda ex: [])
 
-        def iter_pids() -> Iterable[str]:
-            for ex in examples:
-                qid = ex["id"]
-                paras = ex.get("paragraphs", [])
-                for idx, p in enumerate(paras):
-                    j = p.get("idx")
-                    pid = f"{qid}_sent{j}" if j is not None else f"{qid}_sent{idx}"
-                    yield pid
+    # ---- Determine resume state --------------------------------------------
+    done_qids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=qa_path,
+        items=examples,
+        get_id=lambda ex, i: get_id(ex),
+        phase_label=f"{dataset} {split} questions",
+        id_field="question_id",
+    )
 
-        done_pids, _ = compute_resume_sets(
-            resume=self.resume,
-            out_path=passages_path,
-            items=iter_pids(),
-            get_id=lambda pid, i: pid,
-            phase_label=f"{self.DATASET} {self.split} passages",
-            id_field="passage_id",
-        )
-
+    def iter_pids() -> Iterable[str]:
         for ex in examples:
-            qid = ex["id"]
-            paras = ex.get("paragraphs", [])
+            for pid, _title, _text in iter_passages_fn(ex):
+                yield pid
 
-            if qid not in done_qids:
-                gold_ids, seen = [], set()
-                for idx, p in enumerate(paras):
-                    if p.get("is_supporting"):
-                        j = p.get("idx")
-                        pid = f"{qid}_sent{j}" if j is not None else f"{qid}_sent{idx}"
-                        if pid not in seen:
-                            gold_ids.append(pid)
-                            seen.add(pid)
-                append_jsonl(
-                    qa_path,
-                    {
-                        "question_id": qid,
-                        "dataset": self.DATASET,
-                        "split": self.split,
-                        "question": clean_text(ex.get("question", "")),
-                        "gold_answer": clean_text(ex.get("answer", "")),
-                        "gold_passages": gold_ids,
-                    },
-                )
+    done_pids, _ = compute_resume_sets(
+        resume=resume,
+        out_path=passages_path,
+        items=iter_pids(),
+        get_id=lambda pid, i: pid,
+        phase_label=f"{dataset} {split} passages",
+        id_field="passage_id",
+    )
 
-            for idx, p in enumerate(paras):
-                j = p.get("idx")
-                pid = f"{qid}_sent{j}" if j is not None else f"{qid}_sent{idx}"
-                if pid in done_pids:
-                    continue
-                append_jsonl(
-                    passages_path,
-                    {
-                        "passage_id": pid,
-                        "title": p.get("title", ""),
-                        "text": clean_text(p.get("paragraph_text", "")),
-                    },
-                )
+    # ---- Write processed files ---------------------------------------------
+    for ex in examples:
+        qid = get_id(ex)
+        if qid not in done_qids:
+            gold_ids, seen = [], set()
+            for pid in gold_ids_fn(ex):
+                if pid not in seen:
+                    gold_ids.append(pid)
+                    seen.add(pid)
+            append_jsonl(
+                qa_path,
+                {
+                    "question_id": qid,
+                    "dataset": dataset,
+                    "split": split,
+                    "question": clean_text(get_question(ex)),
+                    "gold_answer": clean_text(get_answer(ex)),
+                    "gold_passages": gold_ids,
+                },
+            )
+
+        for pid, title, text in iter_passages_fn(ex):
+            if pid in done_pids:
+                continue
+            append_jsonl(
+                passages_path,
+                {
+                    "passage_id": pid,
+                    "title": title,
+                    "text": clean_text(text),
+                },
+            )
 
 
-PROCESSORS: Dict[str, Type[DatasetProcessor]] = {
-    "hotpotqa": HotpotQAProcessor,
-    "2wikimultihopqa": TwoWikiProcessor,
-    "musique": MuSiQueProcessor,
-}
+
+
+
 
 
 if __name__ == "__main__":
     RESUME = True
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     SPLITS = ["dev"]
-    MAX_EXAMPLES = 250
+    MAX_EXAMPLES = 100
 
     for dataset in DATASETS:
         for split in SPLITS:
@@ -313,18 +195,62 @@ if __name__ == "__main__":
                     if split == "train"
                     else "data/raw_datasets/hotpotqa/hotpot_dev_fullwiki_v1.json"
                 )
+                field_map = {
+                    "get_id": lambda ex: ex["_id"],
+                    "get_question": lambda ex: ex["question"],
+                    "get_answer": lambda ex: ex.get("answer", ""),
+                    "iter_passages": lambda ex: [
+                        (pid_plus_title(ex["_id"], title, i), title, sent)
+                        for title, sents in ex["context"]
+                        for i, sent in enumerate(sents)
+                    ],
+                    "gold_passage_ids": lambda ex: [
+                        pid_plus_title(ex["_id"], title, idx)
+                        for title, idx in ex.get("supporting_facts", [])
+                    ],
+                }
             elif dataset == "2wikimultihopqa":
                 file_path = f"data/raw_datasets/2wikimultihopqa/{split}.json"
+                field_map = {
+                    "get_id": lambda ex: ex["_id"],
+                    "get_question": lambda ex: ex["question"],
+                    "get_answer": lambda ex: ex.get("answer", ""),
+                    "iter_passages": lambda ex: [
+                        (pid_plus_title(ex["_id"], title, i), title, sent)
+                        for title, sents in ex["context"]
+                        for i, sent in enumerate(sents)
+                    ],
+                    "gold_passage_ids": lambda ex: [
+                        pid_plus_title(ex["_id"], title, idx)
+                        for title, idx in ex.get("supporting_facts", [])
+                    ],
+                }
             elif dataset == "musique":
                 file_path = f"data/raw_datasets/musique/musique_ans_v1.0_{split}.jsonl"
-            else:  # pragma: no cover - defensive
-                raise ValueError(f"Unknown dataset: {dataset}")
+                field_map = {
+                    "get_id": lambda ex: ex["id"],
+                    "get_question": lambda ex: ex.get("question", ""),
+                    "get_answer": lambda ex: ex.get("answer", ""),
+                    "iter_passages": lambda ex: [
+                        (
+                            f"{ex['id']}_sent{p.get('idx') if p.get('idx') is not None else i}",
+                            p.get("title", ""),
+                            p.get("paragraph_text", ""),
+                        )
+                        for i, p in enumerate(ex.get("paragraphs", []))
+                    ],
+                    "gold_passage_ids": lambda ex: [
+                        f"{ex['id']}_sent{p.get('idx') if p.get('idx') is not None else i}"
+                        for i, p in enumerate(ex.get("paragraphs", []))
+                        if p.get("is_supporting")
+                    ],
+                }
 
-            processor_cls = PROCESSORS[dataset]
-            processor = processor_cls(
+            process_dataset(
+                dataset=dataset,
                 split=split,
                 file_path=file_path,
+                field_map=field_map,
                 max_examples=MAX_EXAMPLES,
                 resume=RESUME,
             )
-            processor.process()
