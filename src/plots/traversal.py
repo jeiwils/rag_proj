@@ -1,3 +1,9 @@
+
+"""Plot traversal statistics and metrics from result directories.
+
+Result directories can be discovered using :func:`src.utils.get_result_dirs`.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -14,6 +20,7 @@ from .utils import (
     load_json,
     load_jsonl,
     stylized_subplots,
+    get_result_dirs
 )
 
 logger = logging.getLogger(__name__)
@@ -55,7 +62,18 @@ def load_traversal_stats(paths: Sequence[Path]) -> Dict:
 def plot_traversal_distributions(
     stats: Dict, outdir: Path = DEFAULT_PLOT_DIR
 ) -> None:
-    """Generate histograms for call counts and line charts over hops."""
+    """Generate comparative plots for traversal metrics.
+
+    Parameters
+    ----------
+    result_dirs:
+        Sequence of result directories. Use :func:`get_result_dirs` to collect
+        them.
+    output:
+        Destination file path for the generated plot image.
+    show_recall_at_k:
+        Include the ``mean_recall_at_k`` metric when ``True``.
+    """
     outdir.mkdir(parents=True, exist_ok=True)
 
     for key in ("n_traversal_calls", "n_reader_calls"):
@@ -241,3 +259,7 @@ if __name__ == "__main__":
     files = find_result_files()
     stats = load_traversal_stats(files)
     plot_traversal_distributions(stats)
+
+    # Example for plotting traversal metrics across result directories.
+    dirs = get_result_dirs(required="final_traversal_stats.json")
+    plot_traversal_metrics(dirs, DEFAULT_PLOT_DIR / "traversal_metrics.png")

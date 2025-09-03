@@ -1,3 +1,10 @@
+
+"""Plot compute and token usage across result directories.
+
+Use :func:`src.utils.get_result_dirs` to locate directories containing the
+``token_usage.json`` file produced by pipeline runs.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -6,7 +13,8 @@ from typing import Dict, Sequence
 
 import matplotlib.pyplot as plt
 
-from .utils import ensure_output_path, load_json, stylized_subplots
+from .utils import ensure_output_path, load_json, stylized_subplots, get_result_dirs
+
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +76,16 @@ def _model_label(result_dir: Path) -> str:
 
 
 def plot_compute_usage(result_dirs: Sequence[Path], output: Path) -> None:
-    """Generate bar plots comparing compute usage across models."""
+    """Generate bar plots comparing compute usage across models.
+
+    Parameters
+    ----------
+    result_dirs:
+        Iterable of result directories. ``get_result_dirs`` can be used to
+        discover these locations.
+    output:
+        File path where the resulting plot image will be written.
+    """
     usage_by_model: Dict[str, Dict[str, float]] = {}
     for rdir in result_dirs:
         metrics = _load_usage(rdir, USAGE_FIELDS)
@@ -90,3 +107,10 @@ def plot_compute_usage(result_dirs: Sequence[Path], output: Path) -> None:
 
 
 __all__ = ["plot_compute_usage"]
+
+
+if __name__ == "__main__":
+    # Example usage: gather directories containing token usage information and
+    # produce a summary plot.
+    dirs = get_result_dirs(required="token_usage.json")
+    plot_compute_usage(dirs, Path("analysis/compute_usage.png"))
