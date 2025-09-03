@@ -22,6 +22,8 @@ Inputs
 
 - `per_query_traversal_results.jsonl`
     Saved traversal results with helpful_passages per query.
+    When a `seed` is provided, `{variant}` becomes `{variant}_seed{seed}`.
+
 
 ### data/processed_datasets/{dataset}/{split}/questions.jsonl
     Query set with `question_id`, `question`, and `gold_answer(s)`.
@@ -39,6 +41,8 @@ Outputs
 
 - `summary_metrics_{variant}_{split}.json`
     Aggregate answer metrics in the form `{ "timestamp": ..., "answer_eval": {..} }`.
+    Like the traversal path, include `_seed{seed}` after `variant` when a
+    seed is specified.
 
 
 File Schemas
@@ -575,8 +579,13 @@ def generate_answers_from_traversal(
         server_url = server_url or server["server_url"]
         model_name = model_name or server["model"]
 
-    traversal_paths = get_traversal_paths(traversal_model, dataset, split, variant)
-    result_paths = get_result_paths(traversal_model, dataset, split, variant)
+    variant_for_path = f"{variant}_seed{seed}" if seed is not None else variant
+    traversal_paths = get_traversal_paths(
+        traversal_model, dataset, split, variant_for_path
+    )
+    result_paths = get_result_paths(
+        traversal_model, dataset, split, variant_for_path
+    )
 
     traversal_file = traversal_paths["results"]
     graph_file = (
