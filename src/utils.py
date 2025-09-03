@@ -10,6 +10,7 @@ import re
 import unicodedata
 from typing import Any, Callable, Dict, Hashable, Iterable, Iterator, List, Optional, Set, Tuple
 from collections import defaultdict
+import warnings
 
 import numpy as np
 
@@ -801,7 +802,14 @@ def merge_token_usage(output_dir: str | Path) -> Path:
             if isinstance(v, (int, float)):
                 global_totals[k] += v
             else:
-                global_totals[k] = v
+                existing = global_totals.get(k)
+                if existing is None:
+                    global_totals[k] = v
+                elif existing != v:
+                    warnings.warn(
+                        f"Conflicting values for '{k}': keeping {existing!r}, ignoring {v!r}",
+                        stacklevel=1,
+                    )
 
     tokens_total = (
         global_totals.get("trav_tokens_total", 0)
