@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 
 from typing import Iterable, List, Dict, Any
 
@@ -78,11 +79,18 @@ def rag_run_paths(model: str, dataset: str, split: str, seed: int, mode: str) ->
     }
 
 def parse_traversal_run_dir(path: Path) -> tuple[str, str, str, int]:
-    """Extract ``(model, dataset, split, seed)`` from a traversal run directory."""
+    """Extract ``(model, dataset, split, seed)`` from a run directory.
+
+    The directory name is expected to end with ``{variant}_seed{seed}``, where
+    ``variant`` can be ``baseline`` or ``dense``.
+    """
 
     parts = path.resolve().parts
     model, dataset, split = parts[-4], parts[-3], parts[-2]
-    seed = int(path.name.split("baseline_seed", 1)[-1])
+    match = re.search(r"_seed(\d+)$", path.name)
+    if not match:
+        raise ValueError(f"Unrecognized run directory name: {path.name}")
+    seed = int(match.group(1))
     return model, dataset, split, seed
 
 
