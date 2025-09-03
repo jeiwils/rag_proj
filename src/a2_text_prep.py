@@ -119,6 +119,7 @@ from urllib3.util.retry import Retry
 from tqdm import tqdm
 import tiktoken
 
+from src.config import MAX_TOKENS, TEMPERATURE
 
 from src.utils import (
     append_jsonl,
@@ -184,19 +185,19 @@ GRAMMAR_TRAVERSAL_INT_OR_NULL = (
     'NULL  ::= "null"\n'
 )
 
-MAX_TOKENS = { #### WHY SET HERE????
-    "cs": 200, # 50, 
-    "iqoq_generation": 192, 
-    "edge_selection": 64, 
-    "answer_generation": 256 
-}
+# MAX_TOKENS = { #### WHY SET HERE????
+#     "cs": 200, # 50, 
+#     "iqoq_generation": 192, 
+#     "edge_selection": 64, 
+#     "answer_generation": 256 
+# }
 
-TEMPERATURE = { #### WHY SET HERE????
-    "cs": 0.6, 
-    "iqoq_generation": 0.6, 
-    "edge_selection": 0.1, #0.6
-    "answer_generation": 0.6, 
-}
+# TEMPERATURE = { #### WHY SET HERE????
+#     "cs": 0.6, 
+#     "iqoq_generation": 0.6, 
+#     "edge_selection": 0.1, #0.6
+#     "answer_generation": 0.6, 
+# }
 
 
 

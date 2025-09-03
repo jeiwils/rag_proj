@@ -352,9 +352,6 @@ if __name__ == "__main__":
     start_time = time.time()
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     SPLITS = ["dev"]
-    READER_MODELS = ["llama-3.1-8b-instruct"]
-
-
 
     READER_MODELS = ["qwen2.5-14b-instruct"]
 

@@ -116,7 +116,8 @@ from functools import partial
 import networkx as nx
 import pickle
 
-from src.a2_text_prep import TEMPERATURE, is_r1_like, query_llm, strip_think, model_size
+from src.a2_text_prep import is_r1_like, query_llm, strip_think, model_size
+from src.config import TEMPERATURE
 from src.utils import (
     append_jsonl,
     compute_resume_sets,
