@@ -511,6 +511,8 @@ def query_llm(
     top_k: int = 0,
     mirostat: int = 0,
     repeat_penalty: float = 1.0,
+    seed: int | None = None,
+
 ):
     if response_format is not None and grammar is not None:
         raise ValueError("response_format and grammar cannot both be set")
@@ -543,6 +545,8 @@ def query_llm(
             "mirostat": mirostat,
             "repeat_penalty": repeat_penalty,
         }
+        if seed is not None:
+            payload["seed"] = seed
         if stop:
             payload["stop"] = stop
         if response_format is not None:
@@ -563,6 +567,8 @@ def query_llm(
                 "mirostat": mirostat,
                 "repeat_penalty": repeat_penalty,
             }
+            if seed is not None:
+                payload["seed"] = seed
             if stop:
                 payload["stop"] = stop
         else:
@@ -576,6 +582,8 @@ def query_llm(
                 "mirostat": mirostat,
                 "repeat_penalty": repeat_penalty,
             }
+            if seed is not None:
+                payload["seed"] = seed
             if stop:
                 payload["stop"] = stop
 

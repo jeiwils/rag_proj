@@ -216,6 +216,8 @@ def ask_llm_with_passages(
     passage_lookup: Optional[Dict[str, str]] = None,  # optional for dense mode
     model_name: str = "",
     top_k_answer_passages: int = 5,
+    seed: int | None = None,
+
 ) -> Dict[str, str]:
     """Generate an answer from top passages using an LLM server.
 
@@ -272,6 +274,8 @@ def ask_llm_with_passages(
         stop=["\n", "Answer:", "Final answer:"],
         temperature=TEMPERATURE.get("answer_generation", 0.1),
         phase="answer_generation",
+        seed=seed,
+
     )
 
     if is_r1_like(model_name):

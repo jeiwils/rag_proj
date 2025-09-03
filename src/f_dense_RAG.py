@@ -172,6 +172,8 @@ def run_dense_rag(
             passage_lookup=passage_lookup,
             model_name=reader_model,
             top_k_answer_passages=top_k,
+            seed=seed,
+
         )
         elapsed_ms = int((time.perf_counter() - start_time) * 1000)
 

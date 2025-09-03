@@ -304,6 +304,8 @@ def llm_choose_edge(
     traversal_prompt: str,
     token_totals: Optional[Dict[str, int]] = None,
     reason: bool = True,
+    seed: int | None = None,
+
 ):
     """Ask the local LLM to choose among multiple outgoing edges.
 
@@ -371,6 +373,8 @@ def llm_choose_edge(
         top_k=0,
         mirostat=0,
         repeat_penalty=1.0,
+        seed=seed,
+
     )
 
     if token_totals is not None:
@@ -416,6 +420,8 @@ def llm_choose_edge(
                 top_k=0,
                 mirostat=0,
                 repeat_penalty=1.0,
+                seed=seed,
+
             )
             if token_totals is not None:
                 token_totals["n_traversal_calls"] += 1
@@ -458,6 +464,8 @@ def hoprag_traversal_algorithm(
     traversal_prompt: str,
     hop: int = 0,
     token_totals: Optional[Dict[str, int]] = None,
+    seed: int | None = None,
+
     **kwargs,
 ):
     """Single HopRAG traversal step as described in the HopRAG article.
@@ -522,6 +530,8 @@ def hoprag_traversal_algorithm(
         traversal_prompt=traversal_prompt,
         token_totals=token_totals,
         reason=is_r1_like(edge_model),
+        seed=seed,
+
     )
 
     if chosen is None:
@@ -692,6 +702,8 @@ def traverse_graph(
     alpha: float = DEFAULT_EDGE_BUDGET_ALPHA,
     traversal_prompt: str = "",
     token_totals: Optional[Dict[str, int]] = None,
+    seed: int | None = None,
+
 ):
     """Traverse the graph while recording query similarity for visited passages.
 
@@ -759,6 +771,8 @@ def traverse_graph(
                 traversal_prompt=traversal_prompt,
                 hop=hop,  # expose hop depth to traversal algorithm
                 token_totals=token_totals,
+                seed=seed,
+
 
 
             )
@@ -1065,6 +1079,8 @@ def run_traversal(
             alpha=alpha,
             traversal_prompt=traversal_prompt,
             token_totals=query_token_totals,
+            seed=seed,
+
 
         )
 
@@ -1113,7 +1129,9 @@ def run_traversal(
         total_time_ms += elapsed_ms
 
 
-    token_usage_path = output_paths["base"] / "token_usage.json"
+    token_usage_path = output_paths.get(
+        "token_usage", output_paths["base"] / "token_usage.json"
+    )
     global_usage = {k: v for k, v in token_totals.items()}
     global_usage["t_traversal_ms"] = total_time_ms
 
@@ -1474,7 +1492,9 @@ def process_traversal(cfg: Dict) -> None:
         batch_paths = {
             "base": output_paths["base"],
             "results": output_paths["base"] / f"results_part{i}.jsonl",
-            "visited_passages": output_paths["base"] / f"visited_passages_part{i}.json",
+            "visited_passages": output_paths["base"]
+            / f"visited_passages_part{i}.json",
+            "token_usage": output_paths["base"] / f"token_usage_part{i}.json",
         }
         batch_configs.append(
             {
@@ -1553,7 +1573,7 @@ if __name__ == "__main__":
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
 
 
-    TRAVERSAL_MODELS = ["deepseek-r1-distill-qwen-14b"] 
+    TRAVERSAL_MODELS = ["qwen2.5-moe-14b"] 
 
 # [
 #         "qwen2.5-7b-instruct",
