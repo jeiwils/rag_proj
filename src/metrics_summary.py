@@ -104,3 +104,92 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
         json.dump(summary, f, indent=2)
 
     return stats
+
+
+
+
+def append_traversal_percentiles(
+    results_path: str | Path, stats_path: str | Path
+) -> Dict[str, float]:
+    """Append median and p90 traversal metrics to ``final_traversal_stats.json``.
+
+    Parameters
+    ----------
+    results_path: str or Path
+        JSONL file containing per-query traversal results with ``final_metrics``.
+    stats_path: str or Path
+        Path to ``final_traversal_stats.json`` to update.
+
+    Returns
+    -------
+    Dict[str, float]
+        The computed statistics added to the stats file.
+    """
+
+    results_path = Path(results_path)
+    stats_path = Path(stats_path)
+
+    if not results_path.exists():
+        return {}
+
+    f1s: list[float] = []
+    with open(results_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            fm = obj.get("final_metrics", {})
+            f1 = fm.get("f1")
+            if f1 is not None:
+                f1s.append(float(f1))
+
+    stats: Dict[str, float] = {}
+    if f1s:
+        stats["median_final_f1"] = float(np.median(f1s))
+        stats["p90_final_f1"] = float(np.percentile(f1s, 90))
+
+    token_usage_path = stats_path.parent / "token_usage.json"
+    if token_usage_path.exists():
+        try:
+            with open(token_usage_path, "r", encoding="utf-8") as f:
+                usage = json.load(f)
+        except json.JSONDecodeError:
+            usage = {}
+
+        per_trav = usage.get("per_query_traversal", {}) or {}
+
+        trav_tokens: list[float] = []
+        times_ms: list[float] = []
+        tps: list[float] = []
+
+        for q in per_trav.values():
+            tok = float(q.get("trav_tokens_total", 0))
+            t_ms = float(q.get("t_traversal_ms", 0))
+            trav_tokens.append(tok)
+            times_ms.append(t_ms)
+            tps.append(tok / (t_ms / 1000) if t_ms else 0.0)
+
+        if trav_tokens:
+            stats["median_trav_tokens_total"] = float(np.median(trav_tokens))
+            stats["p90_trav_tokens_total"] = float(np.percentile(trav_tokens, 90))
+        if times_ms:
+            stats["median_t_traversal_ms"] = float(np.median(times_ms))
+            stats["p90_t_traversal_ms"] = float(np.percentile(times_ms, 90))
+        if tps:
+            stats["median_tps_overall"] = float(np.median(tps))
+            stats["p90_tps_overall"] = float(np.percentile(tps, 90))
+
+    if stats_path.exists():
+        with open(stats_path, "r", encoding="utf-8") as f:
+            summary = json.load(f)
+    else:
+        summary = {}
+    summary.update(stats)
+    with open(stats_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+
+    return stats

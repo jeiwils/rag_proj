@@ -134,6 +134,7 @@ from src.utils import (
     log_wall_time,
     validate_vec_ids,
 )
+from src.metrics_summary import append_traversal_percentiles
 
 
 class TraversalOutputError(Exception):
@@ -1480,6 +1481,10 @@ def process_traversal(cfg: Dict) -> None:
     }
     with open(output_paths["stats"], "w", encoding="utf-8") as f:
         json.dump(stats_payload, f, indent=2)
+
+    append_traversal_percentiles(
+        output_paths["results"], output_paths["stats"]
+    )
 
     print(
         f"[Done] dataset={dataset} graph_model={graph_model} traversal_model={model} variant={variant_for_path} split={split}"
