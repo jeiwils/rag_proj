@@ -140,7 +140,7 @@ def run_dense_rag(
 
     token_totals = {
         "reader_prompt_tokens": 0,
-        "reader_completion_tokens": 0,
+        "reader_output_tokens": 0,
         "reader_total_tokens": 0,
         "n_reader_calls": 0,
 
@@ -202,7 +202,7 @@ def run_dense_rag(
                 "output_tokens": llm_out.get("output_tokens", 0),
                 "total_tokens": llm_out.get("total_tokens", 0),
                 "reader_prompt_tokens": llm_out.get("prompt_len", 0),
-                "reader_completion_tokens": llm_out.get("output_tokens", 0),
+                "reader_output_tokens": llm_out.get("output_tokens", 0),
                 "reader_total_tokens": llm_out.get(
                     "total_tokens",
                     llm_out.get("prompt_len", 0) + llm_out.get("output_tokens", 0),
@@ -220,13 +220,13 @@ def run_dense_rag(
 
         token_totals["n_reader_calls"] += 1
         token_totals["reader_prompt_tokens"] += llm_out.get("prompt_len", 0)
-        token_totals["reader_completion_tokens"] += llm_out.get("output_tokens", 0)
+        token_totals["reader_output_tokens"] += llm_out.get("output_tokens", 0)
         token_totals["reader_total_tokens"] += llm_out.get(
             "total_tokens", llm_out.get("prompt_len", 0) + llm_out.get("output_tokens", 0)
         )
         per_query_reader[q_id] = {
             "reader_prompt_tokens": llm_out.get("prompt_len", 0),
-            "reader_completion_tokens": llm_out.get("output_tokens", 0),
+            "reader_output_tokens": llm_out.get("output_tokens", 0),
             "reader_total_tokens": llm_out.get(
                 "total_tokens",
                 llm_out.get("prompt_len", 0) + llm_out.get("output_tokens", 0),
