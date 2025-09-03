@@ -121,7 +121,7 @@ from functools import partial
 import networkx as nx
 import pickle
 
-from src.a2_text_prep import is_r1_like, query_llm, strip_think, model_size
+from src.llm_utils import is_r1_like, query_llm, strip_think
 from src.config import TEMPERATURE
 from src.utils import (
     append_jsonl,
@@ -131,13 +131,12 @@ from src.utils import (
     get_traversal_paths,
     load_jsonl,
     processed_dataset_paths,
-
     compute_hits_at_k,
     compute_recall_at_k,
     merge_token_usage,
-
-
+    model_size,
 )
+
 
 from src.metrics_summary import append_percentiles
 

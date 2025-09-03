@@ -117,7 +117,7 @@ from tqdm import tqdm
 from datetime import datetime
 
 
-from src.a2_text_prep import is_r1_like, query_llm, strip_think
+from src.llm_utils import is_r1_like, query_llm, strip_think
 from src.b_sparse_dense_representations import (
     dataset_rep_paths,
     extract_keywords,
