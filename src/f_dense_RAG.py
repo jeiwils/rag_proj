@@ -356,7 +356,7 @@ if __name__ == "__main__":
 
 
 
-    READER_MODELS = ["qwen2.5-moe-14b"]
+    READER_MODELS = ["qwen2.5-14b-instruct"]
 
     #     "qwen2.5-7b-instruct",
     #     "qwen2.5-14b-instruct",
