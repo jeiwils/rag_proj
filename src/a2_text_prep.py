@@ -151,7 +151,7 @@ _session.mount("http://", _adapter)
 _session.mount("https://", _adapter)
 
 
-def _post(url, json, timeout=60):
+def _post(url, json, timeout=300):
     return _session.post(
         url, json=json, timeout=timeout,
         headers={"Connection": "keep-alive"}

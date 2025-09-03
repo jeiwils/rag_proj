@@ -449,28 +449,7 @@ def split_jsonl(path: str, out1: str, out2: str):
 
 
 
-def split_jsonl_into_four(path, out1, out2, out3, out4):
-    data = list(load_jsonl(path))
-    total_rows = len(data)
 
-    if total_rows == 0:
-        save_jsonl(out1, []); save_jsonl(out2, []); save_jsonl(out3, []); save_jsonl(out4, [])
-        return
-
-    # Base size per chunk + how many leftovers to spread
-    base_size, leftovers = divmod(total_rows, 4)
-
-    # First `leftovers` chunks get one extra row
-    chunk_sizes = [(base_size + 1 if i < leftovers else base_size) for i in range(4)]
-
-    chunks, start = [], 0
-    for size in chunk_sizes:
-        end = start + size
-        chunks.append(data[start:end])
-        start = end
-
-    save_jsonl(out1, chunks[0]); save_jsonl(out2, chunks[1])
-    save_jsonl(out3, chunks[2]); save_jsonl(out4, chunks[3])
 
 
 

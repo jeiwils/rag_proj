@@ -160,26 +160,7 @@ from src.utils import (
 
 ### *   *   * ###
 
-# def clean_iqoq(questions: list[str]) -> list[str]: 
-#     """
-#     Normalize and filter generated IQ/OQ strings.
 
-#     """
-#     cleaned = []
-
-#     for q in questions:
-#         q = q.strip()
-#         q = re.sub(r"^\d+[\.\)]\s*", "", q)      # remove numbering (e.g., '1. ...')
-#         q = re.sub(r"^[-*]\s*", "", q)           # remove bullets ('- ', '* ')
-#         if not q.endswith("?"):
-#             continue                             # skip if it’s not a question - will need to check this during debugging
-#         if len(q) < 5:
-#             continue                             # skip tiny junk 
-#         if q.lower() in {"n/a", "none", "no question generated"}:
-#             continue
-#         cleaned.append(q)
-
-#     return cleaned
 
 
 def clean_iqoq(questions: list[str]) -> list[str]:
@@ -214,27 +195,7 @@ def clean_iqoq(questions: list[str]) -> list[str]:
     # Remove duplicates while preserving order
     return list(dict.fromkeys(cleaned))
 
-# def clean_baseline(questions):
-#     """Parse baseline 'json {"Question List":[...]}' strings then clean."""
-#     if not questions:
-#         return []
-#     seq = questions if isinstance(questions, list) else [questions]
-#     collected = []
-#     for s in seq:
-#         s = re.sub(r"^\s*json\s*", "", str(s).strip(), flags=re.I)
-#         for b in re.findall(r"\{.*?\}", s, flags=re.S):
-#             try:
-#                 obj = json.loads(b)
-#             except Exception:
-#                 continue
-#             qlist = obj.get("Question List")
-#             if qlist is None:
-#                 for alt in ("questions","question_list","qlist"):
-#                     if alt in obj:
-#                         qlist = obj[alt]; break
-#             if isinstance(qlist, list):
-#                 collected.extend(map(str, qlist))
-#     return clean_iqoq(collected if collected else list(map(str, seq)))
+
 
 
 def clean_baseline(questions):
