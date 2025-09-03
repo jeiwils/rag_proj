@@ -4,10 +4,17 @@ For each supplied traversal result directory this module loads the associated
 ``final_traversal_stats.json`` and the reader's
 ``summary_metrics_{variant}_{split}.json`` to produce a single figure with:
 
-* Bar charts for traversal ``mean_precision``, ``mean_recall`` and ``mean_f1``.
+* Bar charts for traversal ``mean_precision``, ``mean_recall``, ``mean_f1`` and
+  ``mean_hits_at_k``.
+* An optional bar chart for ``mean_recall_at_k`` when ``show_recall_at_k`` is
+  enabled.
 * A grouped bar chart for final answer ``EM`` and ``F1`` scores indicating the
   traversal model used by the reader.
 * A line plot showing the ``hop_depth_distribution`` for each traversal model.
+
+Set ``show_recall_at_k=True`` when calling :func:`plot_traversal_metrics` to
+include ``mean_recall_at_k`` alongside ``mean_hits_at_k`` in the traversal
+metric plots.
 
 The module follows the project's convention of being executable without
 argument parsing—modify the ``RESULT_DIRS`` and ``OUTPUT`` constants in the
@@ -25,7 +32,8 @@ import logging
 
 
 logger = logging.getLogger(__name__)
-TRAVERSAL_FIELDS = ["mean_precision", "mean_recall", "mean_f1"]
+TRAVERSAL_FIELDS = ["mean_precision", "mean_recall", "mean_f1", "mean_hits_at_k"]
+RECALL_AT_K_FIELD = "mean_recall_at_k"
 ANSWER_FIELDS = ["EM", "F1"]
 
 
@@ -36,14 +44,14 @@ def _validate_keys(metrics: Dict[str, float], expected: Sequence[str]) -> None:
         logger.warning("Missing metrics: %s", ", ".join(missing))
 
 
-def _load_metrics(result_dir: Path) -> Dict[str, float]:
+def _load_metrics(result_dir: Path, fields: Sequence[str]) -> Dict[str, float]:
     """Return traversal metrics from ``final_traversal_stats.json``."""
 
     stats_path = result_dir / "final_traversal_stats.json"
     with stats_path.open("r", encoding="utf-8") as f:
         data = json.load(f)
     metrics = data.get("traversal_eval", {})
-    _validate_keys(metrics, TRAVERSAL_FIELDS)
+    _validate_keys(metrics, fields)
     return metrics
 
 
@@ -109,7 +117,11 @@ def _model_label(result_dir: Path) -> str:
     return result_dir.name
 
 
-def plot_traversal_metrics(result_dirs: Sequence[Path], output: Path) -> None:
+def plot_traversal_metrics(
+    result_dirs: Sequence[Path],
+    output: Path,
+    show_recall_at_k: bool = False,
+) -> None:
     """Generate comparative plots for traversal metrics.
 
     Parameters
@@ -118,14 +130,19 @@ def plot_traversal_metrics(result_dirs: Sequence[Path], output: Path) -> None:
         Iterable of directories that contain ``final_traversal_stats.json``.
     output:
         Path to the image file where the plot will be saved.
+    show_recall_at_k:
+        If ``True``, include ``mean_recall_at_k`` as an additional traversal
+        metric bar alongside ``mean_hits_at_k``.
     """
+
+    traversal_fields = TRAVERSAL_FIELDS + ([RECALL_AT_K_FIELD] if show_recall_at_k else [])
 
     traversal_by_model: Dict[str, Dict[str, float]] = {}
     hop_distributions: Dict[str, List[int]] = {}
     answer_by_model: Dict[str, Dict[str, float]] = {}
 
     for rdir in result_dirs:
-        metrics = _load_metrics(rdir)
+        metrics = _load_metrics(rdir, traversal_fields)
         label = _model_label(rdir)
         traversal_by_model[label] = metrics
         dist = metrics.get("hop_depth_distribution")
@@ -134,9 +151,10 @@ def plot_traversal_metrics(result_dirs: Sequence[Path], output: Path) -> None:
         answer_by_model[label] = _load_answer_metrics(rdir)
 
     labels = list(traversal_by_model.keys())
-    fig, axes = plt.subplots(1, 5, figsize=(20, 4))
+    num_traversal_axes = len(traversal_fields)
+    fig, axes = plt.subplots(1, num_traversal_axes + 2, figsize=(5 * (num_traversal_axes + 2), 4))
 
-    for ax, field in zip(axes[:3], TRAVERSAL_FIELDS):
+    for ax, field in zip(axes[:num_traversal_axes], traversal_fields):
         values = [traversal_by_model[l].get(field, 0.0) for l in labels]
         ax.bar(labels, values)
         ax.set_ylabel(field)
@@ -144,7 +162,7 @@ def plot_traversal_metrics(result_dirs: Sequence[Path], output: Path) -> None:
         ax.set_title(field.replace("_", " "))
 
     # Final answer metrics grouped bar chart
-    ax = axes[3]
+    ax = axes[num_traversal_axes]
     x = list(range(len(labels)))
     width = 0.35
     for i, field in enumerate(ANSWER_FIELDS):
@@ -158,7 +176,7 @@ def plot_traversal_metrics(result_dirs: Sequence[Path], output: Path) -> None:
     ax.legend()
 
     # Hop depth distribution line plot
-    ax = axes[4]
+    ax = axes[num_traversal_axes + 1]
     max_len = max((len(d) for d in hop_distributions.values()), default=0)
     x = list(range(max_len))
     for label, dist in hop_distributions.items():

@@ -74,6 +74,8 @@ Aggregated answer evaluation:
     "EM": float,
     "F1": float,
     "hits_at_k": float,
+    "recall_at_k": float,
+
     "median_f1": float,
     "p90_f1": float,
     "median_em": float,
@@ -120,6 +122,8 @@ from src.utils import (
     save_jsonl,
     pool_map,
     compute_hits_at_k,
+    compute_recall_at_k,
+
 
 )
 
@@ -423,6 +427,10 @@ def _generate_answer(
         passage_ids_sorted, q.get("gold_passages", []), top_k
     )
 
+    recall_val = compute_recall_at_k(
+        passage_ids_sorted, q.get("gold_passages", []), top_k
+    )
+
     llm_out = ask_llm_with_passages(
         query_text=question,
         passage_ids=passage_ids_sorted,
@@ -440,6 +448,8 @@ def _generate_answer(
         "normalised_answer": llm_out["normalised_answer"],
         "used_passages": top_passages,
         "hits_at_k": hits_val,
+        "recall_at_k": recall_val,
+
         "prompt_len": llm_out.get("prompt_len", 0),
         "output_tokens": llm_out.get("output_tokens", 0),
         "total_tokens": llm_out.get("total_tokens", 0),
@@ -527,6 +537,8 @@ def generate_answers_from_traversal(
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
     hits: Dict[str, float] = {}
+    recalls: Dict[str, float] = {}
+
     token_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
 
@@ -623,6 +635,8 @@ def generate_answers_from_traversal(
         predictions[qid] = norm_ans
         gold[qid] = [queries[qid].get("gold_answer", "")]
         hits[qid] = answer.get("hits_at_k", 0.0)
+        recalls[qid] = answer.get("recall_at_k", 0.0)
+
         token_totals["prompt_tokens"] += answer.get("prompt_len", 0)
         token_totals["completion_tokens"] += answer.get("output_tokens", 0)
         token_totals["total_tokens"] += answer.get(
@@ -651,6 +665,12 @@ def generate_answers_from_traversal(
     }
     if hits:
         metrics["hits_at_k"] = round(sum(hits.values()) / len(hits), 4)
+
+    if recalls:
+        metrics["recall_at_k"] = round(
+            sum(recalls.values()) / len(recalls), 4
+        )
+
     with open(result_paths["summary"], "wt", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
