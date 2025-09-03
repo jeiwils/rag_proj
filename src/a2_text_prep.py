@@ -209,54 +209,12 @@ HOPRAG_OQ_PROMPT = Path("data/prompts/hoprag_oq_prompt.txt").read_text(encoding=
 
 
 
-# # --- ChatML builders (Qwen style) ---
-# def chatml(system: str, user: str) -> str:
-#     return (
-#         "<|im_start|>system\n" + system.strip() + "\n<|im_end|>\n"
-#         "<|im_start|>user\n"   + user.strip()    + "\n<|im_end|>\n"
-#         "<|im_start|>assistant\n"
-#     )
-
-# def build_prompt(model_name: str, system: str, user: str):
-#     """Return an LLM prompt formatted for the given model.
-
-#     Parameters
-#     ----------
-#     model_name: str
-#         Identifier for the active model. If the name contains "llama" the
-#         OpenAI style chat format is used, otherwise the prompt is returned in
-#         Qwen-style ChatML.
-#     system: str
-#         System message content.
-#     user: str
-#         User message content.
-#     """
-#     if "llama" in model_name.lower():
-#         messages = []
-#         if system.strip():
-#             messages.append({"role": "system", "content": system.strip()})
-#         messages.append({"role": "user", "content": user.strip()})
-#         return messages
-#     return chatml(system, user)
-
-# def question_list_grammar(min_n: int, max_n: int) -> str:
-#     """Enforce a JSON object {"Question List": ["..."]} with bounds."""
-#     rep_min = max(0, min_n - 1)
-#     rep_max = max(0, max_n - 1)
-#     return (
-#         "root    ::= ws \"{\" ws \"\\\"Question List\\\"\" ws \":\" ws \"[\" ws string"
-#         + " (ws \",\" ws string){" + str(rep_min) + "," + str(rep_max) + "} ws \"]\" ws \"}\" ws\n"
-#         "string  ::= \"\\\"\" chars \"\\\"\"\n"
-#         "chars   ::= (escape | char)*\n"
-#         "char    ::= [^\"\\\\\\x00-\\x1F]\n"
-#         "escape  ::= \"\\\\\" ([\"\\\\/bfnrt] | \"u\" hex hex hex hex)\n"
-#         "hex     ::= [0-9a-fA-F]\n"
-#         "ws      ::= ([ \\t\\r\\n])*\n"
-#     )
 
 
 
 # --- Prompt builders ---
+
+
 
 
 def build_prompt(model_name: str, system: str, user: str):
@@ -285,6 +243,9 @@ def build_prompt(model_name: str, system: str, user: str):
 
     # R1-like and other completion-style models expect plain text.
     return user.strip()
+
+
+
 
 def question_list_grammar(min_n: int, max_n: int) -> str:
     """Enforce a JSON object {"Question List": ["..."]} with bounds."""
@@ -380,118 +341,6 @@ def _wrap_for_deepseek_user(prompt: str, task: str, reason: bool = True) -> str:
 
 
 
-
-
-
-# def query_llm(
-#     prompt,
-#     server_url,
-#     max_tokens=128,
-#     temperature=0.2,
-#     stop=None,
-#     grammar=None,
-#     response_format: dict | None = None,
-#     model_name="",
-#     phase=None,
-#     reason: bool = True,
-#     enforce_traversal_integer: bool = False,
-# ):
-#     if enforce_traversal_integer:
-#         stop = None
-#         grammar = None
-#         response_format = None
-#     else:
-#         if response_format is not None and grammar is not None:
-#             raise ValueError("response_format and grammar cannot both be set")
-
-#     is_deepseek = "deepseek" in model_name.lower()
-#     use_chat = (
-#         isinstance(prompt, list) or is_deepseek or response_format is not None
-#     ) and not enforce_traversal_integer
-
-#     prompt_text = (
-#         "".join(m.get("content", "") for m in prompt) if isinstance(prompt, list) else prompt
-#     )
-
-#     if enforce_traversal_integer:
-#         endpoint = "/v1/completions"
-#         payload = {
-#             "model": "local",
-#             "prompt": prompt,
-#             "max_tokens": 8,
-#             "temperature": min(temperature, 0.3),
-#             "grammar": GRAMMAR_TRAVERSAL_INT_OR_NULL,
-#         }
-#     elif use_chat:
-#         endpoint = "/v1/chat/completions"
-#         if isinstance(prompt, list):
-#             messages = prompt
-#         else:
-#             content = (
-#                 _wrap_for_deepseek_user(prompt, phase or "", reason)
-#                 if is_deepseek
-#                 else prompt
-#             )
-#             messages = [{"role": "user", "content": content}]
-#         payload = {
-#             "model": "local",  # required by the spec; llama.cpp ignores the value
-#             "messages": messages,
-#             "temperature": temperature,
-#             "max_tokens": max_tokens,
-#         }
-#         if stop:
-#             payload["stop"] = stop
-#         if response_format is not None:
-#             payload["response_format"] = response_format
-#         if grammar:
-#             payload["grammar"] = grammar
-#     else:
-#         endpoint = "/completion"
-#         payload = {
-#             "prompt": prompt,
-#             "n_predict": max_tokens,
-#             "temperature": temperature,
-#         }
-#         if stop:
-#             payload["stop"] = stop
-#         if grammar:
-#             payload["grammar"] = grammar
-
-#     r = _post(f"{server_url}{endpoint}", json=payload)
-#     r.raise_for_status()
-#     data = r.json()
-
-#     if enforce_traversal_integer:
-#         content = data.get("choices", [{}])[0].get("text", "")
-#     elif use_chat:
-#         # OpenAI-style response
-#         content = data["choices"][0]["message"]["content"]
-#     else:
-#         # llama.cpp completion response
-#         content = data.get("content", data.get("message", ""))
-
-#     usage = data.get("usage") if isinstance(data, dict) else None
-#     if usage:
-#         prompt_tokens = usage.get("prompt_tokens", 0)
-#         completion_tokens = usage.get("completion_tokens", 0)
-#     elif tiktoken is not None:
-#         try:
-#             enc = tiktoken.encoding_for_model(model_name)
-#         except Exception:
-#             enc = tiktoken.get_encoding("cl100k_base")
-#         prompt_tokens = len(enc.encode(prompt_text))
-#         completion_tokens = len(enc.encode(content))
-#     else:
-#         prompt_tokens = len(prompt_text.split())
-#         completion_tokens = len(content.split())
-#         logger.debug("tiktoken not available; using word counts as approximation")
-#     total_tokens = prompt_tokens + completion_tokens
-
-#     logger.debug(
-#         f"{phase or 'query'} tokens - prompt: {prompt_tokens}, completion: {completion_tokens}, total: {total_tokens}"
-#     )
-#     TOKEN_TOTALS["prompt"] += prompt_tokens
-
     
 
 
@@ -508,8 +357,8 @@ def query_llm(
     model_name="",
     phase=None,
     reason: bool = True,
-    top_p: float = 0.95,
-    top_k: int = 0,
+    top_p: float = 0.9,
+    top_k: int = 40,
     mirostat: int = 0,
     repeat_penalty: float = 1.0,
     seed: int | None = None,
