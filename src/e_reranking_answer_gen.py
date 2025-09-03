@@ -122,7 +122,7 @@ import networkx as nx
 import pickle
 
 from src.llm_utils import is_r1_like, query_llm, strip_think
-from src.config import TEMPERATURE
+from src.config import MAX_TOKENS, TEMPERATURE
 from src.utils import (
     append_jsonl,
     compute_resume_sets,
@@ -255,7 +255,7 @@ def ask_llm_with_passages(
     passage_ids: List[str],
     graph: Optional[nx.DiGraph],
     server_url: str,
-    max_tokens: int = 512,
+    max_tokens: int = MAX_TOKENS["answer_generation"],
     passage_lookup: Optional[Dict[str, str]] = None,  # optional for dense mode
     model_name: str = "",
     top_k_answer_passages: int = 20,
@@ -276,13 +276,13 @@ def ask_llm_with_passages(
     server_url : str
         URL of the LLM completion endpoint.
     max_tokens : int, optional
-        Maximum number of tokens to generate, by default ``20``.
+        Maximum number of tokens to generate, by default ``MAX_TOKENS["answer_generation"]``.
     passage_lookup : Optional[Dict[str, str]]
         Mapping from ``passage_id`` to passage text when ``graph`` is ``None``.
     model_name : str, optional
         Identifier of the active model, passed to ``query_llm``.
     top_k_answer_passages : int, optional
-        Number of passages from ``passage_ids`` to include, by default ``5``.
+        Number of passages from ``passage_ids`` to include, by default ``20``.
 
     Outputs
     -------
@@ -828,7 +828,7 @@ if __name__ == "__main__":
     READER_MODEL = "llama-3.1-8b-instruct"
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
     TRAVERSAL_MODELS = [
-        "qwen2.5-14b-instruct"]
+        "qwen2.5-2x7b-power-coder-v4"]
     #     "qwen2.5-14b-instruct",
     #     "deepseek-r1-distill-qwen-7b",
     #     "deepseek-r1-distill-qwen-14b",
