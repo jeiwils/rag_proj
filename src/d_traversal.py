@@ -128,6 +128,7 @@ from src.b_sparse_dense_representations import (
     faiss_search_topk,
     build_and_save_faiss_index,
 )
+from src.config import LLM_DEFAULTS, MAX_TOKENS, TEMPERATURE
 
 from src.c_graphing import DEFAULT_EDGE_BUDGET_ALPHA
 from src.utils import (
@@ -379,12 +380,8 @@ def llm_choose_edge(
         stop=None,
         reason=reason,
         grammar=grammar,
-        top_p=0.95,
-        top_k=0,
-        mirostat=0,
-        repeat_penalty=1.0,
         seed=seed,
-
+        **LLM_DEFAULTS,
     )
 
     if token_totals is not None:
@@ -416,6 +413,7 @@ def llm_choose_edge(
             break
         if retry_count == 0:
             retry_count = 1
+            
             answer, usage = query_llm(
                 prompt,
                 server_url=oq_server["server_url"],
@@ -426,13 +424,10 @@ def llm_choose_edge(
                 stop=None,
                 reason=reason,
                 grammar=grammar,
-                top_p=0.95,
-                top_k=0,
-                mirostat=0,
-                repeat_penalty=1.0,
                 seed=seed,
-
+                **LLM_DEFAULTS,
             )
+
             if token_totals is not None:
                 token_totals["n_traversal_calls"] += 1
             _record_usage(usage)

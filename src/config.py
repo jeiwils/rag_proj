@@ -11,3 +11,11 @@ TEMPERATURE = {
     "edge_selection": 0.7,  
     "answer_generation": 0.6,
 }
+
+
+LLM_DEFAULTS = {
+    "top_p": 0.95,
+    "top_k": 0,
+    "mirostat": 0,
+    "repeat_penalty": 1.0,
+}

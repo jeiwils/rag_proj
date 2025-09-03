@@ -16,7 +16,7 @@ except Exception:  # pragma: no cover - fallback when tiktoken missing
     tiktoken = None  # type: ignore
 
 
-from src.config import MAX_TOKENS, TEMPERATURE
+from src.config import LLM_DEFAULTS, MAX_TOKENS, TEMPERATURE
 
 
 logger = logging.getLogger(__name__)
@@ -105,10 +105,10 @@ def query_llm(
     model_name: str = "",
     phase: str | None = None,
     reason: bool = True,
-    top_p: float = 0.95,
-    top_k: int = 0,
-    mirostat: int = 0,
-    repeat_penalty: float = 1.0,
+    top_p: float = LLM_DEFAULTS["top_p"],
+    top_k: int = LLM_DEFAULTS["top_k"],
+    mirostat: int = LLM_DEFAULTS["mirostat"],
+    repeat_penalty: float = LLM_DEFAULTS["repeat_penalty"],
     seed: int | None = None,
 ):
     """Query a local LLM server.
