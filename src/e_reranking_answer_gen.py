@@ -707,6 +707,7 @@ def generate_answers_from_traversal(
     with open(usage_path, "w", encoding="utf-8") as f:
         json.dump(token_totals, f, indent=2)
 
+    # Consolidate token usage files and remove the temporary parts
     merge_token_usage(result_paths["base"], cleanup=True)
 
     return metrics
