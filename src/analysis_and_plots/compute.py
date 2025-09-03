@@ -13,8 +13,15 @@ from typing import Dict, Sequence
 
 import matplotlib.pyplot as plt
 
-from .utils import ensure_output_path, load_json, stylized_subplots, get_result_dirs, answer_run_paths
-
+from .utils import (
+    ensure_output_path,
+    load_json,
+    stylized_subplots,
+    get_result_dirs,
+    parse_traversal_run_dir,
+    traversal_run_paths,
+    answer_run_paths,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +48,8 @@ def _validate_keys(metrics: Dict[str, float], expected: Sequence[str]) -> None:
 
 def _load_usage(result_dir: Path, fields: Sequence[str]) -> Dict[str, float]:
     """Return compute usage metrics from ``token_usage.json`` in ``result_dir``."""
-    usage_path = result_dir / "token_usage.json"
+    model, dataset, split, seed = parse_traversal_run_dir(result_dir)
+    usage_path = traversal_run_paths(model, dataset, split, seed)["token_usage"]
     if not usage_path.exists():
         logger.warning("token_usage.json not found in %s", result_dir)
         return {f: 0.0 for f in fields}

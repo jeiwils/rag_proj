@@ -71,6 +71,15 @@ def traversal_run_paths(model: str, dataset: str, split: str, seed: int) -> dict
     }
 
 
+def parse_traversal_run_dir(path: Path) -> tuple[str, str, str, int]:
+    """Extract ``(model, dataset, split, seed)`` from a traversal run directory."""
+
+    parts = path.resolve().parts
+    model, dataset, split = parts[-4], parts[-3], parts[-2]
+    seed = int(path.name.split("baseline_seed", 1)[-1])
+    return model, dataset, split, seed
+
+
 def get_result_dirs(
     base: str | Path = "data/results",
     *,

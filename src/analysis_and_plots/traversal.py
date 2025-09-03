@@ -21,7 +21,9 @@ from .utils import (
     load_jsonl,
     stylized_subplots,
     get_result_dirs,
-    answer_run_paths
+    answer_run_paths,
+    traversal_run_paths,
+    parse_traversal_run_dir
 )
 
 logger = logging.getLogger(__name__)
@@ -133,7 +135,8 @@ def _validate_keys(metrics: Dict[str, float], expected: Sequence[str]) -> None:
 
 
 def _load_metrics(result_dir: Path, fields: Sequence[str]) -> Tuple[Dict[str, float], Dict[str, Any]]:
-    stats_path = result_dir / "final_traversal_stats.json"
+    model, dataset, split, seed = parse_traversal_run_dir(result_dir)
+    stats_path = traversal_run_paths(model, dataset, split, seed)["final_stats"]
     data = load_json(stats_path)
     meta = {k: data.get(k) for k in META_FIELDS}
     metrics = data.get("traversal_eval", {})
