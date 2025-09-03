@@ -534,7 +534,7 @@ def query_llm(
             )
             messages = [{"role": "user", "content": content}]
         payload = {
-            "model": "local",  # required by the spec; llama.cpp ignores the value
+            "model": "local",  
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,

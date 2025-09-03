@@ -1093,6 +1093,12 @@ def run_traversal(
             hits_at_k=hits_val,
             recall_at_k=recall_val,
 
+            dataset=dataset,
+            split=split,
+            variant=variant,
+            retriever_name=retriever_name,
+            traverser_model=traverser_model,
+
             wall_time_sec=elapsed,
             output_path=output_paths["results"],
             token_usage=query_token_totals,
@@ -1185,6 +1191,8 @@ def compute_traversal_summary(
     sum_f1 = 0.0
 
     sum_hits = 0.0
+    sum_recall_at_k = 0.0
+
     sum_gold_attention = 0.0
     sum_traversal_calls = 0
 
