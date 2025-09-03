@@ -773,6 +773,8 @@ __all__ = [
     "split_jsonl",
     "split_jsonl_into_four",
     "split_jsonl_for_models",
+    "compute_recall_at_k",
+
     "compute_hits_at_k",
     "log_wall_time",
     "aggregate_wall_times",
