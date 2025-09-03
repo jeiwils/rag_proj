@@ -8,7 +8,7 @@ from typing import Sequence
 
 import matplotlib.pyplot as plt
 
-from .utils import ensure_output_path, load_json, stylized_subplots
+from .utils import ensure_output_path, load_json, stylized_subplots, answer_run_paths
 
 logger = logging.getLogger(__name__)
 
@@ -88,12 +88,28 @@ if __name__ == "__main__":
         description="Generate histograms of reader token lengths from token_usage.json files.",
     )
     parser.add_argument(
-        "base_dir",
-        nargs="?",
-        default="data/results",
-        help="Base directory containing result folders",
+        "model",
+        help="Model name",
+    )
+    parser.add_argument(
+        "dataset",
+        help="Dataset name",
+    )
+    parser.add_argument(
+        "split",
+        help="Dataset split",
+    )
+    parser.add_argument(
+        "seed",
+        type=int,
+        help="Random seed used in the runs",
     )
     args = parser.parse_args()
-    main(args.base_dir)
+    for mode in ("baseline", "dense"):
+        path = answer_run_paths(args.model, args.dataset, args.split, mode, args.seed)[
+            "token_usage"
+        ]
+        if path.exists():
+            process_usage_file(path)
 
 __all__ = ["main", "process_usage_file"]

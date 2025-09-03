@@ -42,6 +42,35 @@ def ensure_output_path(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
+
+def answer_run_paths(model: str, dataset: str, split: str, mode: str, seed: int) -> dict[str, Path]:
+    variant = f"{mode}_seed{seed}"
+    base = Path(f"data/results/{model}/{dataset}/{split}/{variant}")
+    suffix = f"{mode}_seed{seed}_{split}"
+    return {
+        "base": base,
+        "per_query": base / f"answer_per_query_{suffix}.jsonl",
+        "metrics": base / f"answer_metrics_{suffix}.jsonl",
+        "summary": base / f"summary_metrics_{suffix}.json",
+        "token_usage": base / "token_usage.json",
+    }
+
+
+def traversal_run_paths(model: str, dataset: str, split: str, seed: int) -> dict[str, Path]:
+    """Return standard paths for a baseline traversal run.
+
+    Paths correspond to ``data/traversal/{model}/{dataset}/{split}/baseline_seed{seed}``.
+    """
+
+    root = Path(f"data/traversal/{model}/{dataset}/{split}/baseline_seed{seed}")
+    return {
+        "base": root,
+        "final_stats": root / "final_traversal_stats.json",
+        "per_query": root / "per_query_traversal_results.jsonl",
+        "token_usage": root / "token_usage.json",
+    }
+
+
 def get_result_dirs(
     base: str | Path = "data/results",
     *,
@@ -205,4 +234,8 @@ __all__ = [
     "stylized_subplots",
     "ensure_output_path",
     "get_result_dirs",
+    "answer_run_paths",
+    "traversal_run_paths",
+
+
 ]

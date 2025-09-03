@@ -13,7 +13,7 @@ from typing import Dict, Sequence
 
 import matplotlib.pyplot as plt
 
-from .utils import ensure_output_path, load_json, stylized_subplots, get_result_dirs
+from .utils import ensure_output_path, load_json, stylized_subplots, get_result_dirs, answer_run_paths
 
 
 logger = logging.getLogger(__name__)
@@ -110,7 +110,10 @@ __all__ = ["plot_compute_usage"]
 
 
 if __name__ == "__main__":
-    # Example usage: gather directories containing token usage information and
-    # produce a summary plot.
-    dirs = get_result_dirs(required="token_usage.json")
+    # Example usage: compare baseline and dense RAG runs for a single seed.
+    model, dataset, split, seed = "MODEL", "DATASET", "dev", 0
+    dirs = [
+        answer_run_paths(model, dataset, split, mode, seed)["base"]
+        for mode in ("baseline", "dense")
+    ]
     plot_compute_usage(dirs, Path("analysis/compute_usage.png"))

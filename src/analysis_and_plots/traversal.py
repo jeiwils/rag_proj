@@ -20,7 +20,8 @@ from .utils import (
     load_json,
     load_jsonl,
     stylized_subplots,
-    get_result_dirs
+    get_result_dirs,
+    answer_run_paths
 )
 
 logger = logging.getLogger(__name__)
@@ -141,21 +142,15 @@ def _load_metrics(result_dir: Path, fields: Sequence[str]) -> Tuple[Dict[str, fl
 
 
 def _load_answer_metrics(meta: Dict[str, Any]) -> Dict[str, float]:
-    variant_for_path = meta.get("variant")
+    mode = meta.get("variant")
     seed = meta.get("seed")
-    if variant_for_path is None:
+    model = meta.get("model")
+    dataset = meta.get("dataset")
+    split = meta.get("split")
+    if None in (mode, seed, model, dataset, split):
         return {}
-    if seed is not None:
-        variant_for_path = f"{variant_for_path}_seed{seed}"
-    summary_path = (
-        Path("data")
-        / "results"
-        / meta.get("model", "")
-        / meta.get("dataset", "")
-        / meta.get("split", "")
-        / variant_for_path
-        / f"summary_metrics_{variant_for_path}_{meta.get('split', '')}.json"
-    )
+    paths = answer_run_paths(model, dataset, split, mode, seed)
+    summary_path = paths["summary"]
     if not summary_path.exists():
         return {}
     data = load_json(summary_path)
