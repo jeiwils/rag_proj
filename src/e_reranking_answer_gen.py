@@ -133,7 +133,12 @@ from src.metrics_summary import append_percentiles
 
 
 
-
+# Public exports from this module
+__all__ = [
+    "ask_llm_with_passages",
+    "evaluate_answers",
+    "aggregate_answer_scores",
+]
 
 ################################################################################################################
 # PASSAGE RERANKING AND ANSWER GENERATION 
@@ -209,6 +214,33 @@ def first_fragment(text: str) -> str:
 
 
 
+def post_process_answer(
+    text: str,
+    max_words: int = 20,
+    repeat_threshold: int = 3,
+) -> Optional[str]:
+    """Validate and possibly reject an LLM answer.
+
+    Returns the original ``text`` if it is within ``max_words`` and no token
+    appears more than ``repeat_threshold`` times. Otherwise ``None`` is
+    returned to signal that the answer should be retried or replaced with a
+    fallback.
+    """
+
+    tokens = text.split()
+    if len(tokens) > max_words:
+        return None
+
+    counts: Dict[str, int] = {}
+    for t in tokens:
+        counts[t] = counts.get(t, 0) + 1
+        if counts[t] > repeat_threshold:
+            return None
+
+    return text
+
+
+
 def ask_llm_with_passages(
     query_text: str,
     passage_ids: List[str],
@@ -251,46 +283,54 @@ def ask_llm_with_passages(
     """
     passage_texts = []
 
-    for pid in passage_ids[:top_k_answer_passages]:
+    for i, pid in enumerate(passage_ids[:top_k_answer_passages], start=1):
         if graph:
             passage = graph.nodes[pid].get("text", "")
         elif passage_lookup:
             passage = passage_lookup.get(pid, "")
         else:
-            passage = f"[{pid}]"
+            passage = "[missing passage]"
 
-        passage_texts.append(f"[{pid}]: {passage}")
+        passage_texts.append(f"[{i}]: {passage}")
 
     prompt = (
         "Answer the question using the following passages.\n"
-        "Respond with a single short answer and no explanation. If unknown, reply `unknown`.\n\n"
+        "Return exactly one concise fact. If the fact is unknown, reply `unknown`.\n\n"
         + "\n\n".join(passage_texts)
         + f"\n\nQuestion: {query_text}\nAnswer:"
     )
 
-    raw, usage = query_llm(
-        prompt,
-        server_url=server_url,
-        max_tokens=max_tokens,
-        model_name=model_name,
-        stop=["\n", "Answer:", "Final answer:"],
-        temperature=TEMPERATURE.get("answer_generation", 0.1),
-        phase="answer_generation",
-        seed=seed,
+    raw = ""
+    raw_clean = ""
+    usage: Dict[str, int] = {}
+    max_attempts = 2
+    for attempt in range(max_attempts):
+        raw, usage = query_llm(
+            prompt,
+            server_url=server_url,
+            max_tokens=max_tokens,
+            model_name=model_name,
+            stop=["\n", ".", "Answer:", "Final answer:"],
+            temperature=TEMPERATURE.get("answer_generation", 0.0),
+            phase="answer_generation",
+            seed=seed,
+        )
 
-    )
+        if is_r1_like(model_name):
+            raw = strip_think(raw)
 
-    if is_r1_like(model_name):
-        raw = strip_think(raw)
+        raw_clean = first_fragment(extract_final_answer(raw))
+        if post_process_answer(raw_clean) is not None:
+            break
+    else:
+        raw = raw_clean = "unknown"
 
-    raw_clean = first_fragment(extract_final_answer(raw))
     prompt_tokens = usage.get("prompt_tokens", 0)
     completion_tokens = usage.get("completion_tokens", 0)
     total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
     tokens = clean_tokens(normalise_answer(raw_clean).split())
     norm = " ".join(tokens)
 
-    # norm = normalise_answer(raw_clean)
     return {
         "raw_answer": raw,
         "raw_clean": raw_clean,
@@ -347,47 +387,26 @@ def compute_f1(
     return 2 * precision * recall / (precision + recall)
 
 
-def evaluate_answers(
-    predictions: dict,
-    gold_answers: dict,
-) -> Dict[str, Dict[str, float]]:
-    """Compute exact match and F1 for each query.
+
+
+
+def aggregate_answer_scores(
+        predictions: dict,
+        gold_answers: dict
+        ) -> dict:
+    """Aggregate EM and F1 over a set of predicted answers.
 
     Parameters
     ----------
     predictions: dict
         Mapping ``{id: predicted_answer}``.
     gold_answers: dict
-        Mapping ``{id: list_of_gold_answers}`` (allowing multiple paraphrases).
+        Mapping ``{id: list of gold answers}`` allowing multiple paraphrases.
 
     Returns
     -------
-    Dict[str, Dict[str, float]]
-        Per-query scores with keys ``"em"`` and ``"f1"`` (0–1 range).
-    """
-
-    scores: Dict[str, Dict[str, float]] = {}
-
-    for qid, gold_list in gold_answers.items():
-        pred = predictions.get(qid, "")
-        em = max(compute_exact_match(pred, g) for g in gold_list)
-        f1 = max(compute_f1(pred, g) for g in gold_list)
-        scores[qid] = {"em": float(em), "f1": float(f1)}
-
-    return scores
-
-
-def evaluate_answers( 
-        predictions: dict, 
-        gold_answers: dict
-        ) -> dict: 
-    """
-    Evaluate EM and F1 over final answers only.
-
-    predictions: dict of {id: predicted_answer}
-    gold_answers: dict of {id: list of gold answers (to allow multiple paraphrases)}
-
-    Returns: dict with overall EM and F1 (%).
+    dict
+        Overall EM and F1 expressed as percentages.
     """
     total = len(gold_answers)
     em_total = 0
@@ -395,14 +414,14 @@ def evaluate_answers(
 
     for qid, gold_list in gold_answers.items():
         pred = predictions.get(qid, "")
-        em = max(compute_exact_match(pred, g) for g in gold_list)  
-        f1 = max(compute_f1(pred, g) for g in gold_list) 
+        em = max(compute_exact_match(pred, g) for g in gold_list)
+        f1 = max(compute_f1(pred, g) for g in gold_list)
         em_total += em
         f1_total += f1
 
     return {
         "EM": 100.0 * em_total / total,
-        "F1": 100.0 * f1_total / total
+        "F1": 100.0 * f1_total / total,
     }
 
 
@@ -825,7 +844,7 @@ if __name__ == "__main__":
     # ]
     VARIANTS = ["baseline"]
     TOP_K_ANSWER_PASSAGES = 5
-    SEEDS = [1, 2, 3, 4, 5] 
+    SEEDS = [1, 2, 3]
     for dataset in DATASETS:
         for split in SPLITS:
             for graph_model in GRAPH_MODELS:

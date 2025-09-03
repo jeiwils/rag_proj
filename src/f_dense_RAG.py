@@ -31,6 +31,8 @@ from src.d_traversal import DEFAULT_SEED_TOP_K
 from src.e_reranking_answer_gen import (
     ask_llm_with_passages,
     evaluate_answers,
+    aggregate_answer_scores,
+
 )
 from src.utils import (
     append_jsonl,
@@ -241,6 +243,8 @@ def run_dense_rag(
         return {}
 
     per_query = evaluate_answers(predictions, gold)
+    agg_scores = aggregate_answer_scores(predictions, gold)
+
     now_ts = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     metric_records = [
         {
@@ -269,8 +273,8 @@ def run_dense_rag(
         "retriever_name": retriever_name,
         "traverser_model": None,
         "reader_model": reader_model,
-        "EM": 100.0 * np.mean([m["em"] for m in per_query.values()]),
-        "F1": 100.0 * np.mean([m["f1"] for m in per_query.values()]),
+        "EM": agg_scores["EM"],
+        "F1": agg_scores["F1"],
         "timestamp": now_ts,
     }
     if seed is not None:
@@ -368,7 +372,7 @@ if __name__ == "__main__":
     # ]
 
 
-    SEEDS = [1, 2, 3, 4, 5] 
+    SEEDS = [1, 2, 3]
 
     TOP_K = DEFAULT_SEED_TOP_K
 
