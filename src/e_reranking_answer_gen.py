@@ -249,7 +249,7 @@ def ask_llm_with_passages(
     max_tokens: int = 512,
     passage_lookup: Optional[Dict[str, str]] = None,  # optional for dense mode
     model_name: str = "",
-    top_k_answer_passages: int = 5,
+    top_k_answer_passages: int = 20,
     seed: int | None = None,
 
 ) -> Dict[str, str]:
@@ -801,7 +801,7 @@ if __name__ == "__main__":
     #     "qwen2.5-moe-14b",
     # ]
     VARIANTS = ["baseline"]
-    TOP_K_ANSWER_PASSAGES = 5
+    TOP_K_ANSWER_PASSAGES = 20
     SEEDS = [1, 2, 3]
     for dataset in DATASETS:
         for split in SPLITS:
