@@ -764,13 +764,21 @@ def _merge_numeric(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
     return dst
 
 
-def merge_token_usage(output_dir: str | Path) -> Path:
+def merge_token_usage(output_dir: str | Path, *, cleanup: bool = False) -> Path:
     """Merge ``token_usage_*.json`` files in ``output_dir`` into one.
 
     The function aggregates global token counts and per-query metrics across
     multiple partial usage files. If no usage files are found, an empty
     ``token_usage.json`` file is created. The merged result is written to
     ``token_usage.json`` inside ``output_dir``.
+    Parameters
+    ----------
+    output_dir:
+        Directory containing ``token_usage_*.json`` shard files.
+    cleanup:
+        If ``True``, the individual shard files are removed after the merged
+        ``token_usage.json`` is written. Defaults to ``False`` to preserve
+        backward compatibility with callers expecting shards to remain.
     """
 
     out_dir = Path(output_dir)
@@ -830,6 +838,14 @@ def merge_token_usage(output_dir: str | Path) -> Path:
     out_path = out_dir / "token_usage.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(merged, f, indent=2)
+
+    if cleanup:
+        for fp in usage_files:
+            try:
+                fp.unlink()
+            except OSError:
+                pass
+
     return out_path
 
 

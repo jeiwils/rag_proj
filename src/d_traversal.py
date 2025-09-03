@@ -1544,7 +1544,7 @@ def process_traversal(cfg: Dict) -> None:
 
     run_multiprocess(process_query_batch, batch_configs)
 
-    merge_token_usage(output_paths["base"])
+    merge_token_usage(output_paths["base"], cleanup=True)
 
 
     new_ids: Set[str] = set()

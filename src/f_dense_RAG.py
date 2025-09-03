@@ -305,7 +305,7 @@ def run_dense_rag(
     with open(usage_path, "w", encoding="utf-8") as f:
         json.dump(usage, f, indent=2)
 
-    merge_token_usage(paths["base"])
+    merge_token_usage(paths["base"], cleanup=True)
 
     metrics.update({
         "trav_prompt_tokens": 0,
