@@ -389,6 +389,20 @@ def compute_f1(
 
 
 
+def evaluate_answers(
+        predictions: dict[str, str],
+        gold_answers: dict[str, list[str]],
+        ) -> dict[str, dict]:
+    """Compute per-query EM and F1 scores."""
+    results: dict[str, dict] = {}
+    for qid, gold_list in gold_answers.items():
+        pred = predictions.get(qid, "")
+        em = max((compute_exact_match(pred, g) for g in gold_list), default=0)
+        f1 = max((compute_f1(pred, g) for g in gold_list), default=0.0)
+        results[qid] = {"prediction": pred, "em": em, "f1": f1}
+    return results
+
+
 
 def aggregate_answer_scores(
         predictions: dict,
@@ -598,62 +612,6 @@ def generate_answers_from_traversal(
     reader_time_total_ms = 0
 
 
-
-    # def _init_worker(q_dict, p_lookup, s_url, m_name, top_k):
-    #     """Store shared data in globals for worker processes."""
-    #     global _QUERIES, _PASSAGE_LOOKUP, _SERVER_URL, _MODEL_NAME, _TOP_K
-    #     _QUERIES = q_dict
-    #     _PASSAGE_LOOKUP = p_lookup
-    #     _SERVER_URL = s_url
-    #     _MODEL_NAME = m_name
-    #     _TOP_K = top_k
-
-    # def _generate_answer(
-    #     item: Tuple[str, Dict],
-    #     q_dict: Dict[str, Dict],
-    #     p_lookup: Dict[str, str],
-    #     s_url: str,
-    #     m_name: str,
-    #     top_k: int,
-    # ) -> Tuple[str, Dict, str]:
-    #     qid, t_entry = item
-    #     q = q_dict[qid]
-    #     question = q["question"]
-    #     gold_answer = q.get("gold_answer", "")  # resolve gold for consistency
-    #     _ = normalise_answer(gold_answer)
-
-    #     helpful = sorted(
-    #         t_entry.get("helpful_passages", []),
-    #         key=lambda x: x["score"],
-    #         reverse=True,
-    #     )
-    #     passage_ids_sorted = [h["passage_id"] for h in helpful]
-    #     top_passages = passage_ids_sorted[:top_k]
-    #     hits_val = compute_hits_at_k(passage_ids_sorted, q.get("gold_passages", []), top_k)
-
-    #     llm_out = ask_llm_with_passages(
-    #         query_text=question,
-    #         passage_ids=passage_ids_sorted,
-    #         graph=None,
-    #         server_url=s_url,
-    #         passage_lookup=p_lookup,
-    #         model_name=m_name,
-    #         top_k_answer_passages=top_k,
-    #     )
-
-    #     answer_dict = {
-    #         "question_id": qid,
-    #         "question": question,
-    #         "raw_answer": llm_out["raw_answer"],
-    #         "normalised_answer": llm_out["normalised_answer"],
-    #         "used_passages": top_passages,
-    #         "hits_at_k": hits_val,
-    #         "prompt_len": llm_out.get("prompt_len", 0),
-    #         "output_tokens": llm_out.get("output_tokens", 0),
-    #         "total_tokens": llm_out.get("total_tokens", 0),
-    #     }
-
-        # return qid, answer_dict, llm_out["normalised_answer"]
 
     if num_workers is None:
         size = model_size(traversal_model if model_name is None else model_name)
