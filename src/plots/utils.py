@@ -104,4 +104,6 @@ __all__ = [
     "load_jsonl",
     "stylized_subplots",
     "ensure_output_path",
+    "get_result_dirs",
+
 ]
