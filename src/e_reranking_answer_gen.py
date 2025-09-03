@@ -414,6 +414,8 @@ def _generate_answer(
     s_url: str,
     m_name: str,
     top_k: int,
+    seed: int | None = None,
+
 ) -> Tuple[str, Dict, str]:
     """Worker function to generate an answer for a single query."""
     qid, t_entry = item
@@ -445,6 +447,8 @@ def _generate_answer(
         passage_lookup=p_lookup,
         model_name=m_name,
         top_k_answer_passages=top_k,
+        seed=seed,
+
     )
 
     answer_dict = {
@@ -477,6 +481,8 @@ def generate_answers_from_traversal(
     model_name: str | None = None,
     num_workers: int | None = None,
     resume: bool = False,
+    seed: int | None = None,
+
 ) -> Dict[str, float]:
     """Generate answers from pre-computed traversal outputs.
 
@@ -497,6 +503,8 @@ def generate_answers_from_traversal(
         Number of worker processes. When ``None``, uses :func:`model_size` to
         choose ``1`` worker for ``14b`` models, ``2`` for ``7b`` models,
         and ``4`` otherwise.
+    seed:
+        Random seed forwarded to the LLM for reproducible outputs.
     resume:
         When ``True``, skip questions already present in the output file and
         append newly generated answers instead of overwriting.
@@ -617,6 +625,8 @@ def generate_answers_from_traversal(
         s_url=server_url,
         m_name=model_name,
         top_k=top_k_answer_passages,
+        seed=seed,
+
     )
 
     done_ids, _ = compute_resume_sets(
@@ -738,34 +748,37 @@ if __name__ == "__main__":
     #     "deepseek-r1-distill-qwen-14b",
     #     "qwen2.5-moe-14b",
     # ]
-    VARIANTS = ["baseline"]  
-
+    VARIANTS = ["baseline"]
     TOP_K_ANSWER_PASSAGES = 5
+    SEEDS = [0, 1, 3, 4, 5]
 
     for dataset in DATASETS:
         for split in SPLITS:
             for graph_model in GRAPH_MODELS:
                 for traversal_model in TRAVERSAL_MODELS:
                     for variant in VARIANTS:
-                        print(
-                            "[Answers-only] dataset={dataset} graph_model={graph_model} traversal_model={traversal_model} variant={variant} split={split}".format(
-                                dataset=dataset,
-                                graph_model=graph_model,
-                                traversal_model=traversal_model,
-                                variant=variant,
-                                split=split,
+                        for seed in SEEDS:
+                            print(
+                                "[Answers-only] dataset={dataset} graph_model={graph_model} traversal_model={traversal_model} variant={variant} split={split} seed={seed}".format(
+                                    dataset=dataset,
+                                    graph_model=graph_model,
+                                    traversal_model=traversal_model,
+                                    variant=variant,
+                                    split=split,
+                                    seed=seed,
+                                )
                             )
-                        )
-                        metrics = generate_answers_from_traversal(
-                            graph_model,
-                            traversal_model,
-                            dataset,
-                            split,
-                            variant,
-                            top_k_answer_passages=TOP_K_ANSWER_PASSAGES,
-                            reader_model=READER_MODEL,
-                            num_workers=None,
-                        )
+                            metrics = generate_answers_from_traversal(
+                                graph_model,
+                                traversal_model,
+                                dataset,
+                                split,
+                                variant,
+                                top_k_answer_passages=TOP_K_ANSWER_PASSAGES,
+                                reader_model=READER_MODEL,
+                                num_workers=None,
+                                seed=seed,
+                            )
     print("\n✅ Answers-only complete.")
 
 
