@@ -294,7 +294,7 @@ def run_dense_rag(
         "per_query_traversal": {},
         "per_query_reader": per_query_reader,
         "trav_prompt_tokens": 0,
-        "trav_completion_tokens": 0,
+        "trav_output_tokens": 0,
         "trav_tokens_total": 0,
         **token_totals,
         "t_traversal_ms": 0,
@@ -309,7 +309,7 @@ def run_dense_rag(
 
     metrics.update({
         "trav_prompt_tokens": 0,
-        "trav_completion_tokens": 0,
+        "trav_output_tokens": 0,
         "trav_tokens_total": 0,
         **token_totals,
         "t_traversal_ms": 0,
