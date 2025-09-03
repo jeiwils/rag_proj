@@ -125,8 +125,7 @@ from src.utils import (
     get_traversal_paths,
     load_jsonl,
     processed_dataset_paths,
-    save_jsonl,
-    pool_map,
+
     compute_hits_at_k,
     compute_recall_at_k,
     merge_token_usage,
@@ -607,7 +606,6 @@ def generate_answers_from_traversal(
     passage_lookup = {pid: data.get("text", "") for pid, data in graph.nodes(data=True)}
     queries = {q["question_id"]: q for q in load_jsonl(query_file)}
 
-    answers: List[Dict] = []
     predictions: Dict[str, str] = {}
     gold: Dict[str, List[str]] = {}
     hits: Dict[str, float] = {}
@@ -647,6 +645,10 @@ def generate_answers_from_traversal(
         phase_label="Answer generation",
         id_field="question_id",
     )
+    result_paths["base"].mkdir(parents=True, exist_ok=True)
+    if not resume:
+        result_paths["answers"].unlink(missing_ok=True)
+        result_paths["answer_metrics"].unlink(missing_ok=True)
     if resume:
         traversal_records = {
             qid: rec for qid, rec in traversal_records.items() if qid not in done_ids
@@ -662,9 +664,9 @@ def generate_answers_from_traversal(
             total=len(items),
             desc="queries",
         ):
-            answers.append(answer)
             predictions[qid] = norm_ans
-            gold[qid] = [queries[qid].get("gold_answer", "")]
+            gold_list = [queries[qid].get("gold_answer", "")]
+            gold[qid] = gold_list
             hits[qid] = answer.get("hits_at_k", 0.0)
             recalls[qid] = answer.get("recall_at_k", 0.0)
 
@@ -691,21 +693,21 @@ def generate_answers_from_traversal(
                 "t_reader_ms": t_ms,
             }
 
-    result_paths["base"].mkdir(parents=True, exist_ok=True)
-    if resume:
-        append_jsonl(result_paths["answers"], answers)
-    else:
-        save_jsonl(result_paths["answers"], answers)
+            append_jsonl(result_paths["answers"], answer)
+            em = max(
+                (compute_exact_match(norm_ans, g) for g in gold_list),
+                default=0,
+            )
+            f1 = max(
+                (compute_f1(norm_ans, g) for g in gold_list),
+                default=0.0,
+            )
+            append_jsonl(
+                result_paths["answer_metrics"],
+                {"question_id": qid, "prediction": norm_ans, "em": em, "f1": f1},
+            )
 
     per_query = evaluate_answers(predictions, gold)
-    metric_records = [
-        {"question_id": qid, **m} for qid, m in per_query.items()
-    ]
-    if resume:
-        for rec in metric_records:
-            append_jsonl(result_paths["answer_metrics"], rec)
-    else:
-        save_jsonl(result_paths["answer_metrics"], metric_records)
 
     metrics = {
         "EM": 100.0 * np.mean([m["em"] for m in per_query.values()]),
