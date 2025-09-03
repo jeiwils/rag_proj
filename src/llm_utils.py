@@ -15,6 +15,10 @@ try:  # optional dependency
 except Exception:  # pragma: no cover - fallback when tiktoken missing
     tiktoken = None  # type: ignore
 
+
+from src.config import MAX_TOKENS, TEMPERATURE
+
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
@@ -93,8 +97,8 @@ def _wrap_for_deepseek_user(prompt: str, task: str, reason: bool = True) -> str:
 def query_llm(
     prompt,
     server_url,
-    max_tokens: int = 128,
-    temperature: float = 0.2,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
     stop: list[str] | None = None,
     grammar: str | None = None,
     response_format: dict | None = None,
@@ -107,6 +111,19 @@ def query_llm(
     repeat_penalty: float = 1.0,
     seed: int | None = None,
 ):
+    """Query a local LLM server.
+
+    Parameters
+    ----------
+    max_tokens:
+        Maximum number of tokens to generate. If ``None`` and ``phase`` is
+        provided, the value is pulled from :data:`src.config.MAX_TOKENS`.
+        Defaults to ``128`` when no phase is available.
+    temperature:
+        Sampling temperature. If ``None`` and ``phase`` is provided, the value
+        is pulled from :data:`src.config.TEMPERATURE`. Defaults to ``0.2`` when
+        no phase is available.
+    """
     if response_format is not None and grammar is not None:
         raise ValueError("response_format and grammar cannot both be set")
 
@@ -114,6 +131,11 @@ def query_llm(
     use_chat = isinstance(prompt, list) or is_deepseek or response_format is not None
 
     prompt_text = "".join(m.get("content", "") for m in prompt) if isinstance(prompt, list) else prompt
+
+    if max_tokens is None:
+        max_tokens = MAX_TOKENS.get(phase, 128) if phase else 128
+    if temperature is None:
+        temperature = TEMPERATURE.get(phase, 0.2) if phase else 0.6
 
     if use_chat:
         endpoint = "/v1/chat/completions"
