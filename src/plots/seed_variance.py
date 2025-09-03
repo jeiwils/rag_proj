@@ -3,25 +3,23 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Dict, List
 
-import matplotlib
-
-# Use a non-interactive backend suitable for headless environments
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+from .utils import ensure_output_path, load_json, stylized_subplots
 
-def _plot_metric_distributions(per_seed: dict[str, dict], std_dev: dict[str, float], out_dir: Path) -> None:
+
+def _plot_metric_distributions(per_seed: Dict[str, Dict], std_dev: Dict[str, float], out_dir: Path) -> None:
     """Create bar and box plots for metrics across seeds."""
-    # Collect metrics present in std_dev; fall back to union of per_seed metrics
     metric_names = list(std_dev.keys())
     if not metric_names:
         metric_names = sorted({m for seed in per_seed.values() for m in seed.keys()})
 
-    means: list[float] = []
-    stds: list[float] = []
-    values_by_metric: list[list[float]] = []
+    means: List[float] = []
+    stds: List[float] = []
+    values_by_metric: List[List[float]] = []
     for metric in metric_names:
         vals = [metrics.get(metric) for metrics in per_seed.values() if metrics.get(metric) is not None]
         if vals:
@@ -34,28 +32,26 @@ def _plot_metric_distributions(per_seed: dict[str, dict], std_dev: dict[str, flo
             stds.append(float("nan"))
             values_by_metric.append([])
 
-    # Bar chart with error bars
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = stylized_subplots(figsize=(10, 6))
     ax.bar(metric_names, means, yerr=stds, capsize=5)
     ax.set_ylabel("Mean value")
     ax.set_title("Per-seed means with standard deviation error bars")
     fig.tight_layout()
-    fig.savefig(out_dir / "metrics_errorbars.png")
+    fig.savefig(ensure_output_path(out_dir / "metrics_errorbars.png"))
     plt.close(fig)
 
-    # Box plot showing distribution across seeds
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = stylized_subplots(figsize=(10, 6))
     ax.boxplot(values_by_metric, labels=metric_names)
     ax.set_ylabel("Value")
     ax.set_title("Per-seed metric distribution")
     fig.tight_layout()
-    fig.savefig(out_dir / "metrics_boxplot.png")
+    fig.savefig(ensure_output_path(out_dir / "metrics_boxplot.png"))
     plt.close(fig)
 
 
 def _plot_wilcoxon_heatmap(
-    wilcoxon: dict[str, dict[str, float]],
-    seeds: list[int],
+    wilcoxon: Dict[str, Dict[str, float]],
+    seeds: List[int],
     metric_key: str,
     out_file: Path,
 ) -> None:
@@ -82,7 +78,7 @@ def _plot_wilcoxon_heatmap(
         matrix[i, j] = p_val
         matrix[j, i] = p_val
 
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = stylized_subplots(figsize=(8, 6))
     im = ax.imshow(matrix, vmin=0.0, vmax=1.0, cmap="viridis")
     ax.set_xticks(range(n), [str(s) for s in seeds])
     ax.set_yticks(range(n), [str(s) for s in seeds])
@@ -90,7 +86,6 @@ def _plot_wilcoxon_heatmap(
     ax.set_ylabel("Seed")
     ax.set_title(f"Wilcoxon p-values for {metric_key.split('_')[0]}")
 
-    # Annotate cells with p-values
     for i in range(n):
         for j in range(n):
             val = matrix[i, j]
@@ -101,14 +96,12 @@ def _plot_wilcoxon_heatmap(
 
     fig.colorbar(im, ax=ax, label="p-value")
     fig.tight_layout()
-    fig.savefig(out_file)
+    fig.savefig(ensure_output_path(out_file))
     plt.close(fig)
 
 
-def _process_seed_variance(path: Path) -> None:
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
+def process_seed_variance(path: Path) -> None:
+    data = load_json(path)
     per_seed = data.get("per_seed", {})
     std_dev = data.get("std_dev", {})
     wilcoxon = data.get("wilcoxon", {})
@@ -126,7 +119,7 @@ def _process_seed_variance(path: Path) -> None:
                 _plot_wilcoxon_heatmap(wilcoxon, seeds, key, out_dir / f"wilcoxon_{key.split('_')[0].lower()}.png")
 
 
-def main(base_dir: str) -> None:
+def main(base_dir: str = "data/results") -> None:
     base = Path(base_dir)
     paths = list(base.rglob("seed_variance.json"))
     if not paths:
@@ -134,7 +127,7 @@ def main(base_dir: str) -> None:
         return
 
     for path in paths:
-        _process_seed_variance(path)
+        process_seed_variance(path)
 
 
 if __name__ == "__main__":
@@ -149,3 +142,5 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     main(args.base_dir)
+
+__all__ = ["main", "process_seed_variance"]

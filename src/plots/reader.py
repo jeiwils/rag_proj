@@ -1,40 +1,22 @@
 from __future__ import annotations
 
-"""Generate reader token length distributions from token usage data.
-
-This utility searches for ``token_usage.json`` files and creates histograms of
-``reader_prompt_tokens`` and ``reader_output_tokens`` across queries. For each
-``token_usage.json`` discovered, a ``reader_lengths.png`` figure is written in
-the same directory.
-"""
-
 import argparse
 import json
 import logging
 from pathlib import Path
 from typing import Sequence
 
-import matplotlib
-
-# Use a non-interactive backend suitable for headless environments
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+from .utils import ensure_output_path, load_json, stylized_subplots
 
 logger = logging.getLogger(__name__)
 
 
 def _extract_reader_lengths(token_usage_path: Path) -> tuple[list[int], list[int]]:
-    """Return per-query reader prompt and output token counts.
-
-    Parameters
-    ----------
-    token_usage_path:
-        Path to a ``token_usage.json`` file containing a ``per_query_reader``
-        mapping.
-    """
+    """Return per-query reader prompt and output token counts."""
     try:
-        with token_usage_path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
+        data = load_json(token_usage_path)
     except (OSError, json.JSONDecodeError) as err:
         logger.warning("Failed to load %s: %s", token_usage_path, err)
         return [], []
@@ -62,7 +44,7 @@ def _extract_reader_lengths(token_usage_path: Path) -> tuple[list[int], list[int
 
 def _plot_lengths(prompts: Sequence[int], outputs: Sequence[int], output: Path) -> None:
     """Create histograms for prompt and output token lengths."""
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    fig, axes = stylized_subplots(1, 2, figsize=(10, 4))
 
     if prompts:
         axes[0].hist(prompts, bins=30, color="tab:blue", edgecolor="black")
@@ -77,12 +59,12 @@ def _plot_lengths(prompts: Sequence[int], outputs: Sequence[int], output: Path) 
     axes[1].set_ylabel("Count")
 
     fig.tight_layout()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output)
+    fig.savefig(ensure_output_path(output))
     plt.close(fig)
 
 
-def _process_usage_file(path: Path) -> None:
+def process_usage_file(path: Path) -> None:
+    """Generate a ``reader_lengths.png`` next to ``path``."""
     prompts, outputs = _extract_reader_lengths(path)
     if not prompts and not outputs:
         logger.warning("No reader token data found in %s", path)
@@ -91,14 +73,14 @@ def _process_usage_file(path: Path) -> None:
     _plot_lengths(prompts, outputs, out_path)
 
 
-def main(base_dir: str) -> None:
+def main(base_dir: str = "data/results") -> None:
     base = Path(base_dir)
     paths = list(base.rglob("token_usage.json"))
     if not paths:
         logger.warning("No token_usage.json files found under %s", base)
         return
     for p in paths:
-        _process_usage_file(p)
+        process_usage_file(p)
 
 
 if __name__ == "__main__":
@@ -113,3 +95,5 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     main(args.base_dir)
+
+__all__ = ["main", "process_usage_file"]
