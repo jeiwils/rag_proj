@@ -6,7 +6,7 @@ MAX_TOKENS = {
 }
 
 TEMPERATURE = {
-    "cs": 0.6,
+    "cs": 0.0,
     "iqoq_generation": 0.6,
     "edge_selection": 0.7,  
     "answer_generation": 0.6,

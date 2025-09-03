@@ -270,12 +270,13 @@ def write_debug_file(
 
 
 
+
 def get_conditioned_score(
     entry: dict,
     cs_prompt_template: str,
     server_url: str,
     cs_tokens: int,
-    cs_temperature: float = 0.0,
+    cs_temperature: float = TEMPERATURE["cs"],
     model_name: str = ""
 ):
     """
@@ -290,7 +291,7 @@ def get_conditioned_score(
             cs_prompt_filled,
             server_url,
             max_tokens=cs_tokens,          # keep this small
-            temperature=TEMPERATURE.get("cs", 0.1),
+            temperature=cs_temperature,
             stop=["\n"],                   # stop at first newline
             grammar=CS_GRAMMAR,             # hard-constrain output
             model_name=model_name,
@@ -395,8 +396,8 @@ def generate_iqoq(
     server_url: str,
     iq_tokens: int,
     oq_tokens: int,
-    iq_temperature: float = 0.1,
-    oq_temperature: float = 0.1,
+    iq_temperature: float = TEMPERATURE["iqoq_generation"],
+    oq_temperature: float = TEMPERATURE["iqoq_generation"],
     conditioned_score: float = None,
     use_ratio: bool = False,
     hoprag_version: str = "standard_hoprag",
@@ -432,9 +433,9 @@ def generate_iqoq(
     oq_grammar = question_list_grammar(num_oq, max_oq)
 
     # Temperatures (allow mid diversity unless you override)
-    if is_r1_like(model_name):
-        iq_temperature = TEMPERATURE.get("iqoq_generation", 0.1)
-        oq_temperature = TEMPERATURE.get("iqoq_generation", 0.1)
+    if is_r1_like(model_name): ################################################# I THINK THIS IS REDUNDANT?????
+        iq_temperature = TEMPERATURE["iqoq_generation"]
+        oq_temperature = TEMPERATURE["iqoq_generation"]
 
     # Query (use /completion; grammar only supported there)
     try:
@@ -592,7 +593,6 @@ def process_server_task(config: dict):
                 s = get_conditioned_score(
                     p, CS_PROMPT, server_url,
                     cs_tokens=cs_tokens,
-                    cs_temperature=TEMPERATURE["cs"],
                     model_name=model
                 )
                 if s:
@@ -675,8 +675,6 @@ def process_server_task(config: dict):
                 out, mi, mo = generate_iqoq(
                     p, "", "", server_url, #p, ENHANCED_IQ_PROMPT, ENHANCED_OQ_PROMPT, server_url,
                     iq_tokens=iq_tokens, oq_tokens=oq_tokens,
-                    iq_temperature=TEMPERATURE["iqoq_generation"],
-                    oq_temperature=TEMPERATURE["iqoq_generation"],
                     conditioned_score=cs,  # 0.5 default drives 2–4 with your weighted iqoq_ratio
                     use_ratio=True,
                     hoprag_version=hoprag_version,
@@ -741,8 +739,6 @@ def process_server_task(config: dict):
             out, mi, mo = generate_iqoq(
                 p, HOPRAG_IQ_PROMPT, HOPRAG_OQ_PROMPT, server_url,
                 iq_tokens=iq_tokens, oq_tokens=oq_tokens,
-                iq_temperature=TEMPERATURE["iqoq_generation"],
-                oq_temperature=TEMPERATURE["iqoq_generation"],
                 use_ratio=False, hoprag_version=hoprag_version,
                 debug_dir=None,
                 model_name=model  # pass model name for think block handling
