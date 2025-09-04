@@ -31,24 +31,24 @@ Sharded output files written to:
 
 data/models/{model}/{dataset}/{split}/shards/
     - {split}_passages_shard{N}_{size}.jsonl
-        → Raw input shards split by model size (1.5b → 4 shards, 7b → 2, 8b → 2, 14b → 1).
+        -> Raw input shards split by model size (1.5b -> 4 shards, 7b -> 2, 8b -> 2, 14b -> 1).
         
 data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/
 
 
     - {split}_passages_shard{N}_{size}_cs.jsonl
-        → Passages with conditioned scores.
+        -> Passages with conditioned scores.
 
     - {split}_passages_shard{N}_{size}_iqoq_baseline.jsonl
-        → IQ/OQ questions from baseline HopRAG prompts (fixed ratio).
+        -> IQ/OQ questions from baseline HopRAG prompts (fixed ratio).
 
     - {split}_passages_shard{N}_{size}_iqoq_enhanced.jsonl
-        → IQ/OQ questions generated using conditioned score–based ratios.
+        -> IQ/OQ questions generated using conditioned score-based ratios.
 
     - *_cs_debug.txt
     - *_iqoq_baseline_debug.txt
     - *_iqoq_enhanced_debug.txt
-        → Per-shard debug summaries (counts, missing values, timing).
+        -> Per-shard debug summaries (counts, missing values, timing).
 
         
 
@@ -60,7 +60,7 @@ Examples
 {
   "passage_id": "5a7a0693__arthur_s_magazine_sent0",
   "title": "Arthur's Magazine",
-  "text": "Arthur's Magazine (1844–1846)...",
+  "text": "Arthur's Magazine (1844-1846)...",
   "conditioned_score": 0.25,
   "dataset": "hotpotqa",
   "split": "train",
@@ -565,7 +565,7 @@ def process_server_task(config: dict):
         elif task_type == "iqoq_enhanced":
             # Require CS file; if missing, skip this shard entirely
             if not Path(scored_tmp).exists():
-                print(f"[skip] Enhanced: CS file not found for {shard_stem} – skipping IQ/OQ.")
+                print(f"[skip] Enhanced: CS file not found for {shard_stem} - skipping IQ/OQ.")
                 write_debug_file(
                     "iqoq_enhanced",
                     total_processed=0,
@@ -608,7 +608,7 @@ def process_server_task(config: dict):
 
                 total_processed += 1
 
-                # Per-entry fallback: if CS is missing/invalid, use 0.5 (→ 2 IQ / 4 OQ)
+                # Per-entry fallback: if CS is missing/invalid, use 0.5 (-> 2 IQ / 4 OQ)
                 cs = p.get("conditioned_score", 0.5)
                 if not isinstance(cs, (int, float)) or not (0.0 <= cs <= 1.0):
                     cs = 0.5
@@ -616,7 +616,7 @@ def process_server_task(config: dict):
                 out, mi, mo = generate_iqoq(
                     p, "", "", server_url, #p, ENHANCED_IQ_PROMPT, ENHANCED_OQ_PROMPT, server_url,
                     iq_tokens=iq_tokens, oq_tokens=oq_tokens,
-                    conditioned_score=cs,  # 0.5 default drives 2–4 with your weighted iqoq_ratio
+                    conditioned_score=cs,  # 0.5 default drives 2-4 with your weighted iqoq_ratio
                     use_ratio=True,
                     hoprag_version=hoprag_version,
                     debug_dir=None,

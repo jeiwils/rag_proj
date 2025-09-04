@@ -17,16 +17,16 @@ Inputs
 ### data/processed_datasets/{dataset}/{split}/
 
 - passages.jsonl
-    → Raw passage entries with passage ID and text.
+    -> Raw passage entries with passage ID and text.
 
 
 ### data/models/{model}/{dataset}/{split}/{variant}/
 
-- exploded/iqoq.exploded.jsonl 
-    → Incoming/outgoing questions (one per row), used for embedding questions.
+- exploded/iqoq.exploded.jsonl
+    -> Incoming/outgoing questions (one per row), used for embedding questions.
 
 - cleaned/iqoq.cleaned.jsonl
-    → Cleaned IQ/OQ entries, used for indexing and keyword extraction.
+    -> Cleaned IQ/OQ entries, used for indexing and keyword extraction.
 
 
 
@@ -36,26 +36,26 @@ Outputs
 ### data/representations/datasets/{dataset}/{split}/
 
 - {dataset}_passages.jsonl
-    → Passage metadata with added vec_id.
+    -> Passage metadata with added vec_id.
 
 - {dataset}_passages_emb.npy
-    → Dense passage embeddings (NumPy array).
+    -> Dense passage embeddings (NumPy array).
 
 - {dataset}_faiss_passages.faiss
-    → FAISS index over passage vectors.
+    -> FAISS index over passage vectors.
 
 
 
 ### data/representations/models/{model}/{dataset}/{split}/{variant}/
 
 - iqoq.cleaned.jsonl
-    → Updated input file with vec_id added for each IQ/OQ item.
+    -> Updated input file with vec_id added for each IQ/OQ item.
 
 - {dataset}_iqoq_emb.npy
-    → Dense IQ/OQ embeddings (NumPy array).
+    -> Dense IQ/OQ embeddings (NumPy array).
 
 - {dataset}_faiss_iqoq.faiss
-    → FAISS index over IQ/OQ vectors.
+    -> FAISS index over IQ/OQ vectors.
 
 
 

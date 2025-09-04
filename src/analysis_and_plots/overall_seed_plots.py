@@ -42,7 +42,7 @@ def plot_mean_with_error(metric: str, stats: dict, out_file: Path) -> None:
                 mean_val - std_val,
                 mean_val + std_val,
                 alpha=0.2,
-                label="±1 std dev",
+                label="+/-1 std dev",
             )
 
     ax.set_xlabel("Seed")

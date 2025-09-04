@@ -175,10 +175,10 @@ def clean_iqoq(questions: list[str]) -> list[str]:
         q = q.strip()
         q = re.sub(r"^\d+[\.\)]\s*", "", q)      # remove numbering (e.g., '1. ...')
         q = re.sub(r"^[-*]\s*", "", q)           # remove bullets ('- ', '* ')
-        q = q.rstrip(" \"'“”‘’`)]}>,.!")
+        q = q.rstrip(" \"'`)]}>,.!")
         if not q.endswith("?"):
             skipped_not_question += 1
-            continue                             # skip if it’s not a question - will need to check this during debugging
+            continue                             # skip if it's not a question - will need to check this during debugging
         if len(re.findall(r"\w+", q)) < 1:
             skipped_too_short += 1               # skip if no word tokens
             continue
@@ -250,7 +250,7 @@ def clean_baseline(questions):
         elif isinstance(qlist, str):
             collected.append(str(qlist))
 
-    # 👇 normalize then deduplicate
+    # normalize then deduplicate
     if collected:
         cleaned = clean_iqoq(collected)
     else:
@@ -642,7 +642,7 @@ def list_inputs(root: str, split: str, variant: str):
 
 
 
-# Maps variant → cleaning function to apply to IQ/OQ fields.
+# Maps variant -> cleaning function to apply to IQ/OQ fields.
 CLEANER_BY_VARIANT = {
     "baseline": clean_baseline,
     "enhanced": clean_iqoq,
@@ -700,7 +700,7 @@ def process_job(dataset: str, model: str, variant: str, split: str,
 
 
 
-    # CLEAN shards → cleaned/{stem}.cleaned.jsonl (variant suffix dropped for simplicity)
+    # CLEAN shards -> cleaned/{stem}.cleaned.jsonl (variant suffix dropped for simplicity)
     if run_clean and iqoq_inputs:
         for p in iqoq_inputs:
             stem = Path(p).stem
@@ -709,16 +709,16 @@ def process_job(dataset: str, model: str, variant: str, split: str,
             summaries.append(summary)
             cleaned_paths.append(str(out_clean))
 
-    # MERGE cleaned IQ/OQ → cleaned/iqoq.cleaned.jsonl   (NEW name)
+    # MERGE cleaned IQ/OQ -> cleaned/iqoq.cleaned.jsonl   (NEW name)
     merged_iqoq = cleaned_dir / "iqoq.cleaned.jsonl"
     if run_merge and cleaned_paths:
         merge_jsonl_files(cleaned_paths, str(merged_iqoq), dedup_key="passage_id", resume=resume)
 
-    # MERGE scored shards (accepts *_cs.jsonl) → cleaned/scored.cleaned.jsonl
+    # MERGE scored shards (accepts *_cs.jsonl) -> cleaned/scored.cleaned.jsonl
     merged_scored = cleaned_dir / "scored.cleaned.jsonl"
     if run_merge and scored_inputs:
         merge_jsonl_files(scored_inputs, str(merged_scored), dedup_key="passage_id", resume=resume)
-        print(f"[scores] merged → {merged_scored}")
+        print(f"[scores] merged -> {merged_scored}")
 
 
 
@@ -728,14 +728,14 @@ def process_job(dataset: str, model: str, variant: str, split: str,
 
 
 
-    # EXPLODE (from merged_iqoq) → exploded/passages.exploded.jsonl and exploded/iqoq.exploded.jsonl
+    # EXPLODE (from merged_iqoq) -> exploded/passages.exploded.jsonl and exploded/iqoq.exploded.jsonl
     if run_explode and merged_iqoq.exists():
         passages_out = exploded_dir / "passages.exploded.jsonl"
         iqoq_out    = exploded_dir / "iqoq.exploded.jsonl"
         explode_passages(str(merged_iqoq), str(passages_out), resume=resume)
         explode_iqoq(str(merged_iqoq), str(iqoq_out), resume=resume)
 
-    # DEBUG (one TXT per phase) → debug/cleaning_debug.txt   (NEW name)
+    # DEBUG (one TXT per phase) -> debug/cleaning_debug.txt   (NEW name)
     if run_clean and summaries:
         write_cleaning_debug(
             model=model, dataset=dataset, variant=variant, split=split,
@@ -772,7 +772,7 @@ def iter_jobs(datasets, models, variants, skip):
     """
     Generate all (dataset, model, variant) triples, honoring a skip list.
 
-    This utility iterates the Cartesian product of `datasets × models × variants`
+    This utility iterates the Cartesian product of `datasets x models x variants`
     and yields each triple unless it appears in `skip`.
 
     Args:

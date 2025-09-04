@@ -148,7 +148,7 @@ def compute_resume_sets(
     When ``resume`` is ``True``, :func:`existing_ids` reads ``out_path`` and the
     function prints a message describing how many items are skipped for *this*
     shard. Pipelines that split work across multiple shards should call this
-    function separately for each shard's output file – resumption is per shard
+      function separately for each shard's output file - resumption is per shard
     only. The ``items`` iterable is fully consumed to build ``shard_ids``; pass a
     list or other re-iterable sequence if it will be reused later.
 
@@ -187,8 +187,8 @@ def compute_resume_sets(
     )  # only this shard's file; caller handles other shards
     done_ids = done_all & shard_ids  # defensive intersection
     print(
-        f"[resume] {phase_label}: {len(done_ids)}/{len(shard_ids)} already present in this shard – skipping those"
-    )
+          f"[resume] {phase_label}: {len(done_ids)}/{len(shard_ids)} already present in this shard - skipping those"
+      )
     return done_ids, shard_ids
 
 
@@ -397,9 +397,9 @@ def model_size(model: str) -> str:
 
     Examples
     --------
-    ``qwen2.5-7b-instruct`` → ``7b``
-    ``deepseek-r1-distill-qwen-14b`` → ``14b``
-    ``qwen2.5-moe-14b`` → ``14b``
+      ``qwen2.5-7b-instruct`` -> ``7b``
+      ``deepseek-r1-distill-qwen-14b`` -> ``14b``
+      ``qwen2.5-moe-14b`` -> ``14b``
 
     This is used purely for file naming and shard selection.
     """
@@ -493,7 +493,7 @@ def split_jsonl_for_models(path: str, model: str, *, resume: bool = False) -> Li
     """Split ``path`` into shards appropriate for ``model``.
 
     Supported model sizes and shard counts:
-    ``1.5b`` → 4 shards, ``7b``/``8b`` → 2 shards, ``14b`` → 1 shard.
+      ``1.5b`` -> 4 shards, ``7b``/``8b`` -> 2 shards, ``14b`` -> 1 shard.
 
     Models with ``"moe"`` (case-insensitive) in their name are treated as
     ``14b`` models and are kept as a single shard regardless of any size token.

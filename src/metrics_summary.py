@@ -14,8 +14,8 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
     The function looks for two sources of per-query data within the same
     directory as ``summary_path``:
 
-    * ``metrics_path`` – JSONL with ``em`` and ``f1`` per query.
-    * ``token_usage.json`` – JSON containing optional ``per_query_traversal``
+    * ``metrics_path`` - JSONL with ``em`` and ``f1`` per query.
+    * ``token_usage.json`` - JSON containing optional ``per_query_traversal``
       and ``per_query_reader`` mappings with token usage and timings.
 
     Parameters

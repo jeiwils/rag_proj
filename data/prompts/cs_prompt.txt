@@ -22,7 +22,7 @@ Examples: Broad historical or societal claims, cause-effect statements without f
 
 1.00 - Fully conditioned
 Cannot be reliably interpreted without substantial outside context or domain knowledge. Ambiguous or abstract without knowing the specific framework being referenced.
-Examples: Statements with unspecified subjects (“this breakthrough”), pronouns without referents, claims entirely dependent on unstated events.
+Examples: Statements with unspecified subjects ("this breakthrough"), pronouns without referents, claims entirely dependent on unstated events.
 
 ----------------------------------------
 INSTRUCTIONS
@@ -66,7 +66,7 @@ Justification: Relies on broad generalization and assumed historical background.
 1.00 - Fully conditioned
 > This breakthrough changed everything we thought we knew about medicine.
 CS: 1.00
-Justification: Cannot be interpreted without knowing what “this breakthrough” refers to.
+Justification: Cannot be interpreted without knowing what "this breakthrough" refers to.
 
 ----------------------------------------
 NOW ANNOTATE THIS PASSAGE:

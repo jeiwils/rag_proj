@@ -263,7 +263,7 @@ def build_edges(
     alpha: float = 0.5,
     exclude_self_loops: bool = True,
 ) -> List[Dict]:
-    """Build final OQ→IQ edges.
+    """Build final OQ->IQ edges.
 
     Hybrid retrieval is performed for each outgoing question using
     :func:`retrieve_hybrid_candidates`, combining dense FAISS search and
