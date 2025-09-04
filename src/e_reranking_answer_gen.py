@@ -754,6 +754,8 @@ def generate_answers_from_traversal(
     summary_payload.update(extra)
 
     t_reader_ms = reader_time_total_ms
+    num_queries = token_totals["n_reader_calls"]
+    latency_ms = t_reader_ms / num_queries if num_queries else 0
     usage = {
         "per_query_traversal": {},
         "per_query_reader": per_query_reader,
@@ -763,6 +765,8 @@ def generate_answers_from_traversal(
         **token_totals,
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
+        "num_queries": num_queries,
+        "latency_ms": latency_ms,
     }
 
     run_id = str(int(time.time()))  # Identifier to group token usage shards
@@ -780,6 +784,8 @@ def generate_answers_from_traversal(
         **token_totals,
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
+        "num_queries": num_queries,
+        "latency_ms": latency_ms,
     })
 
     tokens_total = (
@@ -787,12 +793,9 @@ def generate_answers_from_traversal(
         + metrics.get("reader_total_tokens", 0)
     )
     t_total_ms = metrics.get("t_traversal_ms", 0) + metrics.get("t_reader_ms", 0)
-    qps_reader = (
-        token_totals["n_reader_calls"] / (t_reader_ms / 1000)
-        if t_reader_ms
-        else 0.0
-    )
+    qps_reader = num_queries / (t_reader_ms / 1000) if t_reader_ms else 0.0
     tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
+
     metrics.update({
         "tokens_total": tokens_total,
         "t_total_ms": t_total_ms,
@@ -812,11 +815,13 @@ def generate_answers_from_traversal(
     except FileNotFoundError:
         token_usage_data = {}
     token_usage_data["qps_reader"] = qps_reader
+    token_usage_data["num_queries"] = num_queries
+    token_usage_data["latency_ms"] = latency_ms
     with open(token_usage_file, "w", encoding="utf-8") as f:
         json.dump(token_usage_data, f, indent=2)
 
     print(
-        f"[summary] overall throughput: {tps_overall:.2f} tokens/s | reader qps: {qps_reader:.2f}"
+        f"[summary] overall throughput: {tps_overall:.2f} tokens/s | reader qps: {qps_reader:.2f} | reader latency: {latency_ms:.2f} ms"
     )
 
     return metrics

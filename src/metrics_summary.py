@@ -61,31 +61,29 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
     # Attempt to compute token and timing percentiles from token_usage.json
     token_usage_path = summary_path.parent / "token_usage.json"
     if token_usage_path.exists():
-        try:
-            with open(token_usage_path, "r", encoding="utf-8") as f:
-                usage = json.load(f)
-        except json.JSONDecodeError:
-            usage = {}
-
-        per_trav = usage.get("per_query_traversal", {}) or {}
-        per_read = usage.get("per_query_reader", {}) or {}
-        query_ids = set(per_trav) | set(per_read)
+        usage = load_token_usage(token_usage_path)
+        per_query = usage.get("per_query", {})
 
         tokens: list[float] = []
         times_ms: list[float] = []
         tps: list[float] = []
+        qps_trav: list[float] = []
+        qps_read: list[float] = []
 
-        for qid in query_ids:
-            trav = per_trav.get(qid, {})
-            read = per_read.get(qid, {})
+        for metrics in per_query.values():
+            tok = float(metrics.get("tokens_total", 0))
+            t_ms = float(metrics.get("t_total_ms", 0))
+            tokens.append(tok)
+            times_ms.append(t_ms)
+            tps.append(float(metrics.get("tps_overall", tok / (t_ms / 1000) if t_ms else 0.0)))
 
-            tok = trav.get("trav_tokens_total", 0)
-            tok += read.get("reader_total_tokens", 0)
-            t_ms = trav.get("t_traversal_ms", 0) + read.get("t_reader_ms", 0)
+            t_trav_ms = float(metrics.get("t_traversal_ms", 0))
+            n_trav_calls = float(metrics.get("n_traversal_calls", 0))
+            qps_trav.append(n_trav_calls / (t_trav_ms / 1000) if t_trav_ms else 0.0)
 
-            tokens.append(float(tok))
-            times_ms.append(float(t_ms))
-            tps.append(float(tok) / (t_ms / 1000) if t_ms else 0.0)
+            t_reader_ms = float(metrics.get("t_reader_ms", 0))
+            n_reader_calls = float(metrics.get("n_reader_calls", 0))
+            qps_read.append(n_reader_calls / (t_reader_ms / 1000) if t_reader_ms else 0.0)
 
         if tokens:
             stats["median_tokens_total"] = float(np.median(tokens))
@@ -96,6 +94,12 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
         if tps:
             stats["median_tps_overall"] = float(np.median(tps))
             stats["p90_tps_overall"] = float(np.percentile(tps, 90))
+        if qps_trav:
+            stats["median_qps_traversal"] = float(np.median(qps_trav))
+            stats["p90_qps_traversal"] = float(np.percentile(qps_trav, 90))
+        if qps_read:
+            stats["median_qps_reader"] = float(np.median(qps_read))
+            stats["p90_qps_reader"] = float(np.percentile(qps_read, 90))
 
     if summary_path.exists():
         with open(summary_path, "r", encoding="utf-8") as f:
