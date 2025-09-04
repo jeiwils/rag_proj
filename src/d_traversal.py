@@ -115,7 +115,6 @@ import networkx as nx
 import numpy as np
 from tqdm import tqdm
 from datetime import datetime
-from src.config import MAX_TOKENS, TEMPERATURE
 
 
 from src.llm_utils import is_r1_like, query_llm, strip_think

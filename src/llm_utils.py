@@ -20,7 +20,6 @@ from src.config import LLM_DEFAULTS, MAX_TOKENS, TEMPERATURE
 
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
 
 TOKEN_TOTALS = {"prompt": 0, "completion": 0, "total": 0}
 
