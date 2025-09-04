@@ -242,6 +242,10 @@ def append_traversal_percentiles(
         query_latencies_ms: list[float] = []
         call_latencies_ms: list[float] = []
         tps: list[float] = []
+        query_qps: list[float] = []
+        cps: list[float] = []
+        total_t_ms = 0.0
+        total_n_calls = 0.0
 
         for q in per_trav.values():
             tok = float(q.get("trav_tokens_total", 0))
@@ -251,11 +255,23 @@ def append_traversal_percentiles(
             tps.append(tok / (t_ms / 1000) if t_ms else 0.0)
 
             n_calls = float(q.get("n_traversal_calls", 0))
+            query_qps.append(1 / (t_ms / 1000) if t_ms else 0.0)
+            cps.append(n_calls / (t_ms / 1000) if t_ms else 0.0)
+            total_t_ms += t_ms
+            total_n_calls += n_calls
             if "call_latency_ms" in q:
                 latency = float(q.get("call_latency_ms", 0))
             else:
                 latency = t_ms / max(n_calls, 1)
             call_latencies_ms.append(latency)
+
+        num_queries = len(per_trav)
+        if total_t_ms:
+            stats["overall_qps"] = num_queries / (total_t_ms / 1000)
+            stats["overall_cps"] = total_n_calls / (total_t_ms / 1000)
+        else:
+            stats["overall_qps"] = 0.0
+            stats["overall_cps"] = 0.0
 
         if trav_tokens:
             stats["median_trav_tokens_total"] = float(np.median(trav_tokens))
@@ -268,6 +284,12 @@ def append_traversal_percentiles(
         if tps:
             stats["median_tps_overall"] = float(np.median(tps))
             stats["p90_tps_overall"] = float(np.percentile(tps, 90))
+        if query_qps:
+            stats["median_query_qps_traversal"] = float(np.median(query_qps))
+            stats["p90_query_qps_traversal"] = float(np.percentile(query_qps, 90))
+        if cps:
+            stats["median_cps_traversal"] = float(np.median(cps))
+            stats["p90_cps_traversal"] = float(np.percentile(cps, 90))
         if call_latencies_ms:
             stats["median_call_latency_ms"] = float(np.median(call_latencies_ms))
             stats["p90_call_latency_ms"] = float(np.percentile(call_latencies_ms, 90))
