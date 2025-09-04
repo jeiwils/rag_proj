@@ -1177,21 +1177,23 @@ def run_traversal(
     t_total_ms = global_usage.get("t_traversal_ms", 0)
     tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
 
-    qps_traversal = (
+    num_queries = len(per_query_usage)
+    latency_ms = t_total_ms / num_queries if num_queries else 0.0
+    query_qps_traversal = (
+        num_queries / (t_total_ms / 1000) if t_total_ms else 0.0
+    )
+    cps_traversal = (
         global_usage["n_traversal_calls"] / (t_total_ms / 1000)
         if t_total_ms
         else 0.0
     )
-
-
-    num_queries = len(per_query_usage)
-    latency_ms = t_total_ms / num_queries if num_queries else 0.0
     global_usage.update(
         {
             "tokens_total": tokens_total,
             "t_total_ms": t_total_ms,
             "tps_overall": tps_overall,
-            "qps_traversal": qps_traversal,
+            "query_qps_traversal": query_qps_traversal,
+            "cps_traversal": cps_traversal,
             "num_queries": num_queries,
             "latency_ms": latency_ms,
         }
@@ -1205,7 +1207,10 @@ def run_traversal(
     print(f"[summary] traversal wall time: {t_total_ms} ms")
     print(f"[summary] average traversal latency: {latency_ms:.2f} ms")
     print(
-        f"[summary] overall throughput: {tps_overall:.2f} tokens/s, {qps_traversal:.2f} calls/s"
+        "[summary] overall throughput: "
+        f"{tps_overall:.2f} tokens/s, "
+        f"{query_qps_traversal:.2f} queries/s, "
+        f"{cps_traversal:.2f} calls/s"
     )
 
     return global_usage
@@ -1392,7 +1397,12 @@ def compute_traversal_summary(
 
     }
 
-    summary["qps_traversal"] = (
+    summary["query_qps_traversal"] = (
+        total_queries / summary["wall_time_total_sec"]
+        if summary["wall_time_total_sec"]
+        else 0.0
+    )
+    summary["cps_traversal"] = (
         summary["total_traversal_calls"] / summary["wall_time_total_sec"]
         if summary["wall_time_total_sec"]
         else 0.0

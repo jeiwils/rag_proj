@@ -67,7 +67,6 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
         tokens: list[float] = []
         times_ms: list[float] = []
         latencies_ms: list[float] = []
-
         tps: list[float] = []
         qps_trav: list[float] = []
         qps_read: list[float] = []
@@ -77,16 +76,23 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
             t_ms = float(metrics.get("t_total_ms", 0))
             tokens.append(tok)
             times_ms.append(t_ms)
-            latencies_ms.append(t_ms)
+            tps.append(
+                float(metrics.get("tps_overall", tok / (t_ms / 1000) if t_ms else 0.0))
+            )
 
-            tps.append(float(metrics.get("tps_overall", tok / (t_ms / 1000) if t_ms else 0.0)))
+            n_trav_calls = float(metrics.get("n_traversal_calls", 0))
+            n_reader_calls = float(metrics.get("n_reader_calls", 0))
+            total_calls = n_trav_calls + n_reader_calls
+            if "latency_ms" in metrics:
+                latency = t_ms
+            else:
+                latency = t_ms / max(total_calls, 1)
+            latencies_ms.append(latency)
 
             t_trav_ms = float(metrics.get("t_traversal_ms", 0))
-            n_trav_calls = float(metrics.get("n_traversal_calls", 0))
             qps_trav.append(n_trav_calls / (t_trav_ms / 1000) if t_trav_ms else 0.0)
 
             t_reader_ms = float(metrics.get("t_reader_ms", 0))
-            n_reader_calls = float(metrics.get("n_reader_calls", 0))
             qps_read.append(n_reader_calls / (t_reader_ms / 1000) if t_reader_ms else 0.0)
 
         if tokens:
@@ -95,6 +101,9 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
         if times_ms:
             stats["median_t_total_ms"] = float(np.median(times_ms))
             stats["p90_t_total_ms"] = float(np.percentile(times_ms, 90))
+        if latencies_ms:
+            stats["median_latency_ms"] = float(np.median(latencies_ms))
+            stats["p90_latency_ms"] = float(np.percentile(latencies_ms, 90))
         if tps:
             stats["median_tps_overall"] = float(np.median(tps))
             stats["p90_tps_overall"] = float(np.percentile(tps, 90))
@@ -104,9 +113,6 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
         if qps_read:
             stats["median_qps_reader"] = float(np.median(qps_read))
             stats["p90_qps_reader"] = float(np.percentile(qps_read, 90))
-        if latencies_ms:
-            stats["median_latency_ms"] = float(np.median(latencies_ms))
-            stats["p90_latency_ms"] = float(np.percentile(latencies_ms, 90))
 
     if summary_path.exists():
         with open(summary_path, "r", encoding="utf-8") as f:
@@ -178,6 +184,7 @@ def append_traversal_percentiles(
 
         trav_tokens: list[float] = []
         times_ms: list[float] = []
+        latencies_ms: list[float] = []
         tps: list[float] = []
 
         for q in per_trav.values():
@@ -186,6 +193,13 @@ def append_traversal_percentiles(
             trav_tokens.append(tok)
             times_ms.append(t_ms)
             tps.append(tok / (t_ms / 1000) if t_ms else 0.0)
+
+            n_calls = float(q.get("n_traversal_calls", 0))
+            if "latency_ms" in q:
+                latency = t_ms
+            else:
+                latency = t_ms / max(n_calls, 1)
+            latencies_ms.append(latency)
 
         if trav_tokens:
             stats["median_trav_tokens_total"] = float(np.median(trav_tokens))
@@ -196,6 +210,9 @@ def append_traversal_percentiles(
         if tps:
             stats["median_tps_overall"] = float(np.median(tps))
             stats["p90_tps_overall"] = float(np.percentile(tps, 90))
+        if latencies_ms:
+            stats["median_latency_ms"] = float(np.median(latencies_ms))
+            stats["p90_latency_ms"] = float(np.percentile(latencies_ms, 90))
 
     if stats_path.exists():
         with open(stats_path, "r", encoding="utf-8") as f:

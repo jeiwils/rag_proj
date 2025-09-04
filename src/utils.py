@@ -795,7 +795,8 @@ def merge_token_usage(
                 "t_total_ms",
                 "tps_overall",
                 "latency_ms",
-                "qps_traversal",
+                "query_qps_traversal",
+                "cps_traversal",
             }:
                 continue
             if isinstance(v, (int, float)):
@@ -827,7 +828,10 @@ def merge_token_usage(
     merged["tps_overall"] = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
     num_queries = merged.get("num_queries", 0)
     t_trav_ms = global_totals.get("t_traversal_ms", 0)
-    merged["qps_traversal"] = (
+    merged["query_qps_traversal"] = (
+        num_queries / (t_trav_ms / 1000) if t_trav_ms else 0.0
+    )
+    merged["cps_traversal"] = (
         merged.get("n_traversal_calls", 0) / (t_trav_ms / 1000)
         if t_trav_ms
         else 0.0
