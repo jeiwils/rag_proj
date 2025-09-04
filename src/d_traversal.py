@@ -93,6 +93,8 @@ File Schema
     "wall_time_total_sec": float,
     "wall_time_mean_sec": float,
     "wall_time_median_sec": float
+    "wall_time_median_sec": float,
+    "latency_ms": float
   }
 }
 """
@@ -1174,17 +1176,24 @@ def run_traversal(
     tokens_total = global_usage.get("trav_tokens_total", 0)
     t_total_ms = global_usage.get("t_traversal_ms", 0)
     tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
+
     qps_traversal = (
         global_usage["n_traversal_calls"] / (t_total_ms / 1000)
         if t_total_ms
         else 0.0
     )
+
+
+    num_queries = len(per_query_usage)
+    latency_ms = t_total_ms / num_queries if num_queries else 0.0
     global_usage.update(
         {
             "tokens_total": tokens_total,
             "t_total_ms": t_total_ms,
             "tps_overall": tps_overall,
             "qps_traversal": qps_traversal,
+            "num_queries": num_queries,
+            "latency_ms": latency_ms,
         }
     )
 
@@ -1194,9 +1203,12 @@ def run_traversal(
 
     print(f"[summary] total traversal tokens: {tokens_total}")
     print(f"[summary] traversal wall time: {t_total_ms} ms")
+    print(f"[summary] average traversal latency: {latency_ms:.2f} ms")
     print(
         f"[summary] overall throughput: {tps_overall:.2f} tokens/s, {qps_traversal:.2f} calls/s"
     )
+
+    return global_usage
 
 
 
@@ -1352,6 +1364,8 @@ def compute_traversal_summary(
     wall_time_total = sum(wall_times)
     wall_time_mean = wall_time_total / len(wall_times) if wall_times else 0.0
     wall_time_median = float(np.median(wall_times)) if wall_times else 0.0
+    latency_ms = wall_time_mean * 1000
+
 
     summary = {
         "mean_precision": round(mean_precision, 4),
@@ -1374,7 +1388,16 @@ def compute_traversal_summary(
         "wall_time_total_sec": round(wall_time_total, 4),
         "wall_time_mean_sec": round(wall_time_mean, 4),
         "wall_time_median_sec": round(wall_time_median, 4),
+        "latency_ms": round(latency_ms, 2),
+
     }
+
+    summary["qps_traversal"] = (
+        summary["total_traversal_calls"] / summary["wall_time_total_sec"]
+        if summary["wall_time_total_sec"]
+        else 0.0
+    )
+
     return summary
 
 

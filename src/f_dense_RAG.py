@@ -294,6 +294,8 @@ def run_dense_rag(
     metrics.update(extra)
 
     t_reader_ms = reader_time_total_ms
+    num_queries = token_totals["n_reader_calls"]
+    latency_ms = t_reader_ms / num_queries if num_queries else 0.0
     usage = {
         "per_query_traversal": {},
         "per_query_reader": per_query_reader,
@@ -303,6 +305,8 @@ def run_dense_rag(
         **token_totals,
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
+        "num_queries": num_queries,
+        "latency_ms": latency_ms,
     }
     run_id = str(int(time.time()))  # Identifier to group token usage shards
     usage_path = paths["base"] / f"token_usage_{run_id}_{os.getpid()}.json"
@@ -318,6 +322,8 @@ def run_dense_rag(
         **token_totals,
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
+        "num_queries": num_queries,
+        "latency_ms": latency_ms,
     })
 
     tokens_total = (
@@ -342,7 +348,8 @@ def run_dense_rag(
 
     print(
         f"[summary] overall throughput: {tps_overall:.2f} tokens/s, "
-        f"reader throughput: {qps_reader:.2f} queries/s"
+        f"reader throughput: {qps_reader:.2f} queries/s, "
+        f"reader latency: {latency_ms:.2f} ms/query"
     )
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)

@@ -790,7 +790,13 @@ def merge_token_usage(
                 per_query_reader[qid] = _merge_numeric(per_query_reader.get(qid, {}), metrics)
 
         for k, v in data.items():
-            if k.startswith("per_query") or k in {"tokens_total", "t_total_ms", "tps_overall"}:
+            if k.startswith("per_query") or k in {
+                "tokens_total",
+                "t_total_ms",
+                "tps_overall",
+                "latency_ms",
+                "qps_traversal",
+            }:
                 continue
             if isinstance(v, (int, float)):
                 global_totals[k] += v
@@ -819,6 +825,16 @@ def merge_token_usage(
     merged["tokens_total"] = tokens_total
     merged["t_total_ms"] = t_total_ms
     merged["tps_overall"] = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
+    num_queries = merged.get("num_queries", 0)
+    t_trav_ms = global_totals.get("t_traversal_ms", 0)
+    merged["qps_traversal"] = (
+        merged.get("n_traversal_calls", 0) / (t_trav_ms / 1000)
+        if t_trav_ms
+        else 0.0
+    )
+    merged["latency_ms"] = t_total_ms / num_queries if num_queries else 0.0
+
+
 
     out_path = out_dir / "token_usage.json"
     with open(out_path, "w", encoding="utf-8") as f:
