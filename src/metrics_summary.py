@@ -64,6 +64,14 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
         usage = load_token_usage(token_usage_path)
         per_query = usage.get("per_query", {})
 
+        global_usage = usage.get("global", usage)
+        q_latency = global_usage.get("query_latency_ms")
+        c_latency = global_usage.get("call_latency_ms")
+        if q_latency is not None:
+            stats["query_latency_ms"] = float(q_latency)
+        if c_latency is not None:
+            stats["call_latency_ms"] = float(c_latency)
+
         tokens: list[float] = []
         query_latencies_ms: list[float] = []
         call_latencies_ms: list[float] = []
@@ -265,6 +273,14 @@ def append_traversal_percentiles(
                 usage = json.load(f)
         except json.JSONDecodeError:
             usage = {}
+
+        global_usage = usage.get("global", usage)
+        q_latency = global_usage.get("query_latency_ms")
+        c_latency = global_usage.get("call_latency_ms")
+        if q_latency is not None:
+            stats["query_latency_ms"] = float(q_latency)
+        if c_latency is not None:
+            stats["call_latency_ms"] = float(c_latency)
 
         per_trav = usage.get("per_query_traversal", {}) or {}
 

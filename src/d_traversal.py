@@ -973,7 +973,10 @@ def save_traversal_result(  # helper for run_dev_set()
             + token_usage.get("trav_output_tokens", 0),
         )
         result_entry["n_traversal_calls"] = token_usage.get("n_traversal_calls", 0)
-
+        result_entry["query_latency_ms"] = token_usage.get(
+            "query_latency_ms", token_usage.get("t_traversal_ms", 0)
+        )
+        result_entry["call_latency_ms"] = token_usage.get("call_latency_ms", 0)
 
 
     if wall_time_sec is not None:
@@ -1128,6 +1131,13 @@ def run_traversal(
 
         elapsed_ms = int(query_token_totals.get("t_traversal_ms", 0))
         elapsed = elapsed_ms / 1000
+
+        n_calls_query = query_token_totals.get("n_traversal_calls", 0)
+        query_token_totals["query_latency_ms"] = float(elapsed_ms)
+        query_token_totals["call_latency_ms"] = (
+            float(elapsed_ms) / n_calls_query if n_calls_query else 0.0
+        )
+
 
 
         # --- Save per-query JSONL ---
