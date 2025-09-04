@@ -326,15 +326,24 @@ def run_dense_rag(
     )
     t_total_ms = metrics.get("t_traversal_ms", 0) + metrics.get("t_reader_ms", 0)
     tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
+    qps_reader = (
+        token_totals["n_reader_calls"] / (t_reader_ms / 1000)
+        if t_reader_ms
+        else 0.0
+    )
     metrics.update(
         {
             "tokens_total": tokens_total,
             "t_total_ms": t_total_ms,
             "tps_overall": tps_overall,
+            "qps_reader": qps_reader,
         }
     )
 
-    print(f"[summary] overall throughput: {tps_overall:.2f} tokens/s")
+    print(
+        f"[summary] overall throughput: {tps_overall:.2f} tokens/s, "
+        f"reader throughput: {qps_reader:.2f} queries/s"
+    )
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
@@ -353,7 +362,7 @@ if __name__ == "__main__":
     DATASETS = ["hotpotqa", "2wikimultihopqa", "musique"]
     SPLITS = ["dev"]
 
-    READER_MODELS = ["deepseek-r1-distill-qwen-7b"]
+    READER_MODELS = ["state-of-the-moe-rp-2x7b"]
 
     #     "qwen2.5-7b-instruct",
     #     "qwen2.5-14b-instruct",

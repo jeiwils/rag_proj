@@ -852,7 +852,7 @@ def compute_hop_metrics(
         # Seed passages from ``expanded_from`` are excluded so initial dense
         # retrieval does not influence precision/recall/F1.
 
-        
+
         visited_cumulative.update(hop_log.get("new_passages", []))
         tp = len(visited_cumulative & gold_set)
         fp = len(visited_cumulative - gold_set)
@@ -1174,11 +1174,17 @@ def run_traversal(
     tokens_total = global_usage.get("trav_tokens_total", 0)
     t_total_ms = global_usage.get("t_traversal_ms", 0)
     tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
+    qps_traversal = (
+        global_usage["n_traversal_calls"] / (t_total_ms / 1000)
+        if t_total_ms
+        else 0.0
+    )
     global_usage.update(
         {
             "tokens_total": tokens_total,
             "t_total_ms": t_total_ms,
             "tps_overall": tps_overall,
+            "qps_traversal": qps_traversal,
         }
     )
 
@@ -1188,7 +1194,9 @@ def run_traversal(
 
     print(f"[summary] total traversal tokens: {tokens_total}")
     print(f"[summary] traversal wall time: {t_total_ms} ms")
-    print(f"[summary] overall throughput: {tps_overall:.2f} tokens/s")
+    print(
+        f"[summary] overall throughput: {tps_overall:.2f} tokens/s, {qps_traversal:.2f} calls/s"
+    )
 
 
 
@@ -1620,7 +1628,7 @@ if __name__ == "__main__":
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
 
 
-    TRAVERSAL_MODELS = ["deepseek-r1-distill-qwen-7b"] 
+    TRAVERSAL_MODELS = ["state-of-the-moe-rp-2x7b"] 
 
 # [
 #         "qwen2.5-7b-instruct",
