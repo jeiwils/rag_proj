@@ -36,6 +36,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+
+
+
 def find_result_files(root: Path = Path("data/traversal")) -> list[Path]:
     """Recursively locate ``per_query_traversal_results.jsonl`` under ``root``.
 
@@ -43,6 +46,9 @@ def find_result_files(root: Path = Path("data/traversal")) -> list[Path]:
     the answer result directories.
     """
     return list(root.rglob("per_query_traversal_results.jsonl"))
+
+
+
 
 
 def load_traversal_stats(paths: Sequence[Path]) -> Dict:
@@ -67,6 +73,11 @@ def load_traversal_stats(paths: Sequence[Path]) -> Dict:
                     len(hop.get("edges_chosen", []))
                 )
     return stats
+
+
+
+
+
 
 
 def plot_traversal_distributions(
@@ -116,6 +127,8 @@ def plot_traversal_distributions(
         plt.close(fig)
 
 
+
+
 # ---------------------------------------------------------------------------
 # Traversal metrics plotting
 # ---------------------------------------------------------------------------
@@ -139,10 +152,15 @@ META_FIELDS = (
     "timestamp",
 )
 
+
+
+
 def _validate_keys(metrics: Dict[str, float], expected: Sequence[str]) -> None:
     missing = [k for k in expected if k not in metrics]
     if missing:
         logger.warning("Missing metrics: %s", ", ".join(missing))
+
+
 
 
 def _load_metrics(traversal_dir: Path, fields: Sequence[str]) -> Tuple[Dict[str, float], Dict[str, Any]]:
@@ -166,6 +184,8 @@ def _load_metrics(traversal_dir: Path, fields: Sequence[str]) -> Tuple[Dict[str,
     return metrics, meta
 
 
+
+
 def _load_answer_metrics(meta: Dict[str, Any], answer_dir: Path | None = None) -> Dict[str, float]:
     mode = meta.get("variant")
     seed = meta.get("seed")
@@ -187,6 +207,8 @@ def _load_answer_metrics(meta: Dict[str, Any], answer_dir: Path | None = None) -
     return metrics
 
 
+
+
 def _model_label(result_dir: Path) -> str:
     parts = result_dir.resolve().parts
     if "graphs" in parts:
@@ -194,6 +216,8 @@ def _model_label(result_dir: Path) -> str:
         if idx + 1 < len(parts):
             return parts[idx + 1]
     return result_dir.name
+
+
 
 
 def plot_traversal_metrics(
