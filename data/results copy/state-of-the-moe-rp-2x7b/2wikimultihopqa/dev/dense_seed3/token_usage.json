@@ -1,0 +1,716 @@
+{
+  "per_query_reader": {
+    "37c6703a0bdc11eba7f7acde48001122": {
+      "reader_prompt_tokens": 657,
+      "reader_output_tokens": 10,
+      "reader_total_tokens": 667,
+      "n_reader_calls": 1,
+      "t_reader_ms": 342
+    },
+    "363d81df08d211ebbd95ac1f6bf848b6": {
+      "reader_prompt_tokens": 852,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 857,
+      "n_reader_calls": 1,
+      "t_reader_ms": 275
+    },
+    "f7c4fdf2087611ebbd67ac1f6bf848b6": {
+      "reader_prompt_tokens": 662,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 668,
+      "n_reader_calls": 1,
+      "t_reader_ms": 242
+    },
+    "49a5c36b086111ebbd5dac1f6bf848b6": {
+      "reader_prompt_tokens": 1086,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1087,
+      "n_reader_calls": 1,
+      "t_reader_ms": 265
+    },
+    "e41c14820bd911eba7f7acde48001122": {
+      "reader_prompt_tokens": 392,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 393,
+      "n_reader_calls": 1,
+      "t_reader_ms": 110
+    },
+    "6638a0f0084e11ebbd56ac1f6bf848b6": {
+      "reader_prompt_tokens": 582,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 583,
+      "n_reader_calls": 1,
+      "t_reader_ms": 136
+    },
+    "4c61cd2c088111ebbd6dac1f6bf848b6": {
+      "reader_prompt_tokens": 813,
+      "reader_output_tokens": 8,
+      "reader_total_tokens": 821,
+      "n_reader_calls": 1,
+      "t_reader_ms": 283
+    },
+    "87154f1e0bda11eba7f7acde48001122": {
+      "reader_prompt_tokens": 781,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 782,
+      "n_reader_calls": 1,
+      "t_reader_ms": 175
+    },
+    "83ff07cd096711ebbdafac1f6bf848b6": {
+      "reader_prompt_tokens": 578,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 579,
+      "n_reader_calls": 1,
+      "t_reader_ms": 142
+    },
+    "f88912f008da11ebbd9cac1f6bf848b6": {
+      "reader_prompt_tokens": 689,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 693,
+      "n_reader_calls": 1,
+      "t_reader_ms": 211
+    },
+    "c789bc3b087211ebbd66ac1f6bf848b6": {
+      "reader_prompt_tokens": 640,
+      "reader_output_tokens": 8,
+      "reader_total_tokens": 648,
+      "n_reader_calls": 1,
+      "t_reader_ms": 263
+    },
+    "ed27bca208ac11ebbd83ac1f6bf848b6": {
+      "reader_prompt_tokens": 617,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 620,
+      "n_reader_calls": 1,
+      "t_reader_ms": 176
+    },
+    "00c75ffc0bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 497,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 498,
+      "n_reader_calls": 1,
+      "t_reader_ms": 129
+    },
+    "4039b1be08d511ebbd98ac1f6bf848b6": {
+      "reader_prompt_tokens": 636,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 637,
+      "n_reader_calls": 1,
+      "t_reader_ms": 152
+    },
+    "95b5b8da08bd11ebbd8aac1f6bf848b6": {
+      "reader_prompt_tokens": 651,
+      "reader_output_tokens": 11,
+      "reader_total_tokens": 662,
+      "n_reader_calls": 1,
+      "t_reader_ms": 296
+    },
+    "258867240bdd11eba7f7acde48001122": {
+      "reader_prompt_tokens": 859,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 861,
+      "n_reader_calls": 1,
+      "t_reader_ms": 207
+    },
+    "3d03e0260bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 831,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 836,
+      "n_reader_calls": 1,
+      "t_reader_ms": 259
+    },
+    "437f3b9a0bdd11eba7f7acde48001122": {
+      "reader_prompt_tokens": 750,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 751,
+      "n_reader_calls": 1,
+      "t_reader_ms": 170
+    },
+    "a6d861000bdb11eba7f7acde48001122": {
+      "reader_prompt_tokens": 546,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 547,
+      "n_reader_calls": 1,
+      "t_reader_ms": 132
+    },
+    "2b81511c0bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 779,
+      "reader_output_tokens": 9,
+      "reader_total_tokens": 788,
+      "n_reader_calls": 1,
+      "t_reader_ms": 318
+    },
+    "70ec660c0bdd11eba7f7acde48001122": {
+      "reader_prompt_tokens": 631,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 632,
+      "n_reader_calls": 1,
+      "t_reader_ms": 150
+    },
+    "6e3e70200bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 732,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 734,
+      "n_reader_calls": 1,
+      "t_reader_ms": 180
+    },
+    "203b441208db11ebbd9cac1f6bf848b6": {
+      "reader_prompt_tokens": 772,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 773,
+      "n_reader_calls": 1,
+      "t_reader_ms": 170
+    },
+    "7cc68442092811ebbdaeac1f6bf848b6": {
+      "reader_prompt_tokens": 611,
+      "reader_output_tokens": 8,
+      "reader_total_tokens": 619,
+      "n_reader_calls": 1,
+      "t_reader_ms": 237
+    },
+    "a7b9672009c311ebbdb0ac1f6bf848b6": {
+      "reader_prompt_tokens": 640,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 641,
+      "n_reader_calls": 1,
+      "t_reader_ms": 142
+    },
+    "61cc91aa088c11ebbd6fac1f6bf848b6": {
+      "reader_prompt_tokens": 753,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 755,
+      "n_reader_calls": 1,
+      "t_reader_ms": 213
+    },
+    "aa9aee6908f011ebbda8ac1f6bf848b6": {
+      "reader_prompt_tokens": 605,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 606,
+      "n_reader_calls": 1,
+      "t_reader_ms": 138
+    },
+    "befbd60c0bdd11eba7f7acde48001122": {
+      "reader_prompt_tokens": 847,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 848,
+      "n_reader_calls": 1,
+      "t_reader_ms": 180
+    },
+    "e95acdbc085f11ebbd5dac1f6bf848b6": {
+      "reader_prompt_tokens": 673,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 676,
+      "n_reader_calls": 1,
+      "t_reader_ms": 186
+    },
+    "5d8037920bb011ebab90acde48001122": {
+      "reader_prompt_tokens": 606,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 607,
+      "n_reader_calls": 1,
+      "t_reader_ms": 163
+    },
+    "982f8e440bdb11eba7f7acde48001122": {
+      "reader_prompt_tokens": 686,
+      "reader_output_tokens": 14,
+      "reader_total_tokens": 700,
+      "n_reader_calls": 1,
+      "t_reader_ms": 421
+    },
+    "2b7db0200bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 1078,
+      "reader_output_tokens": 16,
+      "reader_total_tokens": 1094,
+      "n_reader_calls": 1,
+      "t_reader_ms": 456
+    },
+    "c9eb430908c311ebbd8dac1f6bf848b6": {
+      "reader_prompt_tokens": 688,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 690,
+      "n_reader_calls": 1,
+      "t_reader_ms": 203
+    },
+    "b3110a5e0bda11eba7f7acde48001122": {
+      "reader_prompt_tokens": 981,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 982,
+      "n_reader_calls": 1,
+      "t_reader_ms": 227
+    },
+    "69e2bbe0094411ebbdaeac1f6bf848b6": {
+      "reader_prompt_tokens": 704,
+      "reader_output_tokens": 7,
+      "reader_total_tokens": 711,
+      "n_reader_calls": 1,
+      "t_reader_ms": 245
+    },
+    "2207e9060bda11eba7f7acde48001122": {
+      "reader_prompt_tokens": 609,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 610,
+      "n_reader_calls": 1,
+      "t_reader_ms": 142
+    },
+    "f8819f3308a011ebbd78ac1f6bf848b6": {
+      "reader_prompt_tokens": 570,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 573,
+      "n_reader_calls": 1,
+      "t_reader_ms": 163
+    },
+    "b81fbe620bdc11eba7f7acde48001122": {
+      "reader_prompt_tokens": 716,
+      "reader_output_tokens": 9,
+      "reader_total_tokens": 725,
+      "n_reader_calls": 1,
+      "t_reader_ms": 284
+    },
+    "a5f0b646088b11ebbd6fac1f6bf848b6": {
+      "reader_prompt_tokens": 775,
+      "reader_output_tokens": 7,
+      "reader_total_tokens": 782,
+      "n_reader_calls": 1,
+      "t_reader_ms": 283
+    },
+    "9b2ccd4e088b11ebbd6fac1f6bf848b6": {
+      "reader_prompt_tokens": 733,
+      "reader_output_tokens": 10,
+      "reader_total_tokens": 743,
+      "n_reader_calls": 1,
+      "t_reader_ms": 318
+    },
+    "8ac9de5608e011ebbda1ac1f6bf848b6": {
+      "reader_prompt_tokens": 752,
+      "reader_output_tokens": 7,
+      "reader_total_tokens": 759,
+      "n_reader_calls": 1,
+      "t_reader_ms": 251
+    },
+    "5a5718140bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 739,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 740,
+      "n_reader_calls": 1,
+      "t_reader_ms": 179
+    },
+    "7d94382208d011ebbd95ac1f6bf848b6": {
+      "reader_prompt_tokens": 794,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 795,
+      "n_reader_calls": 1,
+      "t_reader_ms": 175
+    },
+    "09762e08087311ebbd66ac1f6bf848b6": {
+      "reader_prompt_tokens": 765,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 769,
+      "n_reader_calls": 1,
+      "t_reader_ms": 214
+    },
+    "e61479860bda11eba7f7acde48001122": {
+      "reader_prompt_tokens": 773,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 776,
+      "n_reader_calls": 1,
+      "t_reader_ms": 229
+    },
+    "dc6985ea096211ebbdafac1f6bf848b6": {
+      "reader_prompt_tokens": 641,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 646,
+      "n_reader_calls": 1,
+      "t_reader_ms": 212
+    },
+    "f491b33e0bda11eba7f7acde48001122": {
+      "reader_prompt_tokens": 798,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 799,
+      "n_reader_calls": 1,
+      "t_reader_ms": 168
+    },
+    "28ad4ad0092a11ebbdaeac1f6bf848b6": {
+      "reader_prompt_tokens": 914,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 918,
+      "n_reader_calls": 1,
+      "t_reader_ms": 262
+    },
+    "77f41ab20bb011ebab90acde48001122": {
+      "reader_prompt_tokens": 987,
+      "reader_output_tokens": 10,
+      "reader_total_tokens": 997,
+      "n_reader_calls": 1,
+      "t_reader_ms": 348
+    },
+    "00c727580bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 919,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 925,
+      "n_reader_calls": 1,
+      "t_reader_ms": 313
+    },
+    "3647118c0bdd11eba7f7acde48001122": {
+      "reader_prompt_tokens": 727,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 728,
+      "n_reader_calls": 1,
+      "t_reader_ms": 166
+    },
+    "f7c153ce092e11ebbdaeac1f6bf848b6": {
+      "reader_prompt_tokens": 797,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 802,
+      "n_reader_calls": 1,
+      "t_reader_ms": 269
+    },
+    "1f77cec108ad11ebbd83ac1f6bf848b6": {
+      "reader_prompt_tokens": 889,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 895,
+      "n_reader_calls": 1,
+      "t_reader_ms": 271
+    },
+    "534cb9fe0baf11ebab90acde48001122": {
+      "reader_prompt_tokens": 1046,
+      "reader_output_tokens": 7,
+      "reader_total_tokens": 1053,
+      "n_reader_calls": 1,
+      "t_reader_ms": 289
+    },
+    "e618b2c608c911ebbd92ac1f6bf848b6": {
+      "reader_prompt_tokens": 659,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 665,
+      "n_reader_calls": 1,
+      "t_reader_ms": 211
+    },
+    "421b26d80bb011ebab90acde48001122": {
+      "reader_prompt_tokens": 858,
+      "reader_output_tokens": 21,
+      "reader_total_tokens": 879,
+      "n_reader_calls": 1,
+      "t_reader_ms": 476
+    },
+    "096e14a20bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 777,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 778,
+      "n_reader_calls": 1,
+      "t_reader_ms": 172
+    },
+    "041581680bdc11eba7f7acde48001122": {
+      "reader_prompt_tokens": 857,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 858,
+      "n_reader_calls": 1,
+      "t_reader_ms": 182
+    },
+    "5c77f7ed08ac11ebbd82ac1f6bf848b6": {
+      "reader_prompt_tokens": 642,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 647,
+      "n_reader_calls": 1,
+      "t_reader_ms": 240
+    },
+    "a9a4b633089c11ebbd78ac1f6bf848b6": {
+      "reader_prompt_tokens": 704,
+      "reader_output_tokens": 7,
+      "reader_total_tokens": 711,
+      "n_reader_calls": 1,
+      "t_reader_ms": 243
+    },
+    "027970120bdc11eba7f7acde48001122": {
+      "reader_prompt_tokens": 772,
+      "reader_output_tokens": 8,
+      "reader_total_tokens": 780,
+      "n_reader_calls": 1,
+      "t_reader_ms": 280
+    },
+    "04b5e0320bdb11eba7f7acde48001122": {
+      "reader_prompt_tokens": 824,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 825,
+      "n_reader_calls": 1,
+      "t_reader_ms": 175
+    },
+    "c19b72520bdb11eba7f7acde48001122": {
+      "reader_prompt_tokens": 583,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 584,
+      "n_reader_calls": 1,
+      "t_reader_ms": 138
+    },
+    "c9b515020bda11eba7f7acde48001122": {
+      "reader_prompt_tokens": 979,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 980,
+      "n_reader_calls": 1,
+      "t_reader_ms": 225
+    },
+    "f9dcb4a60bda11eba7f7acde48001122": {
+      "reader_prompt_tokens": 615,
+      "reader_output_tokens": 10,
+      "reader_total_tokens": 625,
+      "n_reader_calls": 1,
+      "t_reader_ms": 289
+    },
+    "94198d580bb011ebab90acde48001122": {
+      "reader_prompt_tokens": 919,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 924,
+      "n_reader_calls": 1,
+      "t_reader_ms": 273
+    },
+    "c933c15308c711ebbd91ac1f6bf848b6": {
+      "reader_prompt_tokens": 651,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 654,
+      "n_reader_calls": 1,
+      "t_reader_ms": 211
+    },
+    "2fd031c00bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 674,
+      "reader_output_tokens": 13,
+      "reader_total_tokens": 687,
+      "n_reader_calls": 1,
+      "t_reader_ms": 321
+    },
+    "4a9acefe0baf11ebab90acde48001122": {
+      "reader_prompt_tokens": 734,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 739,
+      "n_reader_calls": 1,
+      "t_reader_ms": 217
+    },
+    "cff878c20bdb11eba7f7acde48001122": {
+      "reader_prompt_tokens": 781,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 782,
+      "n_reader_calls": 1,
+      "t_reader_ms": 174
+    },
+    "71d8e20e0bdb11eba7f7acde48001122": {
+      "reader_prompt_tokens": 769,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 770,
+      "n_reader_calls": 1,
+      "t_reader_ms": 169
+    },
+    "5db7e2d80bdc11eba7f7acde48001122": {
+      "reader_prompt_tokens": 683,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 687,
+      "n_reader_calls": 1,
+      "t_reader_ms": 211
+    },
+    "ac1b9ee108b911ebbd88ac1f6bf848b6": {
+      "reader_prompt_tokens": 810,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 816,
+      "n_reader_calls": 1,
+      "t_reader_ms": 302
+    },
+    "5affe63d08f311ebbdaaac1f6bf848b6": {
+      "reader_prompt_tokens": 768,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 773,
+      "n_reader_calls": 1,
+      "t_reader_ms": 268
+    },
+    "9e506db00bdc11eba7f7acde48001122": {
+      "reader_prompt_tokens": 808,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 810,
+      "n_reader_calls": 1,
+      "t_reader_ms": 187
+    },
+    "bac99ab40bd911eba7f7acde48001122": {
+      "reader_prompt_tokens": 636,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 637,
+      "n_reader_calls": 1,
+      "t_reader_ms": 155
+    },
+    "6e5e9de109af11ebbdb0ac1f6bf848b6": {
+      "reader_prompt_tokens": 638,
+      "reader_output_tokens": 11,
+      "reader_total_tokens": 649,
+      "n_reader_calls": 1,
+      "t_reader_ms": 320
+    },
+    "33b51db508af11ebbd83ac1f6bf848b6": {
+      "reader_prompt_tokens": 689,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 693,
+      "n_reader_calls": 1,
+      "t_reader_ms": 202
+    },
+    "1d4139960bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 917,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 922,
+      "n_reader_calls": 1,
+      "t_reader_ms": 289
+    },
+    "c30b9f8108b211ebbd85ac1f6bf848b6": {
+      "reader_prompt_tokens": 830,
+      "reader_output_tokens": 9,
+      "reader_total_tokens": 839,
+      "n_reader_calls": 1,
+      "t_reader_ms": 303
+    },
+    "645c9a5a08c311ebbd8dac1f6bf848b6": {
+      "reader_prompt_tokens": 619,
+      "reader_output_tokens": 10,
+      "reader_total_tokens": 629,
+      "n_reader_calls": 1,
+      "t_reader_ms": 278
+    },
+    "019bed300bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 639,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 640,
+      "n_reader_calls": 1,
+      "t_reader_ms": 155
+    },
+    "3ccbcad20bda11eba7f7acde48001122": {
+      "reader_prompt_tokens": 870,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 872,
+      "n_reader_calls": 1,
+      "t_reader_ms": 197
+    },
+    "d3949a8e08c111ebbd8bac1f6bf848b6": {
+      "reader_prompt_tokens": 751,
+      "reader_output_tokens": 9,
+      "reader_total_tokens": 760,
+      "n_reader_calls": 1,
+      "t_reader_ms": 303
+    },
+    "bf06c94208a711ebbd7fac1f6bf848b6": {
+      "reader_prompt_tokens": 669,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 670,
+      "n_reader_calls": 1,
+      "t_reader_ms": 155
+    },
+    "1822cbb4089111ebbd72ac1f6bf848b6": {
+      "reader_prompt_tokens": 687,
+      "reader_output_tokens": 8,
+      "reader_total_tokens": 695,
+      "n_reader_calls": 1,
+      "t_reader_ms": 270
+    },
+    "f13a163908b311ebbd86ac1f6bf848b6": {
+      "reader_prompt_tokens": 709,
+      "reader_output_tokens": 9,
+      "reader_total_tokens": 718,
+      "n_reader_calls": 1,
+      "t_reader_ms": 274
+    },
+    "d6074911090011ebbdadac1f6bf848b6": {
+      "reader_prompt_tokens": 936,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 942,
+      "n_reader_calls": 1,
+      "t_reader_ms": 310
+    },
+    "0c585dbc0bde11eba7f7acde48001122": {
+      "reader_prompt_tokens": 758,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 759,
+      "n_reader_calls": 1,
+      "t_reader_ms": 180
+    },
+    "4d982dc308c111ebbd8bac1f6bf848b6": {
+      "reader_prompt_tokens": 900,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 904,
+      "n_reader_calls": 1,
+      "t_reader_ms": 245
+    },
+    "f1ff478c089011ebbd72ac1f6bf848b6": {
+      "reader_prompt_tokens": 702,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 703,
+      "n_reader_calls": 1,
+      "t_reader_ms": 163
+    },
+    "26b866e6085c11ebbd5cac1f6bf848b6": {
+      "reader_prompt_tokens": 998,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 1002,
+      "n_reader_calls": 1,
+      "t_reader_ms": 259
+    },
+    "e5bdd71f08d011ebbd95ac1f6bf848b6": {
+      "reader_prompt_tokens": 832,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 836,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2471
+    },
+    "5eff3f9a0bd911eba7f7acde48001122": {
+      "reader_prompt_tokens": 776,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 777,
+      "n_reader_calls": 1,
+      "t_reader_ms": 182
+    },
+    "94873b220bd911eba7f7acde48001122": {
+      "reader_prompt_tokens": 800,
+      "reader_output_tokens": 7,
+      "reader_total_tokens": 807,
+      "n_reader_calls": 1,
+      "t_reader_ms": 264
+    },
+    "0323cdea090d11ebbdadac1f6bf848b6": {
+      "reader_prompt_tokens": 720,
+      "reader_output_tokens": 10,
+      "reader_total_tokens": 730,
+      "n_reader_calls": 1,
+      "t_reader_ms": 365
+    },
+    "48c8f7f80bdd11eba7f7acde48001122": {
+      "reader_prompt_tokens": 780,
+      "reader_output_tokens": 20,
+      "reader_total_tokens": 800,
+      "n_reader_calls": 1,
+      "t_reader_ms": 464
+    },
+    "774fa4e20bdc11eba7f7acde48001122": {
+      "reader_prompt_tokens": 840,
+      "reader_output_tokens": 12,
+      "reader_total_tokens": 852,
+      "n_reader_calls": 1,
+      "t_reader_ms": 370
+    },
+    "90bad89e0bdb11eba7f7acde48001122": {
+      "reader_prompt_tokens": 734,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 737,
+      "n_reader_calls": 1,
+      "t_reader_ms": 208
+    },
+    "e4e02a240bda11eba7f7acde48001122": {
+      "reader_prompt_tokens": 850,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 856,
+      "n_reader_calls": 1,
+      "t_reader_ms": 262
+    }
+  },
+  "trav_prompt_tokens": 0.0,
+  "trav_output_tokens": 0.0,
+  "trav_tokens_total": 0.0,
+  "reader_prompt_tokens": 74996.0,
+  "reader_output_tokens": 488.0,
+  "reader_total_tokens": 75484.0,
+  "n_reader_calls": 100.0,
+  "t_traversal_ms": 0.0,
+  "t_reader_ms": 25738.0,
+  "tokens_total": 75484.0,
+  "t_total_ms": 25738.0,
+  "tps_overall": 2932.7842101173364
+}

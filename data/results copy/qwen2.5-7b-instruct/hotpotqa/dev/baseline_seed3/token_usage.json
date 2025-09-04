@@ -1,0 +1,716 @@
+{
+  "per_query_reader": {
+    "5ae0038655429925eb1afbe0": {
+      "reader_prompt_tokens": 176,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 179,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3334
+    },
+    "5abdf12255429976d4830a2f": {
+      "reader_prompt_tokens": 214,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 217,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4253
+    },
+    "5a8463545542990548d0b2a3": {
+      "reader_prompt_tokens": 366,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 371,
+      "n_reader_calls": 1,
+      "t_reader_ms": 6238
+    },
+    "5adf65555542992d7e9f9334": {
+      "reader_prompt_tokens": 268,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 269,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4829
+    },
+    "5ae3ff575542995dadf242aa": {
+      "reader_prompt_tokens": 266,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 267,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3373
+    },
+    "5a85c3a15542992a431d1b97": {
+      "reader_prompt_tokens": 197,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 199,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3205
+    },
+    "5add311b5542994ed6169cc5": {
+      "reader_prompt_tokens": 282,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 286,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3701
+    },
+    "5abd01205542992ac4f3819b": {
+      "reader_prompt_tokens": 186,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 188,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3066
+    },
+    "5a81ff62554299676cceb1c4": {
+      "reader_prompt_tokens": 315,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 318,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3531
+    },
+    "5a738225554299623ed4abc3": {
+      "reader_prompt_tokens": 258,
+      "reader_output_tokens": 9,
+      "reader_total_tokens": 267,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4609
+    },
+    "5ac1795f5542994ab5c67d5f": {
+      "reader_prompt_tokens": 282,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 284,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4298
+    },
+    "5ab7f97a5542991d322237ef": {
+      "reader_prompt_tokens": 269,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 275,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4887
+    },
+    "5ae5b301554299546bf82f2d": {
+      "reader_prompt_tokens": 214,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 217,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4848
+    },
+    "5ae748d1554299572ea547b0": {
+      "reader_prompt_tokens": 251,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 254,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3945
+    },
+    "5ae7edee554299540e5a56ad": {
+      "reader_prompt_tokens": 207,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 210,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4095
+    },
+    "5a87d8215542994775f60800": {
+      "reader_prompt_tokens": 267,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 270,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3630
+    },
+    "5a72a0be5542992359bc3143": {
+      "reader_prompt_tokens": 358,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 359,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3373
+    },
+    "5ae82ae555429952e35eaa71": {
+      "reader_prompt_tokens": 263,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 265,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3216
+    },
+    "5a7a1cd85542990783324e65": {
+      "reader_prompt_tokens": 247,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 248,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2977
+    },
+    "5a79c6a55542994bb9457091": {
+      "reader_prompt_tokens": 261,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 265,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3222
+    },
+    "5ab6aaff55429953192ad35b": {
+      "reader_prompt_tokens": 187,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 189,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3342
+    },
+    "5ab47cd75542991751b4d78d": {
+      "reader_prompt_tokens": 276,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 277,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3361
+    },
+    "5ade69e455429975fa854ec5": {
+      "reader_prompt_tokens": 237,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 238,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3434
+    },
+    "5ab56e32554299637185c594": {
+      "reader_prompt_tokens": 218,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 219,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2897
+    },
+    "5ab28b12554299449642c8ee": {
+      "reader_prompt_tokens": 258,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 259,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2767
+    },
+    "5ae60426554299546bf83019": {
+      "reader_prompt_tokens": 240,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 243,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2897
+    },
+    "5ab9b29c554299743d22ebae": {
+      "reader_prompt_tokens": 612,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 615,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3562
+    },
+    "5a8da81e554299068b959d7e": {
+      "reader_prompt_tokens": 281,
+      "reader_output_tokens": 8,
+      "reader_total_tokens": 289,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4604
+    },
+    "5adf9dc3554299025d62a2e6": {
+      "reader_prompt_tokens": 285,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 286,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4619
+    },
+    "5ac52fc35542994611c8b403": {
+      "reader_prompt_tokens": 183,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 184,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4441
+    },
+    "5adf043b5542993a75d263d4": {
+      "reader_prompt_tokens": 194,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 196,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3926
+    },
+    "5a7a8a9c554299042af8f666": {
+      "reader_prompt_tokens": 186,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 189,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3180
+    },
+    "5a837d9a554299123d8c213e": {
+      "reader_prompt_tokens": 206,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 207,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3143
+    },
+    "5adf3e355542993a75d26440": {
+      "reader_prompt_tokens": 397,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 398,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3035
+    },
+    "5ac056385542997d64295a08": {
+      "reader_prompt_tokens": 708,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 709,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3219
+    },
+    "5a7be5bd5542997c3ec972ba": {
+      "reader_prompt_tokens": 157,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 160,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3214
+    },
+    "5ae7e1fc55429952e35ea9cc": {
+      "reader_prompt_tokens": 223,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 224,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3222
+    },
+    "5a7f5c9f55429969796c1a0f": {
+      "reader_prompt_tokens": 166,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 168,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3190
+    },
+    "5ab8f7535542991b5579f0a7": {
+      "reader_prompt_tokens": 278,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 283,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3319
+    },
+    "5ade51b45542997c77adedf4": {
+      "reader_prompt_tokens": 208,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 209,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3030
+    },
+    "5a73a7c755429978a71e9068": {
+      "reader_prompt_tokens": 278,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 279,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3056
+    },
+    "5a7ddc5a5542995f4f4022da": {
+      "reader_prompt_tokens": 252,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 253,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3062
+    },
+    "5ab83d595542990e739ec886": {
+      "reader_prompt_tokens": 298,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 301,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2777
+    },
+    "5a7757215542993569682d58": {
+      "reader_prompt_tokens": 213,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 214,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2774
+    },
+    "5a8704f8554299211dda2ba4": {
+      "reader_prompt_tokens": 252,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 253,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2759
+    },
+    "5ab67bd355429954757d32f2": {
+      "reader_prompt_tokens": 232,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 235,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3049
+    },
+    "5ae22b8d554299234fd0440f": {
+      "reader_prompt_tokens": 262,
+      "reader_output_tokens": 9,
+      "reader_total_tokens": 271,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3931
+    },
+    "5ae37c765542992f92d822d4": {
+      "reader_prompt_tokens": 298,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 299,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3974
+    },
+    "5a80b3a9554299485f5986cc": {
+      "reader_prompt_tokens": 253,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 254,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3951
+    },
+    "5abc5951554299114383a116": {
+      "reader_prompt_tokens": 276,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 277,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3671
+    },
+    "5ab6d09255429954757d337d": {
+      "reader_prompt_tokens": 301,
+      "reader_output_tokens": 7,
+      "reader_total_tokens": 308,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3476
+    },
+    "5ae75a4c5542997b22f6a6f1": {
+      "reader_prompt_tokens": 268,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 269,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3443
+    },
+    "5adddccd5542997dc7907069": {
+      "reader_prompt_tokens": 221,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 222,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3449
+    },
+    "5a8038b55542996402f6a485": {
+      "reader_prompt_tokens": 350,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 351,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3494
+    },
+    "5ae819ac55429952e35eaa16": {
+      "reader_prompt_tokens": 187,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 188,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2494
+    },
+    "5a7ed2c655429930675135e5": {
+      "reader_prompt_tokens": 242,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 243,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2340
+    },
+    "5ab1d7ac554299449642c7e6": {
+      "reader_prompt_tokens": 187,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 188,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3531
+    },
+    "5adf4a275542993a75d26498": {
+      "reader_prompt_tokens": 201,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 202,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2267
+    },
+    "5ab96ab755429970cfb8eacd": {
+      "reader_prompt_tokens": 201,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 202,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1052
+    },
+    "5adccdd55542992c1e3a2408": {
+      "reader_prompt_tokens": 247,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 251,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2886
+    },
+    "5a760faa5542994ccc9186a8": {
+      "reader_prompt_tokens": 227,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 229,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3038
+    },
+    "5a8325b35542990548d0b18f": {
+      "reader_prompt_tokens": 242,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 245,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3390
+    },
+    "5a7d3470554299452d57bb56": {
+      "reader_prompt_tokens": 303,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 304,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3408
+    },
+    "5ab6ff3a5542991d3222372a": {
+      "reader_prompt_tokens": 171,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 172,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2928
+    },
+    "5a7c6bcc55429935c91b519c": {
+      "reader_prompt_tokens": 259,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 262,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3089
+    },
+    "5ae789615542997ec2727695": {
+      "reader_prompt_tokens": 210,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 213,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3033
+    },
+    "5a71717d5542994082a3e834": {
+      "reader_prompt_tokens": 323,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 325,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3197
+    },
+    "5a8574945542997b5ce3fffb": {
+      "reader_prompt_tokens": 214,
+      "reader_output_tokens": 12,
+      "reader_total_tokens": 226,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4832
+    },
+    "5ac01bca5542992a796dec8d": {
+      "reader_prompt_tokens": 197,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 198,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4543
+    },
+    "5aba5d2e55429901930fa799": {
+      "reader_prompt_tokens": 282,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 285,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4594
+    },
+    "5ab51dae5542991779162d82": {
+      "reader_prompt_tokens": 258,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 259,
+      "n_reader_calls": 1,
+      "t_reader_ms": 4431
+    },
+    "5a738d27554299623ed4abf3": {
+      "reader_prompt_tokens": 195,
+      "reader_output_tokens": 7,
+      "reader_total_tokens": 202,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3687
+    },
+    "5a73977d554299623ed4ac08": {
+      "reader_prompt_tokens": 206,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 207,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3677
+    },
+    "5a80aeff5542996402f6a5eb": {
+      "reader_prompt_tokens": 282,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 283,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3359
+    },
+    "5a8ee6915542990e94052bad": {
+      "reader_prompt_tokens": 225,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 226,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3359
+    },
+    "5ae0d52e554299603e418469": {
+      "reader_prompt_tokens": 190,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 191,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2467
+    },
+    "5a886886554299206df2b258": {
+      "reader_prompt_tokens": 241,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 247,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3216
+    },
+    "5a8085705542992bc0c4a74b": {
+      "reader_prompt_tokens": 239,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 242,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3550
+    },
+    "5a78daf855429970f5fffdae": {
+      "reader_prompt_tokens": 209,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 212,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3836
+    },
+    "5ab5f854554299637185c64e": {
+      "reader_prompt_tokens": 237,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 238,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3842
+    },
+    "5ac3d9c9554299204fd21ea3": {
+      "reader_prompt_tokens": 208,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 211,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3385
+    },
+    "5ae4c39f5542995dadf243fb": {
+      "reader_prompt_tokens": 163,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 164,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3020
+    },
+    "5a8e3dc05542995085b37401": {
+      "reader_prompt_tokens": 457,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 458,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2749
+    },
+    "5a80ad7c5542992097ad3018": {
+      "reader_prompt_tokens": 211,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 212,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2810
+    },
+    "5ab7c1a955429928e1fe38c8": {
+      "reader_prompt_tokens": 328,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 329,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2527
+    },
+    "5a8ee4315542990e94052ba7": {
+      "reader_prompt_tokens": 308,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 314,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3150
+    },
+    "5a77a65b5542992a6e59df57": {
+      "reader_prompt_tokens": 158,
+      "reader_output_tokens": 62,
+      "reader_total_tokens": 220,
+      "n_reader_calls": 1,
+      "t_reader_ms": 23564
+    },
+    "5adda7585542997dc790700c": {
+      "reader_prompt_tokens": 161,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 162,
+      "n_reader_calls": 1,
+      "t_reader_ms": 12145
+    },
+    "5ae2b770554299495565db0f": {
+      "reader_prompt_tokens": 191,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 192,
+      "n_reader_calls": 1,
+      "t_reader_ms": 12152
+    },
+    "5ae6f2a7554299572ea5464a": {
+      "reader_prompt_tokens": 210,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 211,
+      "n_reader_calls": 1,
+      "t_reader_ms": 11541
+    },
+    "5a88dcf9554299206df2b383": {
+      "reader_prompt_tokens": 216,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 217,
+      "n_reader_calls": 1,
+      "t_reader_ms": 11586
+    },
+    "5ab9debb55429955dce3ed97": {
+      "reader_prompt_tokens": 268,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 273,
+      "n_reader_calls": 1,
+      "t_reader_ms": 12160
+    },
+    "5ae791ef55429952e35ea979": {
+      "reader_prompt_tokens": 299,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 300,
+      "n_reader_calls": 1,
+      "t_reader_ms": 12167
+    },
+    "5ab5ed505542997d4ad1f255": {
+      "reader_prompt_tokens": 225,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 226,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3288
+    },
+    "5ab1eac95542993be8fa987f": {
+      "reader_prompt_tokens": 242,
+      "reader_output_tokens": 2,
+      "reader_total_tokens": 244,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3279
+    },
+    "5ab2d3df554299194fa9352c": {
+      "reader_prompt_tokens": 247,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 248,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2726
+    },
+    "5a7634f155429976ec32bd6b": {
+      "reader_prompt_tokens": 166,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 172,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3473
+    },
+    "5ae5aba0554299546bf82f17": {
+      "reader_prompt_tokens": 230,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 231,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3458
+    },
+    "5ae4d3c95542990ba0bbb165": {
+      "reader_prompt_tokens": 300,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 301,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3099
+    },
+    "5a87ab9b5542996e4f3088c2": {
+      "reader_prompt_tokens": 354,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 355,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2924
+    }
+  },
+  "trav_prompt_tokens": 0.0,
+  "trav_completion_tokens": 0.0,
+  "trav_tokens_total": 0.0,
+  "reader_prompt_tokens": 25318.0,
+  "reader_output_tokens": 298.0,
+  "reader_total_tokens": 25616.0,
+  "n_reader_calls": 100.0,
+  "t_traversal_ms": 0.0,
+  "t_reader_ms": 415147.0,
+  "tokens_total": 25616.0,
+  "t_total_ms": 415147.0,
+  "tps_overall": 61.70344480388874
+}
