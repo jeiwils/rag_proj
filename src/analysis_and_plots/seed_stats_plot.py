@@ -101,6 +101,77 @@ def _plot_wilcoxon_heatmap(
     plt.close(fig)
 
 
+
+def plot_efficiency_scatter(per_seed: Dict[str, Dict], out_dir: Path) -> None:
+    """Scatter plots of EM/F1 versus tokens and wall-time.
+
+    Parameters
+    ----------
+    per_seed:
+        Mapping of seed to metric dictionary. Metrics should include ``EM``,
+        ``F1``, ``tokens`` and ``wall_time``.
+    out_dir:
+        Directory where the plot should be written.
+    """
+
+    # Gather metrics for seeds that have all required values.
+    seeds: list[int] = []
+    em_vals: list[float] = []
+    f1_vals: list[float] = []
+    token_vals: list[float] = []
+    wall_vals: list[float] = []
+    for seed_key, metrics in per_seed.items():
+        em = metrics.get("EM")
+        f1 = metrics.get("F1")
+        tokens = metrics.get("tokens")
+        wall = metrics.get("wall_time")
+        if None in (em, f1, tokens, wall):
+            continue
+        seeds.append(int(seed_key))
+        em_vals.append(float(em))
+        f1_vals.append(float(f1))
+        token_vals.append(float(tokens))
+        wall_vals.append(float(wall))
+
+    if not seeds:
+        return
+
+    fig, axes = stylized_subplots(2, 2, figsize=(12, 10))
+    ax_em_tokens, ax_em_time, ax_f1_tokens, ax_f1_time = axes.flat
+
+    ax_em_tokens.scatter(token_vals, em_vals)
+    for x, y, seed in zip(token_vals, em_vals, seeds):
+        ax_em_tokens.annotate(str(seed), (x, y))
+    ax_em_tokens.set_xlabel("Total tokens")
+    ax_em_tokens.set_ylabel("EM")
+    ax_em_tokens.set_title("EM vs tokens")
+
+    ax_em_time.scatter(wall_vals, em_vals)
+    for x, y, seed in zip(wall_vals, em_vals, seeds):
+        ax_em_time.annotate(str(seed), (x, y))
+    ax_em_time.set_xlabel("Wall time (s)")
+    ax_em_time.set_ylabel("EM")
+    ax_em_time.set_title("EM vs wall time")
+
+    ax_f1_tokens.scatter(token_vals, f1_vals)
+    for x, y, seed in zip(token_vals, f1_vals, seeds):
+        ax_f1_tokens.annotate(str(seed), (x, y))
+    ax_f1_tokens.set_xlabel("Total tokens")
+    ax_f1_tokens.set_ylabel("F1")
+    ax_f1_tokens.set_title("F1 vs tokens")
+
+    ax_f1_time.scatter(wall_vals, f1_vals)
+    for x, y, seed in zip(wall_vals, f1_vals, seeds):
+        ax_f1_time.annotate(str(seed), (x, y))
+    ax_f1_time.set_xlabel("Wall time (s)")
+    ax_f1_time.set_ylabel("F1")
+    ax_f1_time.set_title("F1 vs wall time")
+
+    fig.tight_layout()
+    fig.savefig(ensure_output_path(out_dir / "efficiency_scatter.png"))
+    plt.close(fig)
+
+
 SEED_REGEX = re.compile(r"seed(\d+)")
 
 
@@ -261,6 +332,8 @@ def process_seed_variance(results_dir: Path) -> None:
 
     if per_seed:
         _plot_metric_distributions(per_seed, mean, std_dev, out_dir)
+        plot_efficiency_scatter(per_seed, out_dir)
+
 
     if wilcoxon:
         seeds = sorted(int(s) for s in per_seed.keys())
@@ -298,4 +371,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(args.base_dir)
 
-__all__ = ["main", "process_seed_variance"]
+__all__ = ["main", "process_seed_variance", "plot_efficiency_scatter"]

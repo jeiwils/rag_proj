@@ -55,7 +55,7 @@ def plot_mean_with_error(metric: str, stats: dict, out_file: Path) -> None:
 
 
 def main(results_dir: str = "data/results", metrics: list[str] | None = None) -> None:
-    """Generate mean-with-error plots for seed experiments.
+    """Generate mean-with-error plots and Wilcoxon heatmaps for seed experiments.
 
     Parameters
     ----------
@@ -86,6 +86,19 @@ def main(results_dir: str = "data/results", metrics: list[str] | None = None) ->
     metrics = metrics or list(available_metrics)
     out_dir = base / "graphs"
     _plot_metric_distributions(per_seed, mean, std_dev, out_dir)
+
+    wilcoxon = stats.get("wilcoxon", {})
+    if wilcoxon:
+        seeds = sorted(int(s) for s in per_seed.keys())
+        for key in ("EM_p_value", "F1_p_value"):
+            if any(key in v for v in wilcoxon.values()):
+                _plot_wilcoxon_heatmap(
+                    wilcoxon,
+                    seeds,
+                    key,
+                    out_dir / f"wilcoxon_{key.split('_')[0].lower()}.png",
+                )
+
     for metric in metrics:
         out_file = out_dir / f"mean_{metric}.png"
         plot_mean_with_error(metric, stats, out_file)
@@ -93,7 +106,7 @@ def main(results_dir: str = "data/results", metrics: list[str] | None = None) ->
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Plot mean metrics across seeds with standard deviation bands."
+        description="Plot seed metrics with standard deviation bands and Wilcoxon heatmaps."
     )
     parser.add_argument("model")
     parser.add_argument("dataset")
