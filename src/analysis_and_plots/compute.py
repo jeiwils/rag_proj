@@ -14,11 +14,13 @@ from typing import Dict, Sequence
 import matplotlib.pyplot as plt
 
 from .utils import (
+    DEFAULT_PLOT_DIR,
     ensure_output_path,
     load_json,
     stylized_subplots,
     get_result_dirs,
     rag_run_paths,
+    parse_traversal_run_dir,
 )
 
 
@@ -120,10 +122,14 @@ __all__ = ["plot_compute_usage"]
 
 
 if __name__ == "__main__":
-    # Example usage: compare baseline and dense RAG runs for a single seed.
-    model, dataset, split, seed = "MODEL", "DATASET", "dev", 0
-    dirs = [
-        rag_run_paths(model, dataset, split, seed, mode)["answers"]["base"]
-        for mode in ("baseline", "dense")
-    ]
-    plot_compute_usage(dirs, Path("analysis/compute_usage.png"))
+    dirs = get_result_dirs(required="token_usage.json")
+    groups: Dict[tuple[str, str, str, int], list[Path]] = {}
+    for d in dirs:
+        key = parse_traversal_run_dir(d)
+        groups.setdefault(key, []).append(d)
+
+    for (model, dataset, split, seed), variant_dirs in groups.items():
+        output = ensure_output_path(
+            DEFAULT_PLOT_DIR / model / dataset / split / f"compute_seed{seed}.png"
+        )
+        plot_compute_usage(variant_dirs, output)

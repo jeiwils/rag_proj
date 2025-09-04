@@ -255,10 +255,22 @@ __all__ = [
 
 
 if __name__ == "__main__":
-    files = find_result_files()
-    stats = load_traversal_stats(files)
-    plot_traversal_distributions(stats)
+    result_dirs = get_result_dirs(
+        required=[
+            "per_query_traversal_results.jsonl",
+            "final_traversal_stats.json",
+        ]
+    )
 
-    # Example for plotting traversal metrics across result directories.
-    dirs = get_result_dirs(required="final_traversal_stats.json")
-    plot_traversal_metrics(dirs, DEFAULT_PLOT_DIR / "traversal_metrics.png")
+    base = Path("data/results")
+    for rdir in result_dirs:
+        per_query = rdir / "per_query_traversal_results.jsonl"
+        stats = load_traversal_stats([per_query])
+        output_path = DEFAULT_PLOT_DIR / rdir.relative_to(base)
+        plot_traversal_distributions(stats, output_path)
+        plot_traversal_metrics([rdir], output_path / "traversal_metrics.png")
+
+    if result_dirs:
+        plot_traversal_metrics(
+            result_dirs, DEFAULT_PLOT_DIR / "traversal_metrics.png"
+        )
