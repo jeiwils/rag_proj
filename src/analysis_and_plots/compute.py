@@ -60,6 +60,17 @@ def _load_usage(result_dir: Path, fields: Sequence[str]) -> Dict[str, float]:
 
     data = load_json(usage_path)
 
+    # handle legacy field names - I don't dare touch my loops in the llm calls right now!!!
+    if "trav_output_tokens" not in data and "trav_completion_tokens" in data:
+        data["trav_output_tokens"] = data["trav_completion_tokens"]
+    if "per_query_traversal" in data:
+        for m in data["per_query_traversal"].values():
+            if (
+                "trav_output_tokens" not in m
+                and "trav_completion_tokens" in m
+            ):
+                m["trav_output_tokens"] = m["trav_completion_tokens"]
+
     # Backfill missing fields using per-query metrics when available.
     for field in fields:
         if field not in data:

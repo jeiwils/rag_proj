@@ -40,3 +40,4 @@ data/representations/models/*
 !data/models/deepseek-distill-qwen-7b/**/dev/
 !data/models/qwen-7b/
 !data/models/qwen-7b/**/dev/
+!per_query_traversal_results.jsonl
