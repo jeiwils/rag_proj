@@ -427,6 +427,9 @@ def llm_choose_edge(
                 token_totals["n_traversal_calls"] += 1
                 token_totals["t_traversal_ms"] += elapsed_ms
 
+
+            _record_usage(usage)
+
             if is_r1_like(oq_server["model"]):
                 answer = strip_think(answer)
             answer = answer.strip()
