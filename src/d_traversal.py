@@ -148,8 +148,6 @@ from src.utils import (
     pool_map,
     compute_hits_at_k,
     compute_recall_at_k,
-
-    log_wall_time,
     validate_vec_ids,
     merge_token_usage,
 
@@ -1663,7 +1661,6 @@ def process_traversal(cfg: Dict) -> None:
 
 
 if __name__ == "__main__":
-    start_time = time.time()
 
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"] # ["2wikimultihopqa"] # ["hotpotqa"] #["musique", "hotpotqa", "2wikimultihopqa"]
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
@@ -1726,4 +1723,3 @@ if __name__ == "__main__":
     for _, model_configs in configs_by_model.items():
         for cfg in model_configs:
             process_traversal(cfg)
-    log_wall_time(__file__, start_time)

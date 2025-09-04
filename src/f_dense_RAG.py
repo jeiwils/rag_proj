@@ -43,8 +43,6 @@ from src.utils import (
     processed_dataset_paths,
     compute_hits_at_k,
     compute_recall_at_k,
-
-    log_wall_time,
     save_jsonl,
     merge_token_usage,
 
@@ -390,7 +388,6 @@ def run_dense_rag(
 
 
 if __name__ == "__main__":
-    start_time = time.time()
     DATASETS = ["hotpotqa", "2wikimultihopqa", "musique"]
     SPLITS = ["dev"]
 
@@ -431,4 +428,3 @@ if __name__ == "__main__":
                     )
                     print(metrics)
     print("\nDense RAG complete.")
-    log_wall_time(__file__, start_time)
