@@ -794,7 +794,6 @@ def merge_token_usage(
                 "tokens_total",
                 "t_total_ms",
                 "tps_overall",
-                "latency_ms",
                 "query_latency_ms",
                 "call_latency_ms",
                 "query_qps_traversal",
@@ -848,8 +847,7 @@ def merge_token_usage(
         merged.get("n_reader_calls", 0) / (t_reader_ms / 1000) if t_reader_ms else 0.0
     )
     merged["query_latency_ms"] = t_total_ms / num_queries if num_queries else 0.0
-    merged["latency_ms"] = merged["query_latency_ms"]
-    
+
     n_trav_calls = merged.get("n_traversal_calls", 0)
     n_reader_calls = merged.get("n_reader_calls", 0)
     merged["call_latency_ms_traversal"] = t_trav_ms / max(n_trav_calls, 1)

@@ -298,7 +298,7 @@ def run_dense_rag(
 
     t_reader_ms = reader_time_total_ms
     num_queries = len(per_query_reader)
-    latency_ms = t_reader_ms / num_queries if num_queries else 0.0
+    query_latency_ms = t_reader_ms / num_queries if num_queries else 0.0
     call_latency_ms = t_reader_ms / max(token_totals["n_reader_calls"], 1)
 
     usage = {
@@ -311,8 +311,7 @@ def run_dense_rag(
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
         "num_queries": num_queries,
-        "latency_ms": latency_ms,
-        "query_latency_ms": latency_ms,
+        "query_latency_ms": query_latency_ms,
         "call_latency_ms": call_latency_ms,
     }
     run_id = str(int(time.time()))  # Identifier to group token usage shards
@@ -330,8 +329,7 @@ def run_dense_rag(
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
         "num_queries": num_queries,
-        "latency_ms": latency_ms,
-        "query_latency_ms": latency_ms,
+        "query_latency_ms": query_latency_ms,
         "call_latency_ms": call_latency_ms,
     })
 
@@ -367,7 +365,7 @@ def run_dense_rag(
     token_usage_data["query_qps_reader"] = query_qps_reader
     token_usage_data["cps_reader"] = cps_reader
     token_usage_data["num_queries"] = num_queries
-    token_usage_data["latency_ms"] = latency_ms
+    token_usage_data["query_latency_ms"] = query_latency_ms
     token_usage_data["call_latency_ms"] = call_latency_ms
     with open(token_usage_file, "w", encoding="utf-8") as f:
         json.dump(token_usage_data, f, indent=2)
@@ -375,7 +373,7 @@ def run_dense_rag(
     print(
         f"[summary] overall throughput: {tps_overall:.2f} tokens/s, "
         f"reader throughput: {query_qps_reader:.2f} queries/s, {cps_reader:.2f} calls/s, "
-        f"reader latency: {latency_ms:.2f} ms/query, {call_latency_ms:.2f} ms/call"
+        f"reader latency: {query_latency_ms:.2f} ms/query, {call_latency_ms:.2f} ms/call"
     )
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
