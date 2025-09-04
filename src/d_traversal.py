@@ -841,12 +841,18 @@ def compute_hop_metrics(
     visited_cumulative = set()
     results = []
 
-    for idx, hop_log in enumerate(hop_trace):
-        # include initial seed passages from the first hop so metrics
-        # reflect already visited nodes even if no new edges are chosen
-        if idx == 0:
-            visited_cumulative.update(hop_log.get("expanded_from", []))
+    # for idx, hop_log in enumerate(hop_trace):
+    #     # include initial seed passages from the first hop so metrics
+    #     # reflect already visited nodes even if no new edges are chosen
+    #     if idx == 0:
+    #         visited_cumulative.update(hop_log.get("expanded_from", []))
 
+    for hop_log in hop_trace:
+        # Only count newly discovered passages for metric computation.
+        # Seed passages from ``expanded_from`` are excluded so initial dense
+        # retrieval does not influence precision/recall/F1.
+
+        
         visited_cumulative.update(hop_log.get("new_passages", []))
         tp = len(visited_cumulative & gold_set)
         fp = len(visited_cumulative - gold_set)
