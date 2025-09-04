@@ -759,7 +759,7 @@ def generate_answers_from_traversal(
     num_queries = len(per_query_reader)
     n_reader_calls = token_totals["n_reader_calls"]
 
-    latency_ms = t_reader_ms / num_queries if num_queries else 0
+    query_latency_ms = t_reader_ms / num_queries if num_queries else 0
     call_latency_ms = t_reader_ms / max(n_reader_calls, 1)
     query_qps_reader = num_queries / (t_reader_ms / 1000) if t_reader_ms else 0.0
     cps_reader = (
@@ -775,8 +775,7 @@ def generate_answers_from_traversal(
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
         "num_queries": num_queries,
-        "latency_ms": latency_ms,
-        "query_latency_ms": t_reader_ms,
+        "query_latency_ms": query_latency_ms,
         "call_latency_ms": call_latency_ms,
         "query_qps_reader": query_qps_reader,
         "cps_reader": cps_reader,
@@ -798,7 +797,7 @@ def generate_answers_from_traversal(
         "t_traversal_ms": 0,
         "t_reader_ms": t_reader_ms,
         "num_queries": num_queries,
-        "latency_ms": latency_ms,
+        "query_latency_ms": query_latency_ms,
         "call_latency_ms": call_latency_ms,
 
     })
@@ -831,8 +830,7 @@ def generate_answers_from_traversal(
     token_usage_data["query_qps_reader"] = query_qps_reader
     token_usage_data["cps_reader"] = cps_reader
     token_usage_data["num_queries"] = num_queries
-    token_usage_data["latency_ms"] = latency_ms
-    token_usage_data["query_latency_ms"] = t_reader_ms
+    token_usage_data["query_latency_ms"] = query_latency_ms
     token_usage_data["call_latency_ms"] = call_latency_ms
     with open(token_usage_file, "w", encoding="utf-8") as f:
         json.dump(token_usage_data, f, indent=2)
@@ -841,12 +839,11 @@ def generate_answers_from_traversal(
         f"[summary] overall throughput: {tps_overall:.2f} tokens/s | "
         f"reader query throughput: {query_qps_reader:.2f} queries/s | "
         f"reader call throughput: {cps_reader:.2f} calls/s | "
-        f"reader query latency: {latency_ms:.2f} ms | "
+        f"reader query latency: {query_latency_ms:.2f} ms | "
         f"reader call latency: {call_latency_ms:.2f} ms"
     )
 
     return metrics
-
 
 
 
