@@ -314,15 +314,17 @@ def ask_llm_with_passages(
     usage: Dict[str, int] = {}
     max_attempts = 2
 
+    stop_sequences: list[str] | None = ["\n", ".", "Answer:", "Final answer:"]
+    if is_r1_like(model_name):
+        stop_sequences = None
 
-    
     for attempt in range(max_attempts):
         raw, usage = query_llm(
             prompt,
             server_url=server_url,
             max_tokens=max_tokens,
             model_name=model_name,
-            stop=["\n", ".", "Answer:", "Final answer:"],
+            stop=stop_sequences,
             temperature=TEMPERATURE.get("answer_generation", 0.0),
             phase="answer_generation",
             seed=seed,
