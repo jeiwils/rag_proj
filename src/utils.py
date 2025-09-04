@@ -847,6 +847,12 @@ def merge_token_usage(
     )
     merged["latency_ms"] = t_total_ms / num_queries if num_queries else 0.0
 
+    n_trav_calls = merged.get("n_traversal_calls", 0)
+    n_reader_calls = merged.get("n_reader_calls", 0)
+    merged["call_latency_ms_traversal"] = t_trav_ms / max(n_trav_calls, 1)
+    merged["call_latency_ms_reader"] = t_reader_ms / max(n_reader_calls, 1)
+    merged["call_latency_ms"] = t_total_ms / max(n_trav_calls + n_reader_calls, 1)
+
 
 
     out_path = out_dir / "token_usage.json"

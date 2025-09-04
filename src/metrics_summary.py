@@ -65,8 +65,8 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
         per_query = usage.get("per_query", {})
 
         tokens: list[float] = []
-        times_ms: list[float] = []
-        latencies_ms: list[float] = []
+        query_latencies_ms: list[float] = []
+        call_latencies_ms: list[float] = []
         tps: list[float] = []
         query_qps_trav: list[float] = []
         cps_trav: list[float] = []
@@ -77,7 +77,7 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
             tok = float(metrics.get("tokens_total", 0))
             t_ms = float(metrics.get("t_total_ms", 0))
             tokens.append(tok)
-            times_ms.append(t_ms)
+            query_latencies_ms.append(t_ms)
             tps.append(
                 float(metrics.get("tps_overall", tok / (t_ms / 1000) if t_ms else 0.0))
             )
@@ -85,13 +85,11 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
             n_trav_calls = float(metrics.get("n_traversal_calls", 0))
             n_reader_calls = float(metrics.get("n_reader_calls", 0))
             total_calls = n_trav_calls + n_reader_calls
-            if "query_latency_ms" in metrics:
-                latency = float(metrics.get("query_latency_ms", 0))
-            elif "latency_ms" in metrics:
-                latency = float(metrics.get("latency_ms", 0))
+            if "call_latency_ms" in metrics:
+                latency = float(metrics.get("call_latency_ms", 0))
             else:
                 latency = t_ms / max(total_calls, 1)
-            latencies_ms.append(latency)
+            call_latencies_ms.append(latency)
 
             t_trav_ms = float(metrics.get("t_traversal_ms", 0))
             query_qps_trav.append(1 / (t_trav_ms / 1000) if t_trav_ms else 0.0)
@@ -104,12 +102,14 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
         if tokens:
             stats["median_tokens_total"] = float(np.median(tokens))
             stats["p90_tokens_total"] = float(np.percentile(tokens, 90))
-        if times_ms:
-            stats["median_t_total_ms"] = float(np.median(times_ms))
-            stats["p90_t_total_ms"] = float(np.percentile(times_ms, 90))
-        if latencies_ms:
-            stats["median_latency_ms"] = float(np.median(latencies_ms))
-            stats["p90_latency_ms"] = float(np.percentile(latencies_ms, 90))
+        if query_latencies_ms:
+            stats["median_t_total_ms"] = float(np.median(query_latencies_ms))
+            stats["p90_t_total_ms"] = float(np.percentile(query_latencies_ms, 90))
+            stats["median_latency_ms"] = float(np.median(query_latencies_ms))
+            stats["p90_latency_ms"] = float(np.percentile(query_latencies_ms, 90))
+        if call_latencies_ms:
+            stats["median_call_latency_ms"] = float(np.median(call_latencies_ms))
+            stats["p90_call_latency_ms"] = float(np.percentile(call_latencies_ms, 90))
         if tps:
             stats["median_tps_overall"] = float(np.median(tps))
             stats["p90_tps_overall"] = float(np.percentile(tps, 90))
@@ -199,38 +199,38 @@ def append_traversal_percentiles(
         per_trav = usage.get("per_query_traversal", {}) or {}
 
         trav_tokens: list[float] = []
-        times_ms: list[float] = []
-        latencies_ms: list[float] = []
+        query_latencies_ms: list[float] = []
+        call_latencies_ms: list[float] = []
         tps: list[float] = []
 
         for q in per_trav.values():
             tok = float(q.get("trav_tokens_total", 0))
             t_ms = float(q.get("t_traversal_ms", 0))
             trav_tokens.append(tok)
-            times_ms.append(t_ms)
+            query_latencies_ms.append(t_ms)
             tps.append(tok / (t_ms / 1000) if t_ms else 0.0)
 
             n_calls = float(q.get("n_traversal_calls", 0))
-            if "query_latency_ms" in q:
-                latency = float(q.get("query_latency_ms", 0))
-            elif "latency_ms" in q:
-                latency = float(q.get("latency_ms", 0))
+            if "call_latency_ms" in q:
+                latency = float(q.get("call_latency_ms", 0))
             else:
                 latency = t_ms / max(n_calls, 1)
-            latencies_ms.append(latency)
+            call_latencies_ms.append(latency)
 
         if trav_tokens:
             stats["median_trav_tokens_total"] = float(np.median(trav_tokens))
             stats["p90_trav_tokens_total"] = float(np.percentile(trav_tokens, 90))
-        if times_ms:
-            stats["median_t_traversal_ms"] = float(np.median(times_ms))
-            stats["p90_t_traversal_ms"] = float(np.percentile(times_ms, 90))
+        if query_latencies_ms:
+            stats["median_t_traversal_ms"] = float(np.median(query_latencies_ms))
+            stats["p90_t_traversal_ms"] = float(np.percentile(query_latencies_ms, 90))
+            stats["median_latency_ms"] = float(np.median(query_latencies_ms))
+            stats["p90_latency_ms"] = float(np.percentile(query_latencies_ms, 90))
         if tps:
             stats["median_tps_overall"] = float(np.median(tps))
             stats["p90_tps_overall"] = float(np.percentile(tps, 90))
-        if latencies_ms:
-            stats["median_latency_ms"] = float(np.median(latencies_ms))
-            stats["p90_latency_ms"] = float(np.percentile(latencies_ms, 90))
+        if call_latencies_ms:
+            stats["median_call_latency_ms"] = float(np.median(call_latencies_ms))
+            stats["p90_call_latency_ms"] = float(np.percentile(call_latencies_ms, 90))
 
     if stats_path.exists():
         with open(stats_path, "r", encoding="utf-8") as f:
