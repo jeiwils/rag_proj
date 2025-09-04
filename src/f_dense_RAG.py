@@ -10,7 +10,7 @@ as ``hits_at_k`` and ``recall_at_k`` are logged alongside the generated
 answers.
 """
 
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import random
 import numpy as np
@@ -54,13 +54,13 @@ def run_dense_rag(
     dataset: str,
     split: str,
     reader_model: str,
-    retriever_name: str = "dense",
+    retriever: str = "dense",
 
     server_url: str | None = None,
     top_k: int = DEFAULT_SEED_TOP_K,
     seed: int | None = None,
     resume: bool = False,
-) -> Dict[str, float]:
+) -> Dict[str, Any]:
     """Answer queries using dense retrieval over passages and evaluate EM/F1.
 
     The function retrieves top-``k`` passages for each query and asks a reader
@@ -78,7 +78,7 @@ def run_dense_rag(
         Name of the reader model used to generate answers. ``server_url``
         defaults to the first entry returned by
         :func:`src.utils.get_server_configs` for this model when ``None``.
-    retriever_name: str, optional
+    retriever: str, optional
         Identifier for the passage retriever used (e.g. ``"dense"``).
     server_url: str, optional
         URL of the completion endpoint for ``reader_model``. When ``None``,
@@ -97,8 +97,9 @@ def run_dense_rag(
 
     Returns
     -------
-    Dict[str, float]
-        Exact Match, F1, ``hits_at_k`` and ``recall_at_k`` scores across the
+    Dict[str, Any]
+        Top-level metadata with ``dense_eval`` containing EM, F1,
+        ``mean_hits_at_k`` and ``mean_recall_at_k`` scores across the
         query set.
     """
 
@@ -188,7 +189,7 @@ def run_dense_rag(
                 "dataset": dataset,
                 "split": split,
                 "variant": variant,
-                "retriever_name": retriever_name,
+                "retriever": retriever,
                 "traverser_model": None,
                 "reader_model": reader_model,
                 "question_id": q_id,
@@ -265,7 +266,7 @@ def run_dense_rag(
             "dataset": dataset,
             "split": split,
             "variant": variant,
-            "retriever_name": retriever_name,
+            "retriever": retriever,
             "traverser_model": None,
             "reader_model": reader_model,
             "question_id": qid,
@@ -280,30 +281,34 @@ def run_dense_rag(
     else:
         save_jsonl(str(paths["answer_metrics"]), metric_records)
 
-    metrics = {
-        "dataset": dataset,
-        "split": split,
-        "variant": variant,
-        "retriever_name": retriever_name,
-        "traverser_model": None,
-        "reader_model": reader_model,
+    dense_eval = {
         "EM": agg_scores["EM"],
         "F1": agg_scores["F1"],
-        "timestamp": now_ts,
         "reader_wall_time_total_sec": round(reader_wall_time_total_sec, 4),
         "reader_wall_time_mean_sec": round(reader_wall_time_mean_sec, 4),
         "reader_wall_time_median_sec": round(reader_wall_time_median_sec, 4),
     }
-    if seed is not None:
-        metrics["seed"] = seed
     if hits_at_k_scores:
-        metrics["hits_at_k"] = round(
+        dense_eval["mean_hits_at_k"] = round(
             sum(hits_at_k_scores.values()) / len(hits_at_k_scores), 4
         )
     if recall_at_k_scores:
-        metrics["recall_at_k"] = round(
+        dense_eval["mean_recall_at_k"] = round(
             sum(recall_at_k_scores.values()) / len(recall_at_k_scores), 4
         )
+
+    metrics = {
+        "dataset": dataset,
+        "split": split,
+        "variant": variant,
+        "model": reader_model,
+        "retriever": retriever,
+        "timestamp": now_ts,
+        "dense_eval": dense_eval,
+    }
+
+    if seed is not None:
+        metrics["seed"] = seed
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
@@ -334,23 +339,25 @@ def run_dense_rag(
 
     merge_token_usage(paths["base"], run_id=run_id, cleanup=True)
 
-    metrics.update({
-        "trav_prompt_tokens": 0,
-        "trav_output_tokens": 0,
-        "trav_tokens_total": 0,
-        **token_totals,
-        "t_traversal_ms": 0,
-        "t_reader_ms": t_reader_ms,
-        "num_queries": num_queries,
-        "query_latency_ms": query_latency_ms,
-        "call_latency_ms": call_latency_ms,
-    })
+    dense_eval.update(
+        {
+            "trav_prompt_tokens": 0,
+            "trav_output_tokens": 0,
+            "trav_tokens_total": 0,
+            **token_totals,
+            "t_traversal_ms": 0,
+            "t_reader_ms": t_reader_ms,
+            "num_queries": num_queries,
+            "query_latency_ms": query_latency_ms,
+            "call_latency_ms": call_latency_ms,
+        }
+    )
 
     tokens_total = (
-        metrics.get("trav_tokens_total", 0)
-        + metrics.get("reader_total_tokens", 0)
+        dense_eval.get("trav_tokens_total", 0)
+        + dense_eval.get("reader_total_tokens", 0)
     )
-    t_total_ms = metrics.get("t_traversal_ms", 0) + metrics.get("t_reader_ms", 0)
+    t_total_ms = dense_eval.get("t_traversal_ms", 0) + dense_eval.get("t_reader_ms", 0)
     tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
     query_qps_reader = num_queries / (t_reader_ms / 1000) if t_reader_ms else 0.0
     cps_reader = (
@@ -358,7 +365,7 @@ def run_dense_rag(
         if t_reader_ms
         else 0.0
     )
-    metrics.update(
+    dense_eval.update(
         {
             "tokens_total": tokens_total,
             "t_total_ms": t_total_ms,
@@ -367,6 +374,7 @@ def run_dense_rag(
             "cps_reader": cps_reader,
         }
     )
+
 
 
     token_usage_file = paths["base"] / "token_usage.json"
@@ -392,7 +400,7 @@ def run_dense_rag(
         json.dump(metrics, f, indent=2)
 
     extra = append_percentiles(paths["answer_metrics"], paths["summary"])
-    metrics.update(extra)
+    dense_eval.update(extra)
 
     return metrics
 

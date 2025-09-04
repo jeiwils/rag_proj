@@ -56,8 +56,8 @@ def _load_metric(result_dir: Path, metric: str) -> float | None:
         logger.warning("summary file missing for %s", result_dir)
         return None
     summary = load_json(paths["summary"])
-    return summary.get(metric) or summary.get(metric.lower())
-
+    dense_eval = summary.get("dense_eval", summary)
+    return dense_eval.get(metric) or dense_eval.get(metric.lower())
 
 def collect_metrics(metric: str) -> Dict[str, Dict[str, List[float]]]:
     """Gather metrics for Hop-RAG and reading-only runs grouped by model."""

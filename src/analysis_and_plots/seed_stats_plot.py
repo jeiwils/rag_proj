@@ -187,15 +187,18 @@ def _load_summary(path: Path) -> tuple[int | None, dict]:
     elif isinstance(data.get("seed"), int):
         seed = data["seed"]
 
+    dense_eval = data.get("dense_eval", data)
     metrics = {
-        "EM": data.get("EM") or data.get("em"),
-        "F1": data.get("F1") or data.get("f1"),
-        "tokens": data.get("tokens") or data.get("total_tokens"),
-        "wall_time": data.get("wall_time") or data.get("wall_time_total_sec"),
-        "trav_tokens": data.get("trav_tokens_total"),
-        "reader_tokens": data.get("reader_total_tokens"),
-        "t_total_ms": data.get("t_total_ms"),
-        "tps_overall": data.get("tps_overall"),
+        "EM": dense_eval.get("EM") or dense_eval.get("em"),
+        "F1": dense_eval.get("F1") or dense_eval.get("f1"),
+        "tokens": dense_eval.get("tokens") or dense_eval.get("tokens_total"),
+        "wall_time": dense_eval.get("wall_time")
+        or dense_eval.get("wall_time_total_sec")
+        or dense_eval.get("reader_wall_time_total_sec"),
+        "trav_tokens": dense_eval.get("trav_tokens_total"),
+        "reader_tokens": dense_eval.get("reader_total_tokens"),
+        "t_total_ms": dense_eval.get("t_total_ms"),
+        "tps_overall": dense_eval.get("tps_overall"),
     }
 
     usage_path = path.parent / "token_usage.json"
@@ -230,11 +233,11 @@ def _load_summary(path: Path) -> tuple[int | None, dict]:
 
     per_query_em: List[float] = []
     per_query_f1: List[float] = []
-    if "per_query_em" in data and "per_query_f1" in data:
-        per_query_em = list(map(float, data["per_query_em"]))
-        per_query_f1 = list(map(float, data["per_query_f1"]))
-    elif isinstance(data.get("per_query"), dict):
-        for q in data["per_query"].values():
+    if "per_query_em" in dense_eval and "per_query_f1" in dense_eval:
+        per_query_em = list(map(float, dense_eval["per_query_em"]))
+        per_query_f1 = list(map(float, dense_eval["per_query_f1"]))
+    elif isinstance(dense_eval.get("per_query"), dict):
+        for q in dense_eval["per_query"].values():
             per_query_em.append(float(q.get("EM") or q.get("em") or 0.0))
             per_query_f1.append(float(q.get("F1") or q.get("f1") or 0.0))
     metrics["per_query_em"] = per_query_em

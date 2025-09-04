@@ -45,11 +45,12 @@ def _load_run_metrics(result_dir: Path) -> Dict[str, float]:
     paths = rag_run_paths(model, dataset, split, seed, mode)["answers"]
 
     summary = load_json(paths["summary"]) if paths["summary"].exists() else {}
+    dense_eval = summary.get("dense_eval", summary)
     usage = load_token_usage(paths["token_usage"]).get("global", {})
 
     return {
-        "EM": float(summary.get("EM") or summary.get("em") or 0.0),
-        "F1": float(summary.get("F1") or summary.get("f1") or 0.0),
+        "EM": float(dense_eval.get("EM") or dense_eval.get("em") or 0.0),
+        "F1": float(dense_eval.get("F1") or dense_eval.get("f1") or 0.0),
         "tokens_total": float(usage.get("tokens_total") or 0.0),
         "t_total_ms": float(usage.get("t_total_ms") or 0.0),
     }

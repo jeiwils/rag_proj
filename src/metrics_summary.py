@@ -211,7 +211,10 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
             summary = json.load(f)
     else:
         summary = {}
-    summary.update(stats)
+    if "dense_eval" in summary and isinstance(summary["dense_eval"], dict):
+        summary["dense_eval"].update(stats)
+    else:
+        summary.update(stats)
     with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 
