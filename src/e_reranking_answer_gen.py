@@ -754,7 +754,9 @@ def generate_answers_from_traversal(
     summary_payload.update(extra)
 
     t_reader_ms = reader_time_total_ms
-    num_queries = token_totals["n_reader_calls"]
+    num_queries = len(per_query_reader)
+    n_reader_calls = token_totals["n_reader_calls"]
+
     latency_ms = t_reader_ms / num_queries if num_queries else 0
     usage = {
         "per_query_traversal": {},
@@ -793,7 +795,7 @@ def generate_answers_from_traversal(
         + metrics.get("reader_total_tokens", 0)
     )
     t_total_ms = metrics.get("t_traversal_ms", 0) + metrics.get("t_reader_ms", 0)
-    qps_reader = num_queries / (t_reader_ms / 1000) if t_reader_ms else 0.0
+    qps_reader = n_reader_calls / (t_reader_ms / 1000) if t_reader_ms else 0.0
     tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
 
     metrics.update({

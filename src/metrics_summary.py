@@ -16,7 +16,7 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
 
     * ``metrics_path`` - JSONL with ``em`` and ``f1`` per query.
     * ``token_usage.json`` - JSON containing optional ``per_query_traversal``
-      and ``per_query_reader`` mappings with token usage and timings.
+      and ``per_query_reader`` mappings with token usage, timings and latency.
 
     Parameters
     ----------
@@ -66,6 +66,8 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
 
         tokens: list[float] = []
         times_ms: list[float] = []
+        latencies_ms: list[float] = []
+
         tps: list[float] = []
         qps_trav: list[float] = []
         qps_read: list[float] = []
@@ -75,6 +77,8 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
             t_ms = float(metrics.get("t_total_ms", 0))
             tokens.append(tok)
             times_ms.append(t_ms)
+            latencies_ms.append(t_ms)
+
             tps.append(float(metrics.get("tps_overall", tok / (t_ms / 1000) if t_ms else 0.0)))
 
             t_trav_ms = float(metrics.get("t_traversal_ms", 0))
@@ -100,6 +104,9 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
         if qps_read:
             stats["median_qps_reader"] = float(np.median(qps_read))
             stats["p90_qps_reader"] = float(np.percentile(qps_read, 90))
+        if latencies_ms:
+            stats["median_latency_ms"] = float(np.median(latencies_ms))
+            stats["p90_latency_ms"] = float(np.percentile(latencies_ms, 90))
 
     if summary_path.exists():
         with open(summary_path, "r", encoding="utf-8") as f:

@@ -294,7 +294,7 @@ def run_dense_rag(
     metrics.update(extra)
 
     t_reader_ms = reader_time_total_ms
-    num_queries = token_totals["n_reader_calls"]
+    num_queries = len(per_query_reader)
     latency_ms = t_reader_ms / num_queries if num_queries else 0.0
     usage = {
         "per_query_traversal": {},
@@ -354,6 +354,8 @@ def run_dense_rag(
     except FileNotFoundError:
         token_usage_data = {}
     token_usage_data["qps_reader"] = qps_reader
+    token_usage_data["num_queries"] = num_queries
+    token_usage_data["latency_ms"] = latency_ms
     with open(token_usage_file, "w", encoding="utf-8") as f:
         json.dump(token_usage_data, f, indent=2)
 
