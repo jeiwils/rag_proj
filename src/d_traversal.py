@@ -150,7 +150,6 @@ from src.utils import (
     compute_recall_at_k,
     validate_vec_ids,
     merge_token_usage,
-
 )
 from src.metrics_summary import append_traversal_percentiles
 import os

@@ -89,7 +89,19 @@ Aggregated answer evaluation with run metadata:
   "median_f1": float,
   "p90_f1": float,
   "median_em": float,
-  "p90_em": float
+  "p90_em": float,
+  "median_trav_tokens_total": float,
+  "p90_trav_tokens_total": float,
+  "median_reader_total_tokens": float,
+  "p90_reader_total_tokens": float,
+  "median_t_traversal_ms": float,
+  "p90_t_traversal_ms": float,
+  "median_t_reader_ms": float,
+  "p90_t_reader_ms": float,
+  "median_n_traversal_calls": float,
+  "p90_n_traversal_calls": float,
+  "median_n_reader_calls": float,
+  "p90_n_reader_calls": float
 }
 
 
