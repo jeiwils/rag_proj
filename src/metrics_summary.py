@@ -85,8 +85,10 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
             n_trav_calls = float(metrics.get("n_traversal_calls", 0))
             n_reader_calls = float(metrics.get("n_reader_calls", 0))
             total_calls = n_trav_calls + n_reader_calls
-            if "latency_ms" in metrics:
-                latency = t_ms
+            if "query_latency_ms" in metrics:
+                latency = float(metrics.get("query_latency_ms", 0))
+            elif "latency_ms" in metrics:
+                latency = float(metrics.get("latency_ms", 0))
             else:
                 latency = t_ms / max(total_calls, 1)
             latencies_ms.append(latency)
@@ -209,8 +211,10 @@ def append_traversal_percentiles(
             tps.append(tok / (t_ms / 1000) if t_ms else 0.0)
 
             n_calls = float(q.get("n_traversal_calls", 0))
-            if "latency_ms" in q:
-                latency = t_ms
+            if "query_latency_ms" in q:
+                latency = float(q.get("query_latency_ms", 0))
+            elif "latency_ms" in q:
+                latency = float(q.get("latency_ms", 0))
             else:
                 latency = t_ms / max(n_calls, 1)
             latencies_ms.append(latency)

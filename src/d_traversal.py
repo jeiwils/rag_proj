@@ -92,9 +92,9 @@ File Schema
     "hop_depth_distribution": [int, int, ...],
     "wall_time_total_sec": float,
     "wall_time_mean_sec": float,
-    "wall_time_median_sec": float
     "wall_time_median_sec": float,
-    "latency_ms": float
+    "query_latency_ms": float,
+    "call_latency_ms": float
   }
 }
 """
@@ -1178,14 +1178,16 @@ def run_traversal(
     tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
 
     num_queries = len(per_query_usage)
-    latency_ms = t_total_ms / num_queries if num_queries else 0.0
+    n_traversal_calls = global_usage.get("n_traversal_calls", 0)
+    query_latency_ms = t_total_ms / num_queries if num_queries else 0.0
+    call_latency_ms = (
+        t_total_ms / n_traversal_calls if n_traversal_calls else 0.0
+    )
     query_qps_traversal = (
         num_queries / (t_total_ms / 1000) if t_total_ms else 0.0
     )
     cps_traversal = (
-        global_usage["n_traversal_calls"] / (t_total_ms / 1000)
-        if t_total_ms
-        else 0.0
+        n_traversal_calls / (t_total_ms / 1000) if t_total_ms else 0.0
     )
     global_usage.update(
         {
@@ -1195,7 +1197,8 @@ def run_traversal(
             "query_qps_traversal": query_qps_traversal,
             "cps_traversal": cps_traversal,
             "num_queries": num_queries,
-            "latency_ms": latency_ms,
+            "query_latency_ms": query_latency_ms,
+            "call_latency_ms": call_latency_ms,
         }
     )
 
@@ -1205,7 +1208,8 @@ def run_traversal(
 
     print(f"[summary] total traversal tokens: {tokens_total}")
     print(f"[summary] traversal wall time: {t_total_ms} ms")
-    print(f"[summary] average traversal latency: {latency_ms:.2f} ms")
+    print(f"[summary] average query latency: {query_latency_ms:.2f} ms")
+    print(f"[summary] average call latency: {call_latency_ms:.2f} ms")
     print(
         "[summary] overall throughput: "
         f"{tps_overall:.2f} tokens/s, "
@@ -1369,7 +1373,10 @@ def compute_traversal_summary(
     wall_time_total = sum(wall_times)
     wall_time_mean = wall_time_total / len(wall_times) if wall_times else 0.0
     wall_time_median = float(np.median(wall_times)) if wall_times else 0.0
-    latency_ms = wall_time_mean * 1000
+    query_latency_ms = wall_time_mean * 1000
+    call_latency_ms = (
+        wall_time_total * 1000 / sum_traversal_calls if sum_traversal_calls else 0.0
+    )
 
 
     summary = {
@@ -1393,7 +1400,8 @@ def compute_traversal_summary(
         "wall_time_total_sec": round(wall_time_total, 4),
         "wall_time_mean_sec": round(wall_time_mean, 4),
         "wall_time_median_sec": round(wall_time_median, 4),
-        "latency_ms": round(latency_ms, 2),
+        "query_latency_ms": round(query_latency_ms, 2),
+        "call_latency_ms": round(call_latency_ms, 2),
 
     }
 
