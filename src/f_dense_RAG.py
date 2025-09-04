@@ -353,7 +353,7 @@ if __name__ == "__main__":
     DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
     SPLITS = ["dev"]
 
-    READER_MODELS = ["deepseek-r1-distill-qwen-14b"]
+    READER_MODELS = ["deepseek-r1-distill-qwen-7b"]
 
     #     "qwen2.5-7b-instruct",
     #     "qwen2.5-14b-instruct",
