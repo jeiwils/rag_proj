@@ -828,7 +828,7 @@ if __name__ == "__main__":
     READER_MODEL = "llama-3.1-8b-instruct"
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
     TRAVERSAL_MODELS = [
-        "state-of-the-moe-rp-2x7b"]
+        "deepseek-r1-distill-qwen-14b"]
     #     "qwen2.5-14b-instruct",
     #     "deepseek-r1-distill-qwen-7b",
     #     "deepseek-r1-distill-qwen-14b",
