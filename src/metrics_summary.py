@@ -158,8 +158,6 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
             stats["median_tokens_total"] = float(np.median(tokens))
             stats["p90_tokens_total"] = float(np.percentile(tokens, 90))
         if query_latencies_ms:
-            stats["median_t_total_ms"] = float(np.median(query_latencies_ms))
-            stats["p90_t_total_ms"] = float(np.percentile(query_latencies_ms, 90))
             stats["median_latency_ms"] = float(np.median(query_latencies_ms))
             stats["p90_latency_ms"] = float(np.percentile(query_latencies_ms, 90))
         if call_latencies_ms:
@@ -323,8 +321,6 @@ def append_traversal_percentiles(
             stats["median_trav_tokens_total"] = float(np.median(trav_tokens))
             stats["p90_trav_tokens_total"] = float(np.percentile(trav_tokens, 90))
         if query_latencies_ms:
-            stats["median_t_traversal_ms"] = float(np.median(query_latencies_ms))
-            stats["p90_t_traversal_ms"] = float(np.percentile(query_latencies_ms, 90))
             stats["median_latency_ms"] = float(np.median(query_latencies_ms))
             stats["p90_latency_ms"] = float(np.percentile(query_latencies_ms, 90))
         if tps:

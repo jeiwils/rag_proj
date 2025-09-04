@@ -94,8 +94,8 @@ Aggregated answer evaluation with run metadata:
   "p90_trav_tokens_total": float,
   "median_reader_total_tokens": float,
   "p90_reader_total_tokens": float,
-  "median_t_traversal_ms": float,
-  "p90_t_traversal_ms": float,
+  "median_latency_ms": float,
+  "p90_latency_ms": float,
   "median_t_reader_ms": float,
   "p90_t_reader_ms": float,
   "median_n_traversal_calls": float,
@@ -103,6 +103,7 @@ Aggregated answer evaluation with run metadata:
   "median_n_reader_calls": float,
   "p90_n_reader_calls": float
 }
+
 
 
 Notes
