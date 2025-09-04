@@ -63,8 +63,9 @@ File Schema
   "hits_at_k": float,
   "recall_at_k": float,
   "traversal_algorithm": "{algorithm_name}",
-  "wall_time_sec": float
+  "traversal_wall_time_sec": float
 }
+
 
 ### final_traversal_stats.json
 
@@ -90,13 +91,14 @@ File Schema
     "avg_none_count_per_query": float,
     "max_hop_depth_reached": int,
     "hop_depth_distribution": [int, int, ...],
-    "wall_time_total_sec": float,
-    "wall_time_mean_sec": float,
-    "wall_time_median_sec": float,
+    "traversal_wall_time_total_sec": float,
+    "traversal_wall_time_mean_sec": float,
+    "traversal_wall_time_median_sec": float,
     "query_latency_ms": float,
     "call_latency_ms": float
   }
 }
+"
 """
 
 
@@ -913,7 +915,7 @@ def save_traversal_result(  # helper for run_dev_set()
     retriever_name: str,
     traverser_model: str,
     reader_model: str | None = None,
-    wall_time_sec: float | None = None,
+    traversal_wall_time_sec: float | None = None,
     output_path="dev_results.jsonl",
     token_usage: Optional[Dict[str, int]] = None,
     seed: int | None = None,
@@ -973,13 +975,12 @@ def save_traversal_result(  # helper for run_dev_set()
         result_entry["call_latency_ms"] = token_usage.get("call_latency_ms", 0)
 
 
-    if wall_time_sec is not None:
-        result_entry["wall_time_sec"] = round(wall_time_sec, 4)
+    if traversal_wall_time_sec is not None:
+        result_entry["traversal_wall_time_sec"] = round(traversal_wall_time_sec, 4)
 
 
 
     append_jsonl(str(output_path), result_entry)
-
 
 
 
@@ -1152,7 +1153,7 @@ def run_traversal(
             retriever_name=retriever_name,
             traverser_model=traverser_model,
 
-            wall_time_sec=elapsed,
+            traversal_wall_time_sec=elapsed,
             output_path=output_paths["results"],
             token_usage=query_token_totals,
             seed=seed,
@@ -1208,7 +1209,7 @@ def run_traversal(
         json.dump(usage, f, indent=2)
 
     print(f"[summary] total traversal tokens: {tokens_total}")
-    print(f"[summary] traversal wall time: {t_total_ms} ms")
+    print(f"[summary] traversal LLM inference time: {t_total_ms} ms")
     print(f"[summary] average query latency: {query_latency_ms:.2f} ms")
     print(f"[summary] average call latency: {call_latency_ms:.2f} ms")
     print(
@@ -1287,7 +1288,7 @@ def compute_traversal_summary(
     initial_retrieval_coverage = 0
     first_gold_hops = []
     query_hop_depths: List[int] = []
-    wall_times: List[float] = []
+    traversal_wall_times: List[float] = []
 
 
     with open(results_path, "rt", encoding="utf-8") as f:
@@ -1309,8 +1310,8 @@ def compute_traversal_summary(
             sum_traversal_calls += entry.get("n_traversal_calls", 0)
 
 
-            if "wall_time_sec" in entry:
-                wall_times.append(entry["wall_time_sec"])
+            if "traversal_wall_time_sec" in entry:
+                traversal_wall_times.append(entry["traversal_wall_time_sec"])
 
 
             if set(entry["gold_passages"]).issubset(set(entry["visited_passages"])):
@@ -1371,13 +1372,22 @@ def compute_traversal_summary(
     max_depth = max(query_hop_depths) if query_hop_depths else 0
     hop_depth_distribution = [hop_depth_counter.get(i, 0) for i in range(max_depth + 1)]
 
-    wall_time_total = sum(wall_times)
-    wall_time_mean = wall_time_total / len(wall_times) if wall_times else 0.0
-    wall_time_median = float(np.median(wall_times)) if wall_times else 0.0
-    query_latency_ms = wall_time_mean * 1000
-    call_latency_ms = (
-        wall_time_total * 1000 / sum_traversal_calls if sum_traversal_calls else 0.0
+    traversal_wall_time_total = sum(traversal_wall_times)
+    traversal_wall_time_mean = (
+        traversal_wall_time_total / len(traversal_wall_times)
+        if traversal_wall_times
+        else 0.0
     )
+    traversal_wall_time_median = (
+        float(np.median(traversal_wall_times)) if traversal_wall_times else 0.0
+    )
+    query_latency_ms = traversal_wall_time_mean * 1000
+    call_latency_ms = (
+        traversal_wall_time_total * 1000 / sum_traversal_calls
+        if sum_traversal_calls
+        else 0.0
+    )
+
 
 
     summary = {
@@ -1398,22 +1408,23 @@ def compute_traversal_summary(
         "avg_none_count_per_query": round(total_none / total_queries, 2) if total_queries else 0,
         "max_hop_depth_reached": max_depth,
         "hop_depth_distribution": hop_depth_distribution,
-        "wall_time_total_sec": round(wall_time_total, 4),
-        "wall_time_mean_sec": round(wall_time_mean, 4),
-        "wall_time_median_sec": round(wall_time_median, 4),
+        "traversal_wall_time_total_sec": round(traversal_wall_time_total, 4),
+        "traversal_wall_time_mean_sec": round(traversal_wall_time_mean, 4),
+        "traversal_wall_time_median_sec": round(traversal_wall_time_median, 4),
         "query_latency_ms": round(query_latency_ms, 2),
         "call_latency_ms": round(call_latency_ms, 2),
 
     }
 
     summary["query_qps_traversal"] = (
-        total_queries / summary["wall_time_total_sec"]
-        if summary["wall_time_total_sec"]
+        total_queries / summary["traversal_wall_time_total_sec"]
+        if summary["traversal_wall_time_total_sec"]
         else 0.0
     )
     summary["cps_traversal"] = (
-        summary["total_traversal_calls"] / summary["wall_time_total_sec"]
-        if summary["wall_time_total_sec"]
+        summary["total_traversal_calls"]
+        / summary["traversal_wall_time_total_sec"]
+        if summary["traversal_wall_time_total_sec"]
         else 0.0
     )
 
