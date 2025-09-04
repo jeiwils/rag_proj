@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .utils import load_json, ensure_output_path, stylized_subplots
-from .seed_stats_plot import _compute_statistics
+from .seed_stats_plot import _compute_statistics, _plot_metric_distributions, _plot_wilcoxon_heatmap
 
 
 def plot_mean_with_error(metric: str, stats: dict, out_file: Path) -> None:
@@ -80,9 +80,12 @@ def main(results_dir: str = "data/results", metrics: list[str] | None = None) ->
         print(f"No per-seed metrics available in {base}")
         return
 
-    available_metrics = stats.get("mean", {}).keys()
+    mean = stats.get("mean", {})
+    std_dev = stats.get("std_dev", {})
+    available_metrics = mean.keys()
     metrics = metrics or list(available_metrics)
     out_dir = base / "graphs"
+    _plot_metric_distributions(per_seed, mean, std_dev, out_dir)
     for metric in metrics:
         out_file = out_dir / f"mean_{metric}.png"
         plot_mean_with_error(metric, stats, out_file)
