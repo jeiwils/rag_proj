@@ -390,15 +390,6 @@ def llm_choose_edge(
     _record_usage(usage)
 
 
-    if token_totals is not None and usage:
-        prompt_tokens = usage.get("prompt_tokens", 0)
-        completion_tokens = usage.get("completion_tokens", 0)
-        token_totals["trav_prompt_tokens"] += prompt_tokens
-        token_totals["trav_output_tokens"] += completion_tokens
-        token_totals["trav_tokens_total"] += usage.get(
-            "total_tokens", prompt_tokens + completion_tokens
-        )
-
     if is_r1_like(oq_server["model"]):
         answer = strip_think(answer)
 
