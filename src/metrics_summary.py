@@ -68,8 +68,10 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
         times_ms: list[float] = []
         latencies_ms: list[float] = []
         tps: list[float] = []
-        qps_trav: list[float] = []
-        qps_read: list[float] = []
+        query_qps_trav: list[float] = []
+        cps_trav: list[float] = []
+        query_qps_read: list[float] = []
+        cps_read: list[float] = []
 
         for metrics in per_query.values():
             tok = float(metrics.get("tokens_total", 0))
@@ -90,10 +92,12 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
             latencies_ms.append(latency)
 
             t_trav_ms = float(metrics.get("t_traversal_ms", 0))
-            qps_trav.append(n_trav_calls / (t_trav_ms / 1000) if t_trav_ms else 0.0)
+            query_qps_trav.append(1 / (t_trav_ms / 1000) if t_trav_ms else 0.0)
+            cps_trav.append(n_trav_calls / (t_trav_ms / 1000) if t_trav_ms else 0.0)
 
             t_reader_ms = float(metrics.get("t_reader_ms", 0))
-            qps_read.append(n_reader_calls / (t_reader_ms / 1000) if t_reader_ms else 0.0)
+            query_qps_read.append(1 / (t_reader_ms / 1000) if t_reader_ms else 0.0)
+            cps_read.append(n_reader_calls / (t_reader_ms / 1000) if t_reader_ms else 0.0)
 
         if tokens:
             stats["median_tokens_total"] = float(np.median(tokens))
@@ -107,12 +111,22 @@ def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Di
         if tps:
             stats["median_tps_overall"] = float(np.median(tps))
             stats["p90_tps_overall"] = float(np.percentile(tps, 90))
-        if qps_trav:
-            stats["median_qps_traversal"] = float(np.median(qps_trav))
-            stats["p90_qps_traversal"] = float(np.percentile(qps_trav, 90))
-        if qps_read:
-            stats["median_qps_reader"] = float(np.median(qps_read))
-            stats["p90_qps_reader"] = float(np.percentile(qps_read, 90))
+        if query_qps_trav:
+            stats["median_query_qps_traversal"] = float(np.median(query_qps_trav))
+            stats["p90_query_qps_traversal"] = float(
+                np.percentile(query_qps_trav, 90)
+            )
+        if cps_trav:
+            stats["median_cps_traversal"] = float(np.median(cps_trav))
+            stats["p90_cps_traversal"] = float(np.percentile(cps_trav, 90))
+        if query_qps_read:
+            stats["median_query_qps_reader"] = float(np.median(query_qps_read))
+            stats["p90_query_qps_reader"] = float(
+                np.percentile(query_qps_read, 90)
+            )
+        if cps_read:
+            stats["median_cps_reader"] = float(np.median(cps_read))
+            stats["p90_cps_reader"] = float(np.percentile(cps_read, 90))
 
     if summary_path.exists():
         with open(summary_path, "r", encoding="utf-8") as f:

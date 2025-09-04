@@ -332,7 +332,8 @@ def run_dense_rag(
     )
     t_total_ms = metrics.get("t_traversal_ms", 0) + metrics.get("t_reader_ms", 0)
     tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
-    qps_reader = (
+    query_qps_reader = num_queries / (t_reader_ms / 1000) if t_reader_ms else 0.0
+    cps_reader = (
         token_totals["n_reader_calls"] / (t_reader_ms / 1000)
         if t_reader_ms
         else 0.0
@@ -342,7 +343,8 @@ def run_dense_rag(
             "tokens_total": tokens_total,
             "t_total_ms": t_total_ms,
             "tps_overall": tps_overall,
-            "qps_reader": qps_reader,
+            "query_qps_reader": query_qps_reader,
+            "cps_reader": cps_reader,
         }
     )
 
@@ -353,7 +355,8 @@ def run_dense_rag(
             token_usage_data = json.load(f)
     except FileNotFoundError:
         token_usage_data = {}
-    token_usage_data["qps_reader"] = qps_reader
+    token_usage_data["query_qps_reader"] = query_qps_reader
+    token_usage_data["cps_reader"] = cps_reader
     token_usage_data["num_queries"] = num_queries
     token_usage_data["latency_ms"] = latency_ms
     with open(token_usage_file, "w", encoding="utf-8") as f:
@@ -361,13 +364,14 @@ def run_dense_rag(
 
     print(
         f"[summary] overall throughput: {tps_overall:.2f} tokens/s, "
-        f"reader throughput: {qps_reader:.2f} queries/s, "
+        f"reader throughput: {query_qps_reader:.2f} queries/s, {cps_reader:.2f} calls/s, "
         f"reader latency: {latency_ms:.2f} ms/query"
     )
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
     return metrics
+
 
 
 
