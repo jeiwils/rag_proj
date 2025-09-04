@@ -787,18 +787,37 @@ def generate_answers_from_traversal(
         + metrics.get("reader_total_tokens", 0)
     )
     t_total_ms = metrics.get("t_traversal_ms", 0) + metrics.get("t_reader_ms", 0)
+    qps_reader = (
+        token_totals["n_reader_calls"] / (t_reader_ms / 1000)
+        if t_reader_ms
+        else 0.0
+    )
     tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
     metrics.update({
         "tokens_total": tokens_total,
         "t_total_ms": t_total_ms,
         "tps_overall": tps_overall,
     })
+    metrics["qps_reader"] = qps_reader
 
     summary_payload["answer_eval"] = metrics
+    summary_payload["answer_eval"]["qps_reader"] = qps_reader
     with open(result_paths["summary"], "w", encoding="utf-8") as f:
         json.dump(summary_payload, f, indent=2)
 
-    print(f"[summary] overall throughput: {tps_overall:.2f} tokens/s")
+    token_usage_file = result_paths["base"] / "token_usage.json"
+    try:
+        with open(token_usage_file, "r", encoding="utf-8") as f:
+            token_usage_data = json.load(f)
+    except FileNotFoundError:
+        token_usage_data = {}
+    token_usage_data["qps_reader"] = qps_reader
+    with open(token_usage_file, "w", encoding="utf-8") as f:
+        json.dump(token_usage_data, f, indent=2)
+
+    print(
+        f"[summary] overall throughput: {tps_overall:.2f} tokens/s | reader qps: {qps_reader:.2f}"
+    )
 
     return metrics
 
