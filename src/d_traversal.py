@@ -368,7 +368,7 @@ def llm_choose_edge(
                 "total_tokens", prompt_tokens + completion_tokens
             )
 
-
+    start = time.perf_counter()
     answer, usage = query_llm(
         prompt,
         server_url=oq_server["server_url"],
@@ -382,9 +382,11 @@ def llm_choose_edge(
         seed=seed,
         **LLM_DEFAULTS,
     )
+    elapsed_ms = int((time.perf_counter() - start) * 1000)
 
     if token_totals is not None:
         token_totals["n_traversal_calls"] += 1
+        token_totals["t_traversal_ms"] += elapsed_ms
 
     _record_usage(usage)
 
@@ -413,6 +415,8 @@ def llm_choose_edge(
         if retry_count == 0:
             retry_count = 1
 
+            start = time.perf_counter()
+
             answer, usage = query_llm(
                 prompt,
                 server_url=oq_server["server_url"],
@@ -427,9 +431,12 @@ def llm_choose_edge(
                 **LLM_DEFAULTS,
             )
 
+            elapsed_ms = int((time.perf_counter() - start) * 1000)
+
             if token_totals is not None:
                 token_totals["n_traversal_calls"] += 1
-            _record_usage(usage)
+                token_totals["t_traversal_ms"] += elapsed_ms
+
             if is_r1_like(oq_server["model"]):
                 answer = strip_think(answer)
             answer = answer.strip()
@@ -1032,10 +1039,10 @@ def run_traversal(
         "trav_output_tokens": 0,
         "trav_tokens_total": 0,
         "n_traversal_calls": 0,
-
+        "t_traversal_ms": 0,
     }
+
     per_query_usage: Dict[str, Dict[str, int]] = {}
-    total_time_ms = 0
 
 
 
@@ -1049,7 +1056,6 @@ def run_traversal(
         np.random.seed(seed)
 
     for entry in tqdm(query_data, desc="queries"):
-        start = time.perf_counter()
         question_id = entry["question_id"]
         query_text = entry["question"]
         gold_passages = entry["gold_passages"]
@@ -1058,6 +1064,7 @@ def run_traversal(
             "trav_output_tokens": 0,
             "trav_tokens_total": 0,
             "n_traversal_calls": 0,
+            "t_traversal_ms": 0,
 
         }
         print(f"\n[Query] {question_id} - \"{query_text}\"")
@@ -1114,8 +1121,8 @@ def run_traversal(
             graph=graph,
         )
 
-        elapsed = time.perf_counter() - start
-        elapsed_ms = int(elapsed * 1000)
+        elapsed_ms = int(query_token_totals.get("t_traversal_ms", 0))
+        elapsed = elapsed_ms / 1000
 
 
         # --- Save per-query JSONL ---
@@ -1146,8 +1153,7 @@ def run_traversal(
         for k in token_totals:
             token_totals[k] += query_token_totals.get(k, 0)
         per_query_usage[question_id] = dict(query_token_totals)
-        per_query_usage[question_id]["t_traversal_ms"] = elapsed_ms
-        total_time_ms += elapsed_ms
+
 
 
     base_usage_path = output_paths.get(
@@ -1158,7 +1164,6 @@ def run_traversal(
         f"{base_usage_path.stem}_{unique}{base_usage_path.suffix}"
     )
     global_usage = {k: v for k, v in token_totals.items()}
-    global_usage["t_traversal_ms"] = total_time_ms
 
     tokens_total = global_usage.get("trav_tokens_total", 0)
     t_total_ms = global_usage.get("t_traversal_ms", 0)
