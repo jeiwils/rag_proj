@@ -146,7 +146,7 @@ def run_dense_rag(
 
     }
     per_query_reader: Dict[str, Dict[str, int]] = {}
-    reader_time_total_ms = 0
+    reader_wall_times: List[float] = []
 
 
     for q in tqdm(queries, desc="queries"):
@@ -179,7 +179,8 @@ def run_dense_rag(
 
         )
         elapsed_ms = int((time.perf_counter() - start_time) * 1000)
-
+        elapsed_sec = elapsed_ms / 1000
+        reader_wall_times.append(elapsed_sec)
 
         append_jsonl(
             str(paths["answers"]),
@@ -208,6 +209,7 @@ def run_dense_rag(
                     llm_out.get("prompt_len", 0) + llm_out.get("output_tokens", 0),
                 ),
                 "t_reader_ms": elapsed_ms,
+                "reader_wall_time_sec": round(elapsed_sec, 4),
 
                 "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
                 "seed": seed,
@@ -234,10 +236,10 @@ def run_dense_rag(
             ),
             "n_reader_calls": n_calls,
             "t_reader_ms": elapsed_ms,
+            "reader_wall_time_sec": round(elapsed_sec, 4),
             "query_latency_ms": elapsed_ms,
             "call_latency_ms": elapsed_ms / max(n_calls, 1),
         }
-        reader_time_total_ms += elapsed_ms
 
     if not gold:
         print("No new queries to process.")
@@ -245,6 +247,17 @@ def run_dense_rag(
 
     per_query = evaluate_answers(predictions, gold)
     agg_scores = aggregate_answer_scores(predictions, gold)
+
+    reader_wall_time_total_sec = sum(reader_wall_times)
+    reader_wall_time_mean_sec = (
+        reader_wall_time_total_sec / len(reader_wall_times)
+        if reader_wall_times
+        else 0.0
+    )
+    reader_wall_time_median_sec = (
+        float(np.median(reader_wall_times)) if reader_wall_times else 0.0
+    )
+
 
     now_ts = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     metric_records = [
@@ -277,6 +290,9 @@ def run_dense_rag(
         "EM": agg_scores["EM"],
         "F1": agg_scores["F1"],
         "timestamp": now_ts,
+        "reader_wall_time_total_sec": round(reader_wall_time_total_sec, 4),
+        "reader_wall_time_mean_sec": round(reader_wall_time_mean_sec, 4),
+        "reader_wall_time_median_sec": round(reader_wall_time_median_sec, 4),
     }
     if seed is not None:
         metrics["seed"] = seed
@@ -291,10 +307,12 @@ def run_dense_rag(
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
-    t_reader_ms = reader_time_total_ms
+    t_reader_ms = reader_wall_time_total_sec * 1000
     num_queries = len(per_query_reader)
-    query_latency_ms = t_reader_ms / num_queries if num_queries else 0.0
-    call_latency_ms = t_reader_ms / max(token_totals["n_reader_calls"], 1)
+    query_latency_ms = reader_wall_time_mean_sec * 1000
+    call_latency_ms = (
+        reader_wall_time_total_sec * 1000 / max(token_totals["n_reader_calls"], 1)
+    )
 
     usage = {
         "per_query_traversal": {},
