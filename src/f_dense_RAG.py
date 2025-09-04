@@ -291,9 +291,6 @@ def run_dense_rag(
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
-    extra = append_percentiles(paths["answer_metrics"], paths["summary"])
-    metrics.update(extra)
-
     t_reader_ms = reader_time_total_ms
     num_queries = len(per_query_reader)
     query_latency_ms = t_reader_ms / num_queries if num_queries else 0.0
@@ -375,6 +372,9 @@ def run_dense_rag(
     )
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
+
+    extra = append_percentiles(paths["answer_metrics"], paths["summary"])
+    metrics.update(extra)
 
     return metrics
 

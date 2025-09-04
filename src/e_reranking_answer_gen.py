@@ -761,12 +761,6 @@ def generate_answers_from_traversal(
     with open(result_paths["summary"], "wt", encoding="utf-8") as f:
         json.dump(summary_payload, f, indent=2)
 
-    extra = append_percentiles(
-        result_paths["answer_metrics"], result_paths["summary"]
-    )
-    metrics.update(extra)
-    summary_payload.update(extra)
-
     t_reader_ms = reader_time_total_ms
     num_queries = len(per_query_reader)
     n_reader_calls = token_totals["n_reader_calls"]
@@ -846,6 +840,12 @@ def generate_answers_from_traversal(
     token_usage_data["call_latency_ms"] = call_latency_ms
     with open(token_usage_file, "w", encoding="utf-8") as f:
         json.dump(token_usage_data, f, indent=2)
+
+    extra = append_percentiles(
+        result_paths["answer_metrics"], result_paths["summary"]
+    )
+    metrics.update(extra)
+    summary_payload.update(extra)
 
     print(
         f"[summary] overall throughput: {tps_overall:.2f} tokens/s | "
