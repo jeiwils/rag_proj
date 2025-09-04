@@ -1,7 +1,11 @@
 
-"""Plot traversal statistics and metrics from result directories.
 
-Result directories can be discovered using :func:`src.utils.get_result_dirs`.
+"""Plot traversal statistics and metrics from run directories.
+
+Traversal runs are stored under ``data/traversal`` while answer generation
+results live under ``data/results``.  This module discovers traversal runs by
+walking ``data/traversal`` and optionally accepts separate answer result
+directories when plotting metrics.
 """
 
 from __future__ import annotations
@@ -20,8 +24,8 @@ from .utils import (
     load_json,
     load_jsonl,
     stylized_subplots,
-    get_result_dirs,
-    rag_run_paths
+    rag_run_paths,
+    parse_traversal_run_dir,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,8 +35,12 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def find_result_files(root: Path = Path("data/results")) -> list[Path]:
-    """Recursively locate ``per_query_traversal_results.jsonl`` under ``root``."""
+def find_result_files(root: Path = Path("data/traversal")) -> list[Path]:
+    """Recursively locate ``per_query_traversal_results.jsonl`` under ``root``.
+
+    By default traversal runs are searched under ``data/traversal`` rather than
+    the answer result directories.
+    """
     return list(root.rglob("per_query_traversal_results.jsonl"))
 
 
@@ -67,13 +75,11 @@ def plot_traversal_distributions(
 
     Parameters
     ----------
-    result_dirs:
-        Sequence of result directories. Use :func:`get_result_dirs` to collect
-        them.
-    output:
-        Destination file path for the generated plot image.
-    show_recall_at_k:
-        Include the ``mean_recall_at_k`` metric when ``True``.
+    stats:
+        Aggregated traversal statistics from :func:`load_traversal_stats`.
+    outdir:
+        Base directory where plots will be written.  Subdirectories are created
+        as needed.
     """
     outdir.mkdir(parents=True, exist_ok=True)
 
@@ -132,20 +138,24 @@ def _validate_keys(metrics: Dict[str, float], expected: Sequence[str]) -> None:
         logger.warning("Missing metrics: %s", ", ".join(missing))
 
 
-def _load_metrics(result_dir: Path, fields: Sequence[str]) -> Tuple[Dict[str, float], Dict[str, Any]]:
-    parts = result_dir.resolve().parts
-    model, dataset, split = parts[-4], parts[-3], parts[-2]
-    mode, seed_str = result_dir.name.rsplit("_seed", 1)
-    seed = int(seed_str)
+def _load_metrics(traversal_dir: Path, fields: Sequence[str]) -> Tuple[Dict[str, float], Dict[str, Any]]:
+    model, dataset, split, seed = parse_traversal_run_dir(traversal_dir)
+    mode = traversal_dir.name.rsplit("_seed", 1)[0]
     stats_path = rag_run_paths(model, dataset, split, seed, mode)["traversal"]["final_stats"]
     data = load_json(stats_path)
     meta = {k: data.get(k) for k in META_FIELDS}
+    # ensure required metadata is present
+    meta.setdefault("dataset", dataset)
+    meta.setdefault("split", split)
+    meta.setdefault("variant", mode)
+    meta.setdefault("model", model)
+    meta.setdefault("seed", seed)
     metrics = data.get("traversal_eval", {})
     _validate_keys(metrics, fields)
     return metrics, meta
 
 
-def _load_answer_metrics(meta: Dict[str, Any]) -> Dict[str, float]:
+def _load_answer_metrics(meta: Dict[str, Any], answer_dir: Path | None = None) -> Dict[str, float]:
     mode = meta.get("variant")
     seed = meta.get("seed")
     model = meta.get("model")
@@ -153,8 +163,11 @@ def _load_answer_metrics(meta: Dict[str, Any]) -> Dict[str, float]:
     split = meta.get("split")
     if None in (mode, seed, model, dataset, split):
         return {}
-    paths = rag_run_paths(model, dataset, split, seed, mode)
-    summary_path = paths["answers"]["summary"]
+    if answer_dir is not None:
+        summary_path = answer_dir / f"summary_metrics_{mode}_seed{seed}_{split}.json"
+    else:
+        paths = rag_run_paths(model, dataset, split, seed, mode)
+        summary_path = paths["answers"]["summary"]
     if not summary_path.exists():
         return {}
     data = load_json(summary_path)
@@ -173,11 +186,26 @@ def _model_label(result_dir: Path) -> str:
 
 
 def plot_traversal_metrics(
-    result_dirs: Sequence[Path],
+    traversal_dirs: Sequence[Path],
     output: Path,
+    *,
+    answer_dirs: Sequence[Path] | None = None,
     show_recall_at_k: bool = False,
 ) -> None:
-    """Generate comparative plots for traversal metrics."""
+    """Generate comparative plots for traversal metrics.
+
+    Parameters
+    ----------
+    traversal_dirs:
+        Directories containing traversal run outputs under ``data/traversal``.
+    output:
+        Destination path for the generated plot.
+    answer_dirs:
+        Optional directories containing final answer metrics.  When provided,
+        they are matched to traversal directories by directory name.  When
+        omitted, answer metrics are located using :func:`rag_run_paths` based on
+        traversal metadata.
+    """
     traversal_fields = TRAVERSAL_FIELDS + (
         [RECALL_AT_K_FIELD] if show_recall_at_k else []
     )
@@ -187,14 +215,20 @@ def plot_traversal_metrics(
     answer_by_model: Dict[str, Dict[str, float]] = {}
     metadata_by_model: Dict[str, Dict[str, Any]] = {}
 
-    for rdir in result_dirs:
-        metrics, meta = _load_metrics(rdir, traversal_fields)
-        label = _model_label(rdir)
+    answer_map: Dict[str, Path] = {}
+    if answer_dirs:
+        for adir in answer_dirs:
+            answer_map[_model_label(adir)] = adir
+
+    for tdir in traversal_dirs:
+        metrics, meta = _load_metrics(tdir, traversal_fields)
+        label = _model_label(tdir)
         traversal_by_model[label] = metrics
         dist = metrics.get("hop_depth_distribution")
         if isinstance(dist, list):
             hop_distributions[label] = dist
-        answer_by_model[label] = _load_answer_metrics(meta)
+        answer_dir = answer_map.get(label)
+        answer_by_model[label] = _load_answer_metrics(meta, answer_dir)
         metadata_by_model[label] = meta
 
     labels = list(traversal_by_model.keys())
@@ -255,22 +289,18 @@ __all__ = [
 
 
 if __name__ == "__main__":
-    result_dirs = get_result_dirs(
-        required=[
-            "per_query_traversal_results.jsonl",
-            "final_traversal_stats.json",
-        ]
-    )
+    traversal_files = find_result_files()
+    traversal_dirs = sorted({p.parent for p in traversal_files})
 
-    base = Path("data/results")
-    for rdir in result_dirs:
-        per_query = rdir / "per_query_traversal_results.jsonl"
+    base = Path("data/traversal")
+    for tdir in traversal_dirs:
+        per_query = tdir / "per_query_traversal_results.jsonl"
         stats = load_traversal_stats([per_query])
-        output_path = DEFAULT_PLOT_DIR / rdir.relative_to(base)
+        output_path = DEFAULT_PLOT_DIR / tdir.relative_to(base)
         plot_traversal_distributions(stats, output_path)
-        plot_traversal_metrics([rdir], output_path / "traversal_metrics.png")
+        plot_traversal_metrics([tdir], output_path / "traversal_metrics.png")
 
-    if result_dirs:
+    if traversal_dirs:
         plot_traversal_metrics(
-            result_dirs, DEFAULT_PLOT_DIR / "traversal_metrics.png"
+            traversal_dirs, DEFAULT_PLOT_DIR / "traversal_metrics.png"
         )
