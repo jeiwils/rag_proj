@@ -1016,8 +1016,8 @@ def run_traversal(
 
     Outputs
     -------
-    - per_query_traversal_results.jsonl: 🔍 Full per-query trace and metrics
-    - final_traversal_stats.json: 📈 Aggregate traversal metrics across the query set
+    - per_query_traversal_results.jsonl: Full per-query trace and metrics
+    - final_traversal_stats.json: Aggregate traversal metrics across the query set
 
     Parameters
     ----------

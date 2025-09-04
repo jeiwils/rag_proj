@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 
-CLEAN_MISMATCHED_FILES = True  # 🔁 Set to False to disable cleanup
+CLEAN_MISMATCHED_FILES = True  # Set to False to disable cleanup
 
 
 def extract_passage_ids(files):
@@ -45,7 +45,7 @@ def remove_extra_passage_ids(file_path, valid_ids):
                 print(f"[ERROR] JSON decode failed at line {i} in {file_path.name}: {e}")
 
     temp_path.replace(file_path)
-    print(f"🧹 Cleaned {file_path.name}: kept {kept}, removed {removed}")
+    print(f"Cleaned {file_path.name}: kept {kept}, removed {removed}")
 
 
 def compare_passage_ids_across_configs(base_dir):
@@ -67,12 +67,12 @@ def compare_passage_ids_across_configs(base_dir):
             files = sorted(folder.glob("*.jsonl"))
 
         if not files:
-            print(f"⚠️ No matching files in {label}")
+            print(f"No matching files in {label}")
             continue
 
-        print(f"\n📂 Collecting passage_ids from {label} ({len(files)} files)")
+        print(f"\nCollecting passage_ids from {label} ({len(files)} files)")
         ids = extract_passage_ids(files)
-        print(f"   ➤ Total unique passage_ids: {len(ids)}")
+        print(f"Total unique passage_ids: {len(ids)}")
         id_sets[label] = ids
         file_lists[label] = files
 
@@ -82,32 +82,32 @@ def compare_passage_ids_across_configs(base_dir):
     base_ids = id_sets[base_key]
     consistent = True
 
-    print(f"\n🔍 Comparing all sets against: {base_key}")
+    print(f"\nComparing all sets against: {base_key}")
     for key in keys[1:]:
         current_ids = id_sets[key]
         if base_ids != current_ids:
             consistent = False
             missing = base_ids - current_ids
             extra = current_ids - base_ids
-            print(f"❌ {key} does not match {base_key}:")
+            print(f"{key} does not match {base_key}:")
             if missing:
                 print(f"   - Missing {len(missing)} IDs")
             if extra:
                 print(f"   - Has {len(extra)} extra IDs")
 
-                # 🔧 CLEAN if enabled
+                # CLEAN if enabled
                 if CLEAN_MISMATCHED_FILES:
-                    print(f"   🔧 Cleaning extra IDs from {key}...")
+                    print(f"Cleaning extra IDs from {key}...")
                     for file in file_lists[key]:
                         remove_extra_passage_ids(file, base_ids)
 
         else:
-            print(f"✅ {key} matches {base_key}")
+            print(f"{key} matches {base_key}")
 
     if consistent:
-        print("\n✅ All folders contain the same passage_id set.")
+        print("\nAll folders contain the same passage_id set.")
     else:
-        print("\n❌ Some folders had mismatching passage_id sets.")
+        print("\nSome folders had mismatching passage_id sets.")
 
 
 if __name__ == "__main__":

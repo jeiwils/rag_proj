@@ -34,10 +34,10 @@ def inspect_json_columns(file_path):
                 keys.update(data.keys())
                 example_row = data
     except Exception as e:
-        print(f"❌ Error reading {file_path}: {e}")
+        print(f"Error reading {file_path}: {e}")
         return
 
-    print(f"\n📄 {path.name} ({len(keys)} keys)")
+    print(f"\nFile: {path.name} ({len(keys)} keys)")
     print("   Keys:", sorted(keys))
     if example_row is not None:
         print("   Example row:")
