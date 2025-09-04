@@ -350,10 +350,10 @@ def run_dense_rag(
 
 if __name__ == "__main__":
     start_time = time.time()
-    DATASETS = ["musique", "hotpotqa", "2wikimultihopqa"]
+    DATASETS = ["musique"] #, "hotpotqa", "2wikimultihopqa"]
     SPLITS = ["dev"]
 
-    READER_MODELS = ["deepseek-r1-distill-qwen-7b"]
+    READER_MODELS = ["qwen2.5-2x7b-moe-power-coder-v4"]
 
     #     "qwen2.5-7b-instruct",
     #     "qwen2.5-14b-instruct",
