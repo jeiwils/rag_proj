@@ -33,6 +33,65 @@ def load_jsonl(path: Path) -> list[dict]:
             data.append(json.loads(line))
     return data
 
+
+
+def recompute_path_f1(path: str | Path) -> Dict[str, float]:
+    """Recompute traversal precision/recall/F1 from a per-query JSONL file.
+
+    Parameters
+    ----------
+    path:
+        Location of ``per_query_traversal_results.jsonl``.
+
+    Returns
+    -------
+    Dict[str, float]
+        Mapping containing ``mean_precision``, ``mean_recall``, ``mean_f1`` and
+        ``passage_coverage_all_gold_found``.
+    """
+
+    records = load_jsonl(Path(path))
+    if not records:
+        return {
+            "mean_precision": 0.0,
+            "mean_recall": 0.0,
+            "mean_f1": 0.0,
+            "passage_coverage_all_gold_found": 0.0,
+        }
+
+    n = 0
+    sum_precision = 0.0
+    sum_recall = 0.0
+    sum_f1 = 0.0
+    all_gold = 0
+
+    for entry in records:
+        gold_set = set(entry.get("gold_passages", []))
+        visited_cumulative: set[str] = set()
+        for hop in entry.get("hop_trace", []):
+            visited_cumulative.update(hop.get("new_passages", []))
+
+        tp = len(gold_set & visited_cumulative)
+        precision = tp / len(visited_cumulative) if visited_cumulative else 0.0
+        recall = tp / len(gold_set) if gold_set else 0.0
+        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
+
+        sum_precision += precision
+        sum_recall += recall
+        sum_f1 += f1
+        if recall == 1.0 and gold_set:
+            all_gold += 1
+        n += 1
+
+    return {
+        "mean_precision": sum_precision / n if n else 0.0,
+        "mean_recall": sum_recall / n if n else 0.0,
+        "mean_f1": sum_f1 / n if n else 0.0,
+        "passage_coverage_all_gold_found": all_gold / n if n else 0.0,
+    }
+
+
+
 def stylized_subplots(*args, **kwargs):
     """Return ``plt.subplots`` with a consistent style applied."""
     plt.style.use("ggplot")
@@ -254,6 +313,8 @@ __all__ = [
     "DEFAULT_PLOT_DIR",
     "load_json",
     "load_jsonl",
+    "recompute_path_f1",
+
     "stylized_subplots",
     "ensure_output_path",
     "get_result_dirs",

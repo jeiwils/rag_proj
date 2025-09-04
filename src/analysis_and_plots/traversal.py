@@ -23,6 +23,7 @@ from .utils import (
     ensure_output_path,
     load_json,
     load_jsonl,
+    recompute_path_f1,
     stylized_subplots,
     rag_run_paths,
     parse_traversal_run_dir,
@@ -119,7 +120,13 @@ def plot_traversal_distributions(
 # Traversal metrics plotting
 # ---------------------------------------------------------------------------
 
-TRAVERSAL_FIELDS = ["mean_precision", "mean_recall", "mean_f1", "mean_hits_at_k"]
+TRAVERSAL_FIELDS = [
+    "mean_precision",
+    "mean_recall",
+    "mean_f1",
+    "mean_hits_at_k",
+    "passage_coverage_all_gold_found",
+]
 RECALL_AT_K_FIELD = "mean_recall_at_k"
 ANSWER_FIELDS = ["EM", "F1"]
 META_FIELDS = (
@@ -151,6 +158,10 @@ def _load_metrics(traversal_dir: Path, fields: Sequence[str]) -> Tuple[Dict[str,
     meta.setdefault("model", model)
     meta.setdefault("seed", seed)
     metrics = data.get("traversal_eval", {})
+    per_query_path = rag_run_paths(model, dataset, split, seed, mode)["traversal"]["per_query"]
+    if per_query_path.exists():
+        recomputed = recompute_path_f1(per_query_path)
+        metrics.update(recomputed)
     _validate_keys(metrics, fields)
     return metrics, meta
 
