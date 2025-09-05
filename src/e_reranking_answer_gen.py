@@ -887,7 +887,15 @@ if __name__ == "__main__":
     SPLITS = ["dev"]
     READER_MODEL = "llama-3.1-8b-instruct"
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
-    TRAVERSAL_MODELS = ["qwen2.5-7b-instruct", "deepseek-r1-distill-qwen-7b"]
+    TRAVERSAL_MODELS = [
+    "qwen2.5-7b-instruct",
+    "qwen2.5-14b-instruct",
+    "deepseek-r1-distill-qwen-7b",
+    "deepseek-r1-distill-qwen-14b",
+    "state-of-the-moe-rp-2x7b",
+    "qwen2.5-2x7b-moe-power-coder-v4"]
+
+#["qwen2.5-7b-instruct", "deepseek-r1-distill-qwen-7b"]
     #     "qwen2.5-14b-instruct",
     #     "deepseek-r1-distill-qwen-7b",
     #     "deepseek-r1-distill-qwen-14b",
