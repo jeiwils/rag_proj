@@ -1680,7 +1680,7 @@ if __name__ == "__main__":
     GRAPH_MODELS = ["llama-3.1-8b-instruct"]
 
 
-    TRAVERSAL_MODELS = ["state-of-the-moe-rp-2x7b"] 
+    TRAVERSAL_MODELS = ["qwen2.5-2x7b-moe-power-coder-v4"] 
 
 # [
 #         "qwen2.5-7b-instruct",
