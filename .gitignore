@@ -38,7 +38,7 @@ data/representations/models/*
 
 # misc ignore
 data/src/tests
-RAG_PROJ/analysis_outputs
+analysis_outputs/
 
 # but keep these specific dev folders
 !data/models/deepseek-distill-qwen-7b/
