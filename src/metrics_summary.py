@@ -2,10 +2,129 @@ import json
 from pathlib import Path
 from typing import Dict
 
-#from .analysis_and_plots.utils import load_token_usage
-
 
 import numpy as np
+
+
+def load_token_usage(token_usage_path: str | Path) -> dict:
+    """Load token usage statistics from ``token_usage.json``.
+
+    The function merges per-query traversal and reader metrics and computes
+    combined statistics for each query as well as global totals.
+
+    Parameters
+    ----------
+    token_usage_path:
+        Path to a ``token_usage.json`` file produced during evaluation.
+
+    Returns
+    -------
+    dict
+        A mapping with two keys:
+
+        ``per_query``
+            A dictionary keyed by query identifier containing merged metrics
+            from traversal and reader stages.
+
+        ``global``
+            Global usage statistics aggregated across all queries.
+    """
+
+    token_usage_path = Path(token_usage_path)
+    try:
+        with open(token_usage_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {"per_query": {}, "global": {}}
+
+    per_trav = data.get("per_query_traversal") or {}
+    per_reader = data.get("per_query_reader") or {}
+
+    merged_per_query: dict = {}
+    for qid in set(per_trav) | set(per_reader):
+        t = per_trav.get(qid, {})
+        r = per_reader.get(qid, {})
+
+        n_trav = float(t.get("n_traversal_calls", 0))
+        n_reader = float(r.get("n_reader_calls", 0))
+        t_trav_ms = float(t.get("t_traversal_ms", 0))
+        t_reader_ms = float(r.get("t_reader_ms", 0))
+        tok_trav = float(t.get("trav_tokens_total", 0))
+        tok_reader = float(r.get("reader_total_tokens", 0))
+        tokens_total = tok_trav + tok_reader
+        t_total_ms = t_trav_ms + t_reader_ms
+        tps_overall = tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
+
+        call_lat_trav = float(
+            t.get("call_latency_ms", t_trav_ms / max(n_trav, 1))
+        )
+        call_lat_reader = float(
+            r.get("call_latency_ms", t_reader_ms / max(n_reader, 1))
+        )
+        call_lat = (t_trav_ms + t_reader_ms) / max(n_trav + n_reader, 1)
+
+        metrics = {}
+        metrics.update(t)
+        metrics.update(r)
+        metrics.update(
+            {
+                "tokens_total": tokens_total,
+                "t_total_ms": t_total_ms,
+                "tps_overall": tps_overall,
+                "n_traversal_calls": n_trav,
+                "n_reader_calls": n_reader,
+                "t_traversal_ms": t_trav_ms,
+                "t_reader_ms": t_reader_ms,
+                "call_latency_ms_traversal": call_lat_trav,
+                "call_latency_ms_reader": call_lat_reader,
+                "call_latency_ms": call_lat,
+            }
+        )
+        merged_per_query[qid] = metrics
+
+    global_usage = {k: v for k, v in data.items() if not k.startswith("per_query")}
+    t_trav_ms = float(global_usage.get("t_traversal_ms", 0))
+    t_reader_ms = float(global_usage.get("t_reader_ms", 0))
+    tokens_total = float(
+        global_usage.get(
+            "tokens_total",
+            global_usage.get("trav_tokens_total", 0)
+            + global_usage.get("reader_total_tokens", 0),
+        )
+    )
+    t_total_ms = float(global_usage.get("t_total_ms", t_trav_ms + t_reader_ms))
+    tps_overall = (
+        tokens_total / (t_total_ms / 1000) if t_total_ms else 0.0
+    )
+    n_trav = float(global_usage.get("n_traversal_calls", 0))
+    n_reader = float(global_usage.get("n_reader_calls", 0))
+    num_queries = float(global_usage.get("num_queries", 0))
+    query_latency_ms = global_usage.get("query_latency_ms")
+    if query_latency_ms is None:
+        query_latency_ms = t_total_ms / num_queries if num_queries else 0.0
+    call_lat_trav = global_usage.get("call_latency_ms_traversal")
+    if call_lat_trav is None:
+        call_lat_trav = t_trav_ms / max(n_trav, 1)
+    call_lat_reader = global_usage.get("call_latency_ms_reader")
+    if call_lat_reader is None:
+        call_lat_reader = t_reader_ms / max(n_reader, 1)
+    call_latency_ms = global_usage.get("call_latency_ms")
+    if call_latency_ms is None:
+        call_latency_ms = (t_trav_ms + t_reader_ms) / max(n_trav + n_reader, 1)
+
+    global_usage.update(
+        {
+            "tokens_total": tokens_total,
+            "t_total_ms": t_total_ms,
+            "tps_overall": tps_overall,
+            "query_latency_ms": query_latency_ms,
+            "call_latency_ms_traversal": call_lat_trav,
+            "call_latency_ms_reader": call_lat_reader,
+            "call_latency_ms": call_latency_ms,
+        }
+    )
+
+    return {"per_query": merged_per_query, "global": global_usage}
 
 
 def append_percentiles(metrics_path: str | Path, summary_path: str | Path) -> Dict[str, float]:
