@@ -35,8 +35,10 @@ data/representations/models/*
 *.npz
 *.jsonl
 
+
 # misc ignore
 data/src/tests
+RAG_PROJ/analysis_outputs
 
 # but keep these specific dev folders
 !data/models/deepseek-distill-qwen-7b/
