@@ -190,7 +190,7 @@ import networkx as nx
 import numpy as np
 from tqdm import tqdm
 
-from src.b_sparse_dense_representations import (
+from src.d_sparse_dense_representations import (
     dataset_rep_paths,
     retrieve_hybrid_candidates,
     load_faiss_index,

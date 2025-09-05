@@ -21,14 +21,14 @@ import os
 
 from tqdm import tqdm
 
-from src.b_sparse_dense_representations import (
+from src.d_sparse_dense_representations import (
     dataset_rep_paths,
     faiss_search_topk,
     get_embedding_model,
     load_faiss_index,
 )
-from src.d_traversal import DEFAULT_SEED_TOP_K
-from src.e_reranking_answer_gen import (
+from src.f_traversal import DEFAULT_SEED_TOP_K
+from src.h_reranking_answer_gen import (
     ask_llm_with_passages,
     evaluate_answers,
     aggregate_answer_scores,

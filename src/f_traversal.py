@@ -122,7 +122,7 @@ from datetime import datetime
 
 
 from src.llm_utils import is_r1_like, query_llm, strip_think
-from src.b_sparse_dense_representations import (
+from src.d_sparse_dense_representations import (
     dataset_rep_paths,
     extract_keywords,
     retrieve_hybrid_candidates,
@@ -133,7 +133,7 @@ from src.b_sparse_dense_representations import (
 )
 from src.config import LLM_DEFAULTS, MAX_TOKENS, TEMPERATURE
 
-from src.c_graphing import DEFAULT_EDGE_BUDGET_ALPHA
+from src.e_graphing import DEFAULT_EDGE_BUDGET_ALPHA
 from src.utils import (
     SERVER_CONFIGS,
     append_jsonl,
