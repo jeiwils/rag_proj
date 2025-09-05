@@ -1,0 +1,1025 @@
+{
+  "per_query_reader": {
+    "2hop__7046_44085": {
+      "reader_prompt_tokens": 3254,
+      "reader_output_tokens": 45,
+      "reader_total_tokens": 3299,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1823,
+      "reader_wall_time_sec": 1.823,
+      "query_latency_ms": 1823,
+      "call_latency_ms": 1823.0
+    },
+    "2hop__580231_162399": {
+      "reader_prompt_tokens": 2120,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2123,
+      "n_reader_calls": 1,
+      "t_reader_ms": 578,
+      "reader_wall_time_sec": 0.578,
+      "query_latency_ms": 578,
+      "call_latency_ms": 578.0
+    },
+    "2hop__411091_625230": {
+      "reader_prompt_tokens": 1928,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 1931,
+      "n_reader_calls": 1,
+      "t_reader_ms": 551,
+      "reader_wall_time_sec": 0.551,
+      "query_latency_ms": 551,
+      "call_latency_ms": 551.0
+    },
+    "2hop__77775_162341": {
+      "reader_prompt_tokens": 2706,
+      "reader_output_tokens": 14,
+      "reader_total_tokens": 2720,
+      "n_reader_calls": 1,
+      "t_reader_ms": 998,
+      "reader_wall_time_sec": 0.998,
+      "query_latency_ms": 998,
+      "call_latency_ms": 998.0
+    },
+    "2hop__496732_658428": {
+      "reader_prompt_tokens": 3317,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 3320,
+      "n_reader_calls": 1,
+      "t_reader_ms": 873,
+      "reader_wall_time_sec": 0.873,
+      "query_latency_ms": 873,
+      "call_latency_ms": 873.0
+    },
+    "2hop__471509_136043": {
+      "reader_prompt_tokens": 2144,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2145,
+      "n_reader_calls": 1,
+      "t_reader_ms": 565,
+      "reader_wall_time_sec": 0.565,
+      "query_latency_ms": 565,
+      "call_latency_ms": 565.0
+    },
+    "2hop__35686_58556": {
+      "reader_prompt_tokens": 2510,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2511,
+      "n_reader_calls": 1,
+      "t_reader_ms": 672,
+      "reader_wall_time_sec": 0.672,
+      "query_latency_ms": 672,
+      "call_latency_ms": 672.0
+    },
+    "2hop__657913_88628": {
+      "reader_prompt_tokens": 2097,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2098,
+      "n_reader_calls": 1,
+      "t_reader_ms": 543,
+      "reader_wall_time_sec": 0.543,
+      "query_latency_ms": 543,
+      "call_latency_ms": 543.0
+    },
+    "2hop__61318_362941": {
+      "reader_prompt_tokens": 1833,
+      "reader_output_tokens": 38,
+      "reader_total_tokens": 1871,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1263,
+      "reader_wall_time_sec": 1.263,
+      "query_latency_ms": 1263,
+      "call_latency_ms": 1263.0
+    },
+    "2hop__29349_92763": {
+      "reader_prompt_tokens": 3165,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 3166,
+      "n_reader_calls": 1,
+      "t_reader_ms": 816,
+      "reader_wall_time_sec": 0.816,
+      "query_latency_ms": 816,
+      "call_latency_ms": 816.0
+    },
+    "2hop__60229_1783": {
+      "reader_prompt_tokens": 1521,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1522,
+      "n_reader_calls": 1,
+      "t_reader_ms": 426,
+      "reader_wall_time_sec": 0.426,
+      "query_latency_ms": 426,
+      "call_latency_ms": 426.0
+    },
+    "2hop__159146_120065": {
+      "reader_prompt_tokens": 2599,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2602,
+      "n_reader_calls": 1,
+      "t_reader_ms": 779,
+      "reader_wall_time_sec": 0.779,
+      "query_latency_ms": 779,
+      "call_latency_ms": 779.0
+    },
+    "2hop__119423_779396": {
+      "reader_prompt_tokens": 2610,
+      "reader_output_tokens": 20,
+      "reader_total_tokens": 2630,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1107,
+      "reader_wall_time_sec": 1.107,
+      "query_latency_ms": 1107,
+      "call_latency_ms": 1107.0
+    },
+    "2hop__728969_131890": {
+      "reader_prompt_tokens": 1538,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 1541,
+      "n_reader_calls": 1,
+      "t_reader_ms": 452,
+      "reader_wall_time_sec": 0.452,
+      "query_latency_ms": 452,
+      "call_latency_ms": 452.0
+    },
+    "2hop__394720_120259": {
+      "reader_prompt_tokens": 2536,
+      "reader_output_tokens": 18,
+      "reader_total_tokens": 2554,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1085,
+      "reader_wall_time_sec": 1.085,
+      "query_latency_ms": 1085,
+      "call_latency_ms": 1085.0
+    },
+    "2hop__860241_766393": {
+      "reader_prompt_tokens": 1764,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1765,
+      "n_reader_calls": 1,
+      "t_reader_ms": 467,
+      "reader_wall_time_sec": 0.467,
+      "query_latency_ms": 467,
+      "call_latency_ms": 467.0
+    },
+    "2hop__435087_55984": {
+      "reader_prompt_tokens": 2277,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2278,
+      "n_reader_calls": 1,
+      "t_reader_ms": 605,
+      "reader_wall_time_sec": 0.605,
+      "query_latency_ms": 605,
+      "call_latency_ms": 605.0
+    },
+    "2hop__551235_310309": {
+      "reader_prompt_tokens": 2084,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2085,
+      "n_reader_calls": 1,
+      "t_reader_ms": 546,
+      "reader_wall_time_sec": 0.546,
+      "query_latency_ms": 546,
+      "call_latency_ms": 546.0
+    },
+    "2hop__734057_88628": {
+      "reader_prompt_tokens": 2353,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2354,
+      "n_reader_calls": 1,
+      "t_reader_ms": 602,
+      "reader_wall_time_sec": 0.602,
+      "query_latency_ms": 602,
+      "call_latency_ms": 602.0
+    },
+    "2hop__36747_18974": {
+      "reader_prompt_tokens": 3694,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 3695,
+      "n_reader_calls": 1,
+      "t_reader_ms": 931,
+      "reader_wall_time_sec": 0.931,
+      "query_latency_ms": 931,
+      "call_latency_ms": 931.0
+    },
+    "2hop__81682_707195": {
+      "reader_prompt_tokens": 2727,
+      "reader_output_tokens": 20,
+      "reader_total_tokens": 2747,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1050,
+      "reader_wall_time_sec": 1.05,
+      "query_latency_ms": 1050,
+      "call_latency_ms": 1050.0
+    },
+    "2hop__753715_51329": {
+      "reader_prompt_tokens": 2328,
+      "reader_output_tokens": 22,
+      "reader_total_tokens": 2350,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1034,
+      "reader_wall_time_sec": 1.034,
+      "query_latency_ms": 1034,
+      "call_latency_ms": 1034.0
+    },
+    "2hop__3131_3300": {
+      "reader_prompt_tokens": 2048,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2051,
+      "n_reader_calls": 1,
+      "t_reader_ms": 582,
+      "reader_wall_time_sec": 0.582,
+      "query_latency_ms": 582,
+      "call_latency_ms": 582.0
+    },
+    "2hop__168816_144857": {
+      "reader_prompt_tokens": 1895,
+      "reader_output_tokens": 26,
+      "reader_total_tokens": 1921,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1058,
+      "reader_wall_time_sec": 1.058,
+      "query_latency_ms": 1058,
+      "call_latency_ms": 1058.0
+    },
+    "2hop__390947_232243": {
+      "reader_prompt_tokens": 1802,
+      "reader_output_tokens": 7,
+      "reader_total_tokens": 1809,
+      "n_reader_calls": 1,
+      "t_reader_ms": 603,
+      "reader_wall_time_sec": 0.603,
+      "query_latency_ms": 603,
+      "call_latency_ms": 603.0
+    },
+    "2hop__152052_141308": {
+      "reader_prompt_tokens": 1870,
+      "reader_output_tokens": 5,
+      "reader_total_tokens": 1875,
+      "n_reader_calls": 1,
+      "t_reader_ms": 583,
+      "reader_wall_time_sec": 0.583,
+      "query_latency_ms": 583,
+      "call_latency_ms": 583.0
+    },
+    "2hop__753260_71701": {
+      "reader_prompt_tokens": 2402,
+      "reader_output_tokens": 60,
+      "reader_total_tokens": 2462,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2016,
+      "reader_wall_time_sec": 2.016,
+      "query_latency_ms": 2016,
+      "call_latency_ms": 2016.0
+    },
+    "2hop__623501_297043": {
+      "reader_prompt_tokens": 1389,
+      "reader_output_tokens": 36,
+      "reader_total_tokens": 1425,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1077,
+      "reader_wall_time_sec": 1.077,
+      "query_latency_ms": 1077,
+      "call_latency_ms": 1077.0
+    },
+    "2hop__837900_71701": {
+      "reader_prompt_tokens": 2062,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2063,
+      "n_reader_calls": 1,
+      "t_reader_ms": 550,
+      "reader_wall_time_sec": 0.55,
+      "query_latency_ms": 550,
+      "call_latency_ms": 550.0
+    },
+    "2hop__95878_88628": {
+      "reader_prompt_tokens": 2396,
+      "reader_output_tokens": 361,
+      "reader_total_tokens": 2757,
+      "n_reader_calls": 1,
+      "t_reader_ms": 21257,
+      "reader_wall_time_sec": 21.257,
+      "query_latency_ms": 21257,
+      "call_latency_ms": 21257.0
+    },
+    "2hop__499003_853511": {
+      "reader_prompt_tokens": 1826,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1827,
+      "n_reader_calls": 1,
+      "t_reader_ms": 476,
+      "reader_wall_time_sec": 0.476,
+      "query_latency_ms": 476,
+      "call_latency_ms": 476.0
+    },
+    "2hop__153573_45901": {
+      "reader_prompt_tokens": 2317,
+      "reader_output_tokens": 61,
+      "reader_total_tokens": 2378,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2013,
+      "reader_wall_time_sec": 2.013,
+      "query_latency_ms": 2013,
+      "call_latency_ms": 2013.0
+    },
+    "2hop__25396_212301": {
+      "reader_prompt_tokens": 2313,
+      "reader_output_tokens": 60,
+      "reader_total_tokens": 2373,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1969,
+      "reader_wall_time_sec": 1.969,
+      "query_latency_ms": 1969,
+      "call_latency_ms": 1969.0
+    },
+    "2hop__191125_781346": {
+      "reader_prompt_tokens": 2620,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2621,
+      "n_reader_calls": 1,
+      "t_reader_ms": 663,
+      "reader_wall_time_sec": 0.663,
+      "query_latency_ms": 663,
+      "call_latency_ms": 663.0
+    },
+    "2hop__26642_81961": {
+      "reader_prompt_tokens": 2046,
+      "reader_output_tokens": 29,
+      "reader_total_tokens": 2075,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1151,
+      "reader_wall_time_sec": 1.151,
+      "query_latency_ms": 1151,
+      "call_latency_ms": 1151.0
+    },
+    "2hop__505860_650613": {
+      "reader_prompt_tokens": 2285,
+      "reader_output_tokens": 14,
+      "reader_total_tokens": 2299,
+      "n_reader_calls": 1,
+      "t_reader_ms": 890,
+      "reader_wall_time_sec": 0.89,
+      "query_latency_ms": 890,
+      "call_latency_ms": 890.0
+    },
+    "2hop__238499_431914": {
+      "reader_prompt_tokens": 2126,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2129,
+      "n_reader_calls": 1,
+      "t_reader_ms": 580,
+      "reader_wall_time_sec": 0.58,
+      "query_latency_ms": 580,
+      "call_latency_ms": 580.0
+    },
+    "2hop__636597_480615": {
+      "reader_prompt_tokens": 2299,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2300,
+      "n_reader_calls": 1,
+      "t_reader_ms": 590,
+      "reader_wall_time_sec": 0.59,
+      "query_latency_ms": 590,
+      "call_latency_ms": 590.0
+    },
+    "2hop__37765_85990": {
+      "reader_prompt_tokens": 2754,
+      "reader_output_tokens": 18,
+      "reader_total_tokens": 2772,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1912,
+      "reader_wall_time_sec": 1.912,
+      "query_latency_ms": 1912,
+      "call_latency_ms": 1912.0
+    },
+    "2hop__89991_58067": {
+      "reader_prompt_tokens": 2911,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2912,
+      "n_reader_calls": 1,
+      "t_reader_ms": 788,
+      "reader_wall_time_sec": 0.788,
+      "query_latency_ms": 788,
+      "call_latency_ms": 788.0
+    },
+    "2hop__21991_43945": {
+      "reader_prompt_tokens": 3351,
+      "reader_output_tokens": 15,
+      "reader_total_tokens": 3366,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1191,
+      "reader_wall_time_sec": 1.191,
+      "query_latency_ms": 1191,
+      "call_latency_ms": 1191.0
+    },
+    "2hop__135822_46621": {
+      "reader_prompt_tokens": 2342,
+      "reader_output_tokens": 21,
+      "reader_total_tokens": 2363,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1030,
+      "reader_wall_time_sec": 1.03,
+      "query_latency_ms": 1030,
+      "call_latency_ms": 1030.0
+    },
+    "2hop__439614_349102": {
+      "reader_prompt_tokens": 2450,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2453,
+      "n_reader_calls": 1,
+      "t_reader_ms": 664,
+      "reader_wall_time_sec": 0.664,
+      "query_latency_ms": 664,
+      "call_latency_ms": 664.0
+    },
+    "2hop__109131_343058": {
+      "reader_prompt_tokens": 1733,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 1736,
+      "n_reader_calls": 1,
+      "t_reader_ms": 490,
+      "reader_wall_time_sec": 0.49,
+      "query_latency_ms": 490,
+      "call_latency_ms": 490.0
+    },
+    "2hop__85463_50252": {
+      "reader_prompt_tokens": 4006,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 4007,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1033,
+      "reader_wall_time_sec": 1.033,
+      "query_latency_ms": 1033,
+      "call_latency_ms": 1033.0
+    },
+    "2hop__50910_177869": {
+      "reader_prompt_tokens": 2054,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2055,
+      "n_reader_calls": 1,
+      "t_reader_ms": 543,
+      "reader_wall_time_sec": 0.543,
+      "query_latency_ms": 543,
+      "call_latency_ms": 543.0
+    },
+    "2hop__76314_177869": {
+      "reader_prompt_tokens": 1946,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1947,
+      "n_reader_calls": 1,
+      "t_reader_ms": 449,
+      "reader_wall_time_sec": 0.449,
+      "query_latency_ms": 449,
+      "call_latency_ms": 449.0
+    },
+    "2hop__678516_179720": {
+      "reader_prompt_tokens": 2216,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2217,
+      "n_reader_calls": 1,
+      "t_reader_ms": 583,
+      "reader_wall_time_sec": 0.583,
+      "query_latency_ms": 583,
+      "call_latency_ms": 583.0
+    },
+    "2hop__8347_8311": {
+      "reader_prompt_tokens": 2347,
+      "reader_output_tokens": 23,
+      "reader_total_tokens": 2370,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1099,
+      "reader_wall_time_sec": 1.099,
+      "query_latency_ms": 1099,
+      "call_latency_ms": 1099.0
+    },
+    "2hop__40270_11402": {
+      "reader_prompt_tokens": 3189,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 3193,
+      "n_reader_calls": 1,
+      "t_reader_ms": 944,
+      "reader_wall_time_sec": 0.944,
+      "query_latency_ms": 944,
+      "call_latency_ms": 944.0
+    },
+    "2hop__865961_159109": {
+      "reader_prompt_tokens": 1628,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1629,
+      "n_reader_calls": 1,
+      "t_reader_ms": 450,
+      "reader_wall_time_sec": 0.45,
+      "query_latency_ms": 450,
+      "call_latency_ms": 450.0
+    },
+    "2hop__861157_135481": {
+      "reader_prompt_tokens": 3261,
+      "reader_output_tokens": 21,
+      "reader_total_tokens": 3282,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1357,
+      "reader_wall_time_sec": 1.357,
+      "query_latency_ms": 1357,
+      "call_latency_ms": 1357.0
+    },
+    "2hop__593397_224832": {
+      "reader_prompt_tokens": 2050,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2051,
+      "n_reader_calls": 1,
+      "t_reader_ms": 546,
+      "reader_wall_time_sec": 0.546,
+      "query_latency_ms": 546,
+      "call_latency_ms": 546.0
+    },
+    "2hop__75207_365216": {
+      "reader_prompt_tokens": 2051,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2052,
+      "n_reader_calls": 1,
+      "t_reader_ms": 544,
+      "reader_wall_time_sec": 0.544,
+      "query_latency_ms": 544,
+      "call_latency_ms": 544.0
+    },
+    "2hop__304852_758385": {
+      "reader_prompt_tokens": 2067,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2068,
+      "n_reader_calls": 1,
+      "t_reader_ms": 547,
+      "reader_wall_time_sec": 0.547,
+      "query_latency_ms": 547,
+      "call_latency_ms": 547.0
+    },
+    "2hop__86689_728109": {
+      "reader_prompt_tokens": 3724,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 3727,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1066,
+      "reader_wall_time_sec": 1.066,
+      "query_latency_ms": 1066,
+      "call_latency_ms": 1066.0
+    },
+    "2hop__70584_198548": {
+      "reader_prompt_tokens": 1840,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1841,
+      "n_reader_calls": 1,
+      "t_reader_ms": 487,
+      "reader_wall_time_sec": 0.487,
+      "query_latency_ms": 487,
+      "call_latency_ms": 487.0
+    },
+    "2hop__156085_436709": {
+      "reader_prompt_tokens": 2999,
+      "reader_output_tokens": 60,
+      "reader_total_tokens": 3059,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2164,
+      "reader_wall_time_sec": 2.164,
+      "query_latency_ms": 2164,
+      "call_latency_ms": 2164.0
+    },
+    "2hop__701525_342810": {
+      "reader_prompt_tokens": 2041,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2042,
+      "n_reader_calls": 1,
+      "t_reader_ms": 538,
+      "reader_wall_time_sec": 0.538,
+      "query_latency_ms": 538,
+      "call_latency_ms": 538.0
+    },
+    "2hop__66708_573255": {
+      "reader_prompt_tokens": 2500,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2501,
+      "n_reader_calls": 1,
+      "t_reader_ms": 636,
+      "reader_wall_time_sec": 0.636,
+      "query_latency_ms": 636,
+      "call_latency_ms": 636.0
+    },
+    "2hop__422295_8311": {
+      "reader_prompt_tokens": 2333,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2336,
+      "n_reader_calls": 1,
+      "t_reader_ms": 658,
+      "reader_wall_time_sec": 0.658,
+      "query_latency_ms": 658,
+      "call_latency_ms": 658.0
+    },
+    "2hop__269766_43945": {
+      "reader_prompt_tokens": 2660,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2663,
+      "n_reader_calls": 1,
+      "t_reader_ms": 725,
+      "reader_wall_time_sec": 0.725,
+      "query_latency_ms": 725,
+      "call_latency_ms": 725.0
+    },
+    "2hop__693444_220151": {
+      "reader_prompt_tokens": 1840,
+      "reader_output_tokens": 13,
+      "reader_total_tokens": 1853,
+      "n_reader_calls": 1,
+      "t_reader_ms": 749,
+      "reader_wall_time_sec": 0.749,
+      "query_latency_ms": 749,
+      "call_latency_ms": 749.0
+    },
+    "2hop__153573_44085": {
+      "reader_prompt_tokens": 2530,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2533,
+      "n_reader_calls": 1,
+      "t_reader_ms": 705,
+      "reader_wall_time_sec": 0.705,
+      "query_latency_ms": 705,
+      "call_latency_ms": 705.0
+    },
+    "2hop__481349_302087": {
+      "reader_prompt_tokens": 1661,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1662,
+      "n_reader_calls": 1,
+      "t_reader_ms": 464,
+      "reader_wall_time_sec": 0.464,
+      "query_latency_ms": 464,
+      "call_latency_ms": 464.0
+    },
+    "2hop__115515_779396": {
+      "reader_prompt_tokens": 2783,
+      "reader_output_tokens": 26,
+      "reader_total_tokens": 2809,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1393,
+      "reader_wall_time_sec": 1.393,
+      "query_latency_ms": 1393,
+      "call_latency_ms": 1393.0
+    },
+    "2hop__75207_53316": {
+      "reader_prompt_tokens": 2432,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 2438,
+      "n_reader_calls": 1,
+      "t_reader_ms": 743,
+      "reader_wall_time_sec": 0.743,
+      "query_latency_ms": 743,
+      "call_latency_ms": 743.0
+    },
+    "2hop__42578_55840": {
+      "reader_prompt_tokens": 2376,
+      "reader_output_tokens": 28,
+      "reader_total_tokens": 2404,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1313,
+      "reader_wall_time_sec": 1.313,
+      "query_latency_ms": 1313,
+      "call_latency_ms": 1313.0
+    },
+    "2hop__2416_86208": {
+      "reader_prompt_tokens": 2188,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2191,
+      "n_reader_calls": 1,
+      "t_reader_ms": 602,
+      "reader_wall_time_sec": 0.602,
+      "query_latency_ms": 602,
+      "call_latency_ms": 602.0
+    },
+    "2hop__55032_786853": {
+      "reader_prompt_tokens": 3135,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 3136,
+      "n_reader_calls": 1,
+      "t_reader_ms": 834,
+      "reader_wall_time_sec": 0.834,
+      "query_latency_ms": 834,
+      "call_latency_ms": 834.0
+    },
+    "2hop__665660_135481": {
+      "reader_prompt_tokens": 3283,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 3286,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1001,
+      "reader_wall_time_sec": 1.001,
+      "query_latency_ms": 1001,
+      "call_latency_ms": 1001.0
+    },
+    "2hop__152027_141308": {
+      "reader_prompt_tokens": 1872,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1873,
+      "n_reader_calls": 1,
+      "t_reader_ms": 502,
+      "reader_wall_time_sec": 0.502,
+      "query_latency_ms": 502,
+      "call_latency_ms": 502.0
+    },
+    "2hop__598467_68489": {
+      "reader_prompt_tokens": 1738,
+      "reader_output_tokens": 60,
+      "reader_total_tokens": 1798,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2088,
+      "reader_wall_time_sec": 2.088,
+      "query_latency_ms": 2088,
+      "call_latency_ms": 2088.0
+    },
+    "2hop__203437_152093": {
+      "reader_prompt_tokens": 1706,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1707,
+      "n_reader_calls": 1,
+      "t_reader_ms": 450,
+      "reader_wall_time_sec": 0.45,
+      "query_latency_ms": 450,
+      "call_latency_ms": 450.0
+    },
+    "2hop__358582_189042": {
+      "reader_prompt_tokens": 1707,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1708,
+      "n_reader_calls": 1,
+      "t_reader_ms": 2722,
+      "reader_wall_time_sec": 2.722,
+      "query_latency_ms": 2722,
+      "call_latency_ms": 2722.0
+    },
+    "2hop__450600_158262": {
+      "reader_prompt_tokens": 2093,
+      "reader_output_tokens": 16,
+      "reader_total_tokens": 2109,
+      "n_reader_calls": 1,
+      "t_reader_ms": 12657,
+      "reader_wall_time_sec": 12.657,
+      "query_latency_ms": 12657,
+      "call_latency_ms": 12657.0
+    },
+    "2hop__398344_85513": {
+      "reader_prompt_tokens": 1992,
+      "reader_output_tokens": 25,
+      "reader_total_tokens": 2017,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1150,
+      "reader_wall_time_sec": 1.15,
+      "query_latency_ms": 1150,
+      "call_latency_ms": 1150.0
+    },
+    "2hop__267938_92763": {
+      "reader_prompt_tokens": 2293,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2294,
+      "n_reader_calls": 1,
+      "t_reader_ms": 604,
+      "reader_wall_time_sec": 0.604,
+      "query_latency_ms": 604,
+      "call_latency_ms": 604.0
+    },
+    "2hop__693157_131890": {
+      "reader_prompt_tokens": 1923,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 1926,
+      "n_reader_calls": 1,
+      "t_reader_ms": 527,
+      "reader_wall_time_sec": 0.527,
+      "query_latency_ms": 527,
+      "call_latency_ms": 527.0
+    },
+    "2hop__780652_93362": {
+      "reader_prompt_tokens": 2064,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2065,
+      "n_reader_calls": 1,
+      "t_reader_ms": 538,
+      "reader_wall_time_sec": 0.538,
+      "query_latency_ms": 538,
+      "call_latency_ms": 538.0
+    },
+    "2hop__698577_851686": {
+      "reader_prompt_tokens": 1543,
+      "reader_output_tokens": 4,
+      "reader_total_tokens": 1547,
+      "n_reader_calls": 1,
+      "t_reader_ms": 484,
+      "reader_wall_time_sec": 0.484,
+      "query_latency_ms": 484,
+      "call_latency_ms": 484.0
+    },
+    "2hop__207476_625987": {
+      "reader_prompt_tokens": 2234,
+      "reader_output_tokens": 40,
+      "reader_total_tokens": 2274,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1583,
+      "reader_wall_time_sec": 1.583,
+      "query_latency_ms": 1583,
+      "call_latency_ms": 1583.0
+    },
+    "2hop__155781_155922": {
+      "reader_prompt_tokens": 1199,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 1202,
+      "n_reader_calls": 1,
+      "t_reader_ms": 348,
+      "reader_wall_time_sec": 0.348,
+      "query_latency_ms": 348,
+      "call_latency_ms": 348.0
+    },
+    "2hop__278022_71701": {
+      "reader_prompt_tokens": 2519,
+      "reader_output_tokens": 6,
+      "reader_total_tokens": 2525,
+      "n_reader_calls": 1,
+      "t_reader_ms": 817,
+      "reader_wall_time_sec": 0.817,
+      "query_latency_ms": 817,
+      "call_latency_ms": 817.0
+    },
+    "2hop__332453_139339": {
+      "reader_prompt_tokens": 2334,
+      "reader_output_tokens": 43,
+      "reader_total_tokens": 2377,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1663,
+      "reader_wall_time_sec": 1.663,
+      "query_latency_ms": 1663,
+      "call_latency_ms": 1663.0
+    },
+    "2hop__503085_110222": {
+      "reader_prompt_tokens": 1871,
+      "reader_output_tokens": 14,
+      "reader_total_tokens": 1885,
+      "n_reader_calls": 1,
+      "t_reader_ms": 822,
+      "reader_wall_time_sec": 0.822,
+      "query_latency_ms": 822,
+      "call_latency_ms": 822.0
+    },
+    "2hop__452580_70131": {
+      "reader_prompt_tokens": 2777,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2780,
+      "n_reader_calls": 1,
+      "t_reader_ms": 760,
+      "reader_wall_time_sec": 0.76,
+      "query_latency_ms": 760,
+      "call_latency_ms": 760.0
+    },
+    "2hop__728887_159109": {
+      "reader_prompt_tokens": 1752,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1753,
+      "n_reader_calls": 1,
+      "t_reader_ms": 470,
+      "reader_wall_time_sec": 0.47,
+      "query_latency_ms": 470,
+      "call_latency_ms": 470.0
+    },
+    "2hop__293131_110222": {
+      "reader_prompt_tokens": 2218,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2221,
+      "n_reader_calls": 1,
+      "t_reader_ms": 632,
+      "reader_wall_time_sec": 0.632,
+      "query_latency_ms": 632,
+      "call_latency_ms": 632.0
+    },
+    "2hop__647996_551681": {
+      "reader_prompt_tokens": 1722,
+      "reader_output_tokens": 7,
+      "reader_total_tokens": 1729,
+      "n_reader_calls": 1,
+      "t_reader_ms": 568,
+      "reader_wall_time_sec": 0.568,
+      "query_latency_ms": 568,
+      "call_latency_ms": 568.0
+    },
+    "2hop__42027_42004": {
+      "reader_prompt_tokens": 4275,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 4278,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1089,
+      "reader_wall_time_sec": 1.089,
+      "query_latency_ms": 1089,
+      "call_latency_ms": 1089.0
+    },
+    "2hop__88906_55840": {
+      "reader_prompt_tokens": 2496,
+      "reader_output_tokens": 51,
+      "reader_total_tokens": 2547,
+      "n_reader_calls": 1,
+      "t_reader_ms": 3108,
+      "reader_wall_time_sec": 3.108,
+      "query_latency_ms": 3108,
+      "call_latency_ms": 3108.0
+    },
+    "2hop__13592_85544": {
+      "reader_prompt_tokens": 3174,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 3175,
+      "n_reader_calls": 1,
+      "t_reader_ms": 929,
+      "reader_wall_time_sec": 0.929,
+      "query_latency_ms": 929,
+      "call_latency_ms": 929.0
+    },
+    "2hop__13986_40169": {
+      "reader_prompt_tokens": 2645,
+      "reader_output_tokens": 3,
+      "reader_total_tokens": 2648,
+      "n_reader_calls": 1,
+      "t_reader_ms": 714,
+      "reader_wall_time_sec": 0.714,
+      "query_latency_ms": 714,
+      "call_latency_ms": 714.0
+    },
+    "2hop__159741_161674": {
+      "reader_prompt_tokens": 2911,
+      "reader_output_tokens": 41,
+      "reader_total_tokens": 2952,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1914,
+      "reader_wall_time_sec": 1.914,
+      "query_latency_ms": 1914,
+      "call_latency_ms": 1914.0
+    },
+    "2hop__201704_135481": {
+      "reader_prompt_tokens": 3569,
+      "reader_output_tokens": 23,
+      "reader_total_tokens": 3592,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1566,
+      "reader_wall_time_sec": 1.566,
+      "query_latency_ms": 1566,
+      "call_latency_ms": 1566.0
+    },
+    "2hop__335899_124498": {
+      "reader_prompt_tokens": 1918,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 1919,
+      "n_reader_calls": 1,
+      "t_reader_ms": 502,
+      "reader_wall_time_sec": 0.502,
+      "query_latency_ms": 502,
+      "call_latency_ms": 502.0
+    },
+    "2hop__107905_110222": {
+      "reader_prompt_tokens": 2364,
+      "reader_output_tokens": 1,
+      "reader_total_tokens": 2365,
+      "n_reader_calls": 1,
+      "t_reader_ms": 628,
+      "reader_wall_time_sec": 0.628,
+      "query_latency_ms": 628,
+      "call_latency_ms": 628.0
+    },
+    "2hop__85463_54688": {
+      "reader_prompt_tokens": 3878,
+      "reader_output_tokens": 25,
+      "reader_total_tokens": 3903,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1534,
+      "reader_wall_time_sec": 1.534,
+      "query_latency_ms": 1534,
+      "call_latency_ms": 1534.0
+    },
+    "2hop__747758_58067": {
+      "reader_prompt_tokens": 3105,
+      "reader_output_tokens": 15,
+      "reader_total_tokens": 3120,
+      "n_reader_calls": 1,
+      "t_reader_ms": 1177,
+      "reader_wall_time_sec": 1.177,
+      "query_latency_ms": 1177,
+      "call_latency_ms": 1177.0
+    }
+  },
+  "trav_prompt_tokens": 0.0,
+  "trav_output_tokens": 0.0,
+  "trav_tokens_total": 0.0,
+  "reader_prompt_tokens": 237374.0,
+  "reader_output_tokens": 1541.0,
+  "reader_total_tokens": 238915.0,
+  "n_reader_calls": 100.0,
+  "t_traversal_ms": 0.0,
+  "t_reader_ms": 124617.99999999999,
+  "num_queries": 100,
+  "tokens_total": 238915.0,
+  "t_total_ms": 124617.99999999999,
+  "tps_overall": 1917.1788987144716,
+  "query_qps_traversal": 0.0,
+  "cps_traversal": 0.0,
+  "query_qps_reader": 0.8024522942111093,
+  "cps_reader": 0.8024522942111093,
+  "query_latency_ms": 1246.1799999999998,
+  "call_latency_ms_traversal": 0.0,
+  "call_latency_ms_reader": 1246.1799999999998,
+  "call_latency_ms": 1246.1799999999998
+}
