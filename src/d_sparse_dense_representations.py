@@ -419,10 +419,6 @@ def faiss_search_topk(query_emb: np.ndarray, index, top_k: int = 50):
 
 
 
-
-
-
-
 ### sparse representation
 
 
@@ -527,15 +523,19 @@ def retrieve_hybrid_candidates(
     results.sort(key=lambda x: x["sim_hybrid"], reverse=True)
     return results[:top_k]
 
+
+
+
+
+
+
+
+
+
 SPACY_MODEL = os.environ.get("SPACY_MODEL", "en_core_web_sm")
 
 nlp = spacy.load(SPACY_MODEL, disable=["parser", "textcat"])
 
-# Keep only these named-entity types
-KEEP_ENTS = {
-    "PERSON","ORG","GPE","LOC","FAC","PRODUCT",
-    "WORK_OF_ART","EVENT","LAW"  # drop: DATE, TIME, CARDINAL, ORDINAL, LANGUAGE, NORP
-}
 
 
 
@@ -608,6 +608,18 @@ def normalise_text(s: str) -> str:
     return t
 
 
+
+
+# Keep only these named-entity types
+KEEP_ENTS = {
+    "PERSON","ORG","GPE","LOC","FAC","PRODUCT",
+    "WORK_OF_ART","EVENT","LAW"  # drop: DATE, TIME, CARDINAL, ORDINAL, LANGUAGE, NORP
+}
+
+
+
+
+
 def extract_keywords(text: str) -> list[str]:
     if not text:
         return []
@@ -621,7 +633,6 @@ def extract_keywords(text: str) -> list[str]:
                 if canon:
                     out.add(canon)
     return sorted(out)
-
 
 
 
