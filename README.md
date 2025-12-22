@@ -20,36 +20,36 @@ Traversal-generated answers (baseline HopRAG) compared with the retrieval-only b
 
 ### HotpotQA
 
-| Model | Traversal EM | Traversal F1 | Hybrid retrieval EM | Hybrid retrieval F1 |
-| --- | --- | --- | --- | --- |
-| deepseek-r1-distill-qwen-14b | 26.3 | 34.5 | 35.0 | 46.9 |
-| deepseek-r1-distill-qwen-7b | 26.3 | 33.8 | 9.3 | 23.3 |
-| qwen2.5-14b-instruct | 25.0 | 34.0 | 17.3 | 31.9 |
-| qwen2.5-2x7b-moe-power-coder-v4 | 23.0 | 32.6 | 3.3 | 10.3 |
-| qwen2.5-7b-instruct | 24.7 | 34.1 | 18.3 | 30.9 |
-| state-of-the-moe-rp-2x7b | 24.7 | 32.5 | 25.0 | 41.4 |
+| Model | Traversal F1 | Traversal APT | Hybrid F1 |
+| --- | --- | --- | --- |
+| deepseek-r1-distill-qwen-14b | 26.66 | 25,698 | 45.58 |
+| deepseek-r1-distill-qwen-7b | 27.07 | 25,533 | 21.86 |
+| qwen2.5-14b-instruct | 27.03 | 25,343 | 30.37 |
+| qwen2.5-2x7b-moe-power-coder-v4 | 27.21 | 25,572 | 7.49 |
+| qwen2.5-7b-instruct | 28.16 | 26,382 | 29.75 |
+| state-of-the-moe-rp-2x7b | 25.02 | 25,325 | 30.55 |
 
 ### Musique
 
-| Model | Traversal EM | Traversal F1 | Hybrid retrieval EM | Hybrid retrieval F1 |
-| --- | --- | --- | --- | --- |
-| deepseek-r1-distill-qwen-14b | 8.0 | 16.8 | 19.7 | 32.7 |
-| deepseek-r1-distill-qwen-7b | 8.3 | 16.5 | 5.0 | 16.8 |
-| qwen2.5-14b-instruct | 8.0 | 16.4 | 3.0 | 16.1 |
-| qwen2.5-2x7b-moe-power-coder-v4 | 9.7 | 19.1 | 0.7 | 5.0 |
-| qwen2.5-7b-instruct | 7.3 | 16.5 | 1.7 | 8.5 |
-| state-of-the-moe-rp-2x7b | 7.3 | 15.6 | 6.3 | 23.0 |
+| Model | Traversal F1 | Traversal APT | Hybrid F1 |
+| --- | --- | --- | --- |
+| deepseek-r1-distill-qwen-14b | 16.62 | 60,136 | 30.77 |
+| deepseek-r1-distill-qwen-7b | 16.20 | 59,566 | 17.42 |
+| qwen2.5-14b-instruct | 14.71 | 60,081 | 14.73 |
+| qwen2.5-2x7b-moe-power-coder-v4 | 20.40 | 59,456 | 6.68 |
+| qwen2.5-7b-instruct | 16.68 | 58,562 | 9.59 |
+| state-of-the-moe-rp-2x7b | 15.67 | 58,708 | 19.34 |
 
 ### 2WikiMultihopQA
 
-| Model | Traversal EM | Traversal F1 | Hybrid retrieval EM | Hybrid retrieval F1 |
-| --- | --- | --- | --- | --- |
-| deepseek-r1-distill-qwen-14b | 10.7 | 15.1 | 23.0 | 34.4 |
-| deepseek-r1-distill-qwen-7b | 12.0 | 16.4 | 4.0 | 17.9 |
-| qwen2.5-14b-instruct | 12.3 | 16.6 | 5.7 | 19.5 |
-| qwen2.5-2x7b-moe-power-coder-v4 | 12.3 | 16.4 | 3.0 | 8.8 |
-| qwen2.5-7b-instruct | 9.7 | 13.4 | 5.7 | 11.5 |
-| state-of-the-moe-rp-2x7b | 12.3 | 16.3 | 22.3 | 31.0 |
+| Model | Traversal F1 | Traversal APT | Hybrid F1 |
+| --- | --- | --- | --- |
+| deepseek-r1-distill-qwen-14b | 14.48 | 21,602 | 35.30 |
+| deepseek-r1-distill-qwen-7b | 17.62 | 21,740 | 17.39 |
+| qwen2.5-14b-instruct | 18.84 | 22,236 | 21.45 |
+| qwen2.5-2x7b-moe-power-coder-v4 | 16.09 | 21,671 | 10.28 |
+| qwen2.5-7b-instruct | 13.74 | 22,045 | 16.27 |
+| state-of-the-moe-rp-2x7b | 17.92 | 21,819 | 16.42 |
 
 ## Llama.cpp and CUDA usage
 
