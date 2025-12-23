@@ -9,7 +9,7 @@ Multi-hop question answering pipeline that pairs retrieval-augmented generation 
 - **Artifact-first design**: every phase writes JSONL, FAISS indexes, debug logs, and traces for reproducibility.
 - **Resume-friendly processing** for sharded generation, cleaning, embedding, and traversal steps.
 
-## Quickstart (install → run → verify)
+## Quickstart (install -> run)
 1. **Install**
    ```bash
    python -m venv .venv
@@ -28,12 +28,7 @@ Multi-hop question answering pipeline that pairs retrieval-augmented generation 
      ```bash
      python -m src.b_text_generation  # uses SERVER_CONFIGS and shard settings in the module
      ```
-3. **Verify**
-   - Confirm the environment imports cleanly:
-     ```bash
-     python -m compileall src
-     ```
-   - Check that new artifacts appear under `data/models/{model}/{dataset}/{split}/shards/` and `data/processed_datasets/{dataset}/{split}/`.
+
 
 ## Usage (common workflows)
 - **Dataset preprocessing** – `src/a_dataset_preprocessing.py::process_dataset` normalizes raw QA data to `questions.jsonl` and `passages.jsonl` with configurable field maps.
@@ -46,29 +41,23 @@ Multi-hop question answering pipeline that pairs retrieval-augmented generation 
 
 ### FIELD_ID / field_map basics
 FIELD_ID and passage IDs define the canonical identity layer of the pipeline. These identifiers are reused across preprocessing, embeddings, graph construction, traversal, gold alignment, and metrics.
-
 - **get_id(ex) -> str** – Returns a stable, unique question identifier (the FIELD_ID) for a single raw example.
 Example (.txt):
 lambda ex: ex["my_qid_col"]
-
 - **get_question(ex) -> str** – Returns the question text associated with the FIELD_ID.
 Example (.txt):
 lambda ex: ex["question_text"]
-
-**get_answer(ex) -> str** (optional) – Returns the gold answer if available; otherwise an empty string.
+- **get_answer(ex) -> str** (optional) – Returns the gold answer if available; otherwise an empty string.
 Example (.txt):
 lambda ex: ex.get("gold_answer", "")
-
-**iter_passages(ex) ->** Iterable[(passage_id, title, text)] – Emits all passages to be indexed for the example.
+- **iter_passages(ex) ->** Iterable[(passage_id, title, text)] – Emits all passages to be indexed for the example.
 The emitted passage_id is the canonical key used across embeddings, graph edges, traversal traces, and metrics.
 Example (.txt):
 lambda ex: [(pid_plus_title(ex["my_qid_col"], p["title"], i), p["title"], p["text"]) for i, p in enumerate(ex["paras"])]
-
-**gold_passage_ids(ex)** -> Iterable[str] (optional) – Returns IDs of supporting passages that must exactly match the passage_ids emitted by iter_passages.
+- **gold_passage_ids(ex)** -> Iterable[str] (optional) – Returns IDs of supporting passages that must exactly match the passage_ids emitted by iter_passages.
 Critical constraint – IDs must match byte-for-byte. Any mismatch will silently invalidate gold supervision and retrieval metrics.
 Example (.txt):
 lambda ex: [pid_plus_title(ex["my_qid_col"], p["title"], p["idx"]) for p in ex.get("supporting", [])]
-
 After wiring the field_map (see patterns in src/a_dataset_preprocessing.py), run preprocessing:
 python -m src.a_dataset_preprocessing
 
@@ -107,7 +96,7 @@ Artifacts are stored under `data/processed_datasets/`, `data/models/`, `data/rep
 
 ## Benchmark snapshots (dev splits; averaged across 3 seeds)
 
-Traversal-generated answers (baseline HopRAG) compared with the retrieval-only baseline (dense/FAISS). EM/F1 are averaged over three seeds per model. Separate tables are shown per dataset.
+Traversal-generated answers (baseline HopRAG) compared with the retrieval-only baseline (dense/FAISS). F1 are averaged over three seeds per model. Separate tables are shown per dataset.
 
 ### HotpotQA
 
