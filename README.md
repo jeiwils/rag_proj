@@ -1,6 +1,15 @@
 # Retrieval-Augmented Graph QA
 
-This project implements a HopRAG-style, multi-hop retrieval-augmented generation (RAG) pipeline that links generated incoming/outgoing questions across passages, builds a passage graph, traverses it with an LLM, and produces final answers and metrics. It supports both graph-based traversal and a dense-retrieval baseline while keeping all intermediate artifacts (IQ/OQ generations, embeddings, graphs, traversal traces, and answers) auditable. 
+This repository implements a **NLP pipeline** for **multi-hop question answering** using **retrieval‑augmented generation (RAG)** plus **LLM-based synthetic data generation**.
+
+At a high level, it:
+- **Synthesizes questions** over passages (IQ/OQ) using LLMs (synthetic data generation),
+- Builds a **passage graph** by linking synthetic questions across passages,
+- Performs **LLM-guided graph traversal** to retrieve multi-hop evidence,
+- Generates final answers and computes **QA + efficiency metrics**,
+- Persists **all intermediate artifacts** (generations, cleaned data, embeddings, indexes, graphs, traces, answers) for auditability.
+
+A **dense-retrieval baseline** (FAISS-based) is also supported for comparison.
 
 ## Pipeline layout
 
