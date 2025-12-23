@@ -1,31 +1,85 @@
 # Retrieval-Augmented Graph QA
 
-This repository implements a **NLP pipeline** for **multi-hop question answering** using **retrieval‑augmented generation (RAG)** plus **LLM-based synthetic data generation**.
+Multi-hop question answering pipeline that pairs retrieval-augmented generation (RAG) with graph traversal. The system synthesizes questions, links passages via a passage graph, retrieves multi-hop evidence, and scores answers while persisting every artifact for auditability.
 
-At a high level, it:
-- **Synthesizes questions** over passages (IQ/OQ) using LLMs (synthetic data generation),
-- Builds a **passage graph** by linking synthetic questions across passages,
-- Performs **LLM-guided graph traversal** to retrieve multi-hop evidence,
-- Generates final answers and computes **QA + efficiency metrics**,
-- Persists **all intermediate artifacts** (generations, cleaned data, embeddings, indexes, graphs, traces, answers) for auditability.
+## Key features
+- **Question synthesis and scoring** across passages (IQ/OQ) using local LLM servers with optional conditioned scores.
+- **Hybrid passage graph** construction that blends cosine and Jaccard similarity for hop-aware retrieval.
+- **Traversal + dense baseline** flows for apples-to-apples evaluation of HopRAG versus FAISS-only retrieval.
+- **Artifact-first design**: every phase writes JSONL, FAISS indexes, debug logs, and traces for reproducibility.
+- **Resume-friendly processing** for sharded generation, cleaning, embedding, and traversal steps.
 
-A **dense-retrieval baseline** (FAISS-based) is also supported for comparison.
+## Quickstart (install → run → verify)
+1. **Install**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
+2. **Run a small pipeline slice**
+   - Place raw datasets under `data/raw_datasets/{dataset}/...` (see the examples inside `src/a_dataset_preprocessing.py`).
+   - Configure LLM servers in `src/utils.py::SERVER_CONFIGS` to match the ports/models you have running (llama.cpp-compatible `/v1/chat/completions` or `/completion` endpoints).
+   - Generate processed questions/passages for a dataset split (respects `MAX_EXAMPLES` in the `__main__` guard):
+     ```bash
+     python -m src.a_dataset_preprocessing
+     ```
+   - Run IQ/OQ generation shards for a model by pointing `src/b_text_generation.py` at the processed passages:
+     ```bash
+     python -m src.b_text_generation  # uses SERVER_CONFIGS and shard settings in the module
+     ```
+3. **Verify**
+   - Confirm the environment imports cleanly:
+     ```bash
+     python -m compileall src
+     ```
+   - Check that new artifacts appear under `data/models/{model}/{dataset}/{split}/shards/` and `data/processed_datasets/{dataset}/{split}/`.
 
-## Pipeline layout
+## Usage (common workflows)
+- **Dataset preprocessing** – `src/a_dataset_preprocessing.py::process_dataset` normalizes raw QA data to `questions.jsonl` and `passages.jsonl` with configurable field maps.
+- **Question generation** – `src/b_text_generation.py` shards passages per model size, writes conditioned scores, and produces IQ/OQ lists plus per-shard debug logs.
+- **Cleaning & explosion** – `src/c_file_prep.py` merges shard outputs, filters IQ/OQ lists, and explodes them into per-question/per-passage JSONLs for embeddings.
+- **Representations** – `src/d_sparse_dense_representations.py` embeds passages and IQ/OQ items (BGE + FAISS) and enriches with spaCy keyword features.
+- **Graph construction** – `src/e_graphing.py` builds hybrid-similarity edge lists and NetworkX graphs within a global budget for each model/dataset/variant.
+- **Traversal & answering** – `src/f_traversal.py` performs LLM-guided hops, records traces, and computes retrieval metrics; `src/h_reranking_answer_gen.py` handles reranking and answer generation.
+- **Baselines & metrics** – `src/g_dense_RAG.py` provides dense-only retrieval, while `src/metrics.py` and `src/metrics_summary.py` aggregate EM/F1 and latency.
 
-1. **Dataset preprocessing** – Normalizes raw QA data into `questions.jsonl` and `passages.jsonl`, letting callers provide per-dataset field maps while reusing the shared writer/resume logic.
-2. **Question generation & conditioned scoring** – Shards passages by model size, asks LLM servers for conditioned scores plus incoming/outgoing questions (IQ/OQ), and writes per-shard debug logs for baseline/enhanced HopRAG prompts.
-3. **Cleaning and explosion** – Merges shard outputs, filters/normalizes IQ/OQ lists, and explodes them into per-question and per-passage JSONLs ready for embedding and graphing.
-4. **Dense/sparse representations** – Embeds passages and IQ/OQ items (BGE + FAISS) and enriches them with spaCy keywords; uses GPU acceleration when CUDA is available.
-5. **Graph construction** – Connects OQs to candidate IQs with hybrid cosine+Jaccard similarity, applies a global budget, and saves edge lists plus NetworkX graph/diagnostics for each model/dataset/variant.
-6. **LLM-guided traversal** – Seeds retrieval, expands through graph edges with an LLM choosing the next hop, and records per-query traces and aggregate traversal metrics for baseline and conditioned-score variants.
-7. **Answer generation & reranking** – Loads traversal outputs, fetches supporting passages from the graph, asks the reader LLM for answers, and computes EM/F1 plus token/latency percentiles.
-8. **Dense RAG baseline** – Skips graph traversal by retrieving top-k passages directly from FAISS and scoring EM/F1 alongside retrieval metrics for comparison.
+## Configuration (env vars, files, flags)
+- **LLM servers**: edit `src/utils.py::SERVER_CONFIGS` to point to your running endpoints and models.
+- **Token + sampling defaults**: `src/config.py` defines `MAX_TOKENS`, `TEMPERATURE`, and `LLM_DEFAULTS`.
+- **Embeddings**: override `BGE_MODEL` and `SPACY_MODEL` env vars for encoder and spaCy pipeline selection (defaults: `BAAI/bge-base-en-v1.5`, `en_core_web_sm`).
+- **Resume flags**: many modules expose a `RESUME` boolean or `resume` argument to skip already-written IDs when re-running steps.
+- **Paths**: helper path constructors in `src/utils.py` and `src/d_sparse_dense_representations.py` standardize where processed, embedded, and graph artifacts live.
 
+## Architecture
+The pipeline is organized as a sequence of modular stages that write files other stages consume, enabling partial reruns and cross-model comparisons.
 
-## Results (dev splits; averaged across 3 seeds)
+```mermaid
+flowchart LR
+    A[Raw QA datasets] --> B[Dataset preprocessing<br/>questions.jsonl + passages.jsonl]
+    B --> C[IQ/OQ synthesis + conditioned scores<br/>per-model shards]
+    C --> D[Cleaning & explosion<br/>per-question/per-passage JSONL]
+    D --> E[Embeddings + FAISS indexes<br/>dense + sparse features]
+    E --> F[Graph construction<br/>hybrid similarity edges]
+    F --> G[LLM-guided traversal<br/>traces + metrics]
+    G --> H[Answer generation & reranking]
+    E --> I[Dense-only baseline retrieval]
+```
 
-Traversal-generated answers (baseline HopRAG) compared with the retrieval-only baseline (dense/FAISS). EM/F1 are averaged over three seeds per model. Separate tables are shown per dataset.【6c388d†L2-L44】
+Artifacts are stored under `data/processed_datasets/`, `data/models/`, `data/representations/`, `data/graphs/`, `data/traversal/`, and `data/results/` for downstream inspection.
+
+## Observability (logs, metrics, traces)
+- Per-shard debug logs for conditioned scores and IQ/OQ generation are written alongside shard outputs in `data/models/{model}/{dataset}/{split}/shards/{hoprag_version}/`.
+- Traversal traces and answer logs are emitted by `src/f_traversal.py`, enabling step-by-step hop reconstruction.
+- Token accounting is logged in `src/llm_utils.py` for each query/response pair; aggregate metrics live in `data/results/` and can be summarized with `src/metrics_summary.py`.
+
+## Deployment
+- Designed for local or single-node runs where llama.cpp-compatible servers are reachable on the configured ports. Ensure GPU availability to accelerate BGE embeddings (falls back to CPU otherwise).
+- Schedule long-running stages (generation, embeddings, traversal) with resumable flags to survive interruptions; outputs are append-only JSONL/FAISS files.
+
+## Benchmark snapshots (dev splits; averaged across 3 seeds)
+
+Traversal-generated answers (baseline HopRAG) compared with the retrieval-only baseline (dense/FAISS). EM/F1 are averaged over three seeds per model. Separate tables are shown per dataset.
 
 ### HotpotQA
 
